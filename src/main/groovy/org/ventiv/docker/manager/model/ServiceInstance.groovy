@@ -26,12 +26,16 @@ class ServiceInstance {
     String name;
     String serverName;
     Integer instanceNumber
+    Status status;
     String containerStatus;
-    boolean containerRunning;
     String containerId;
     DockerTag containerImage;
     Date containerCreatedDate;
 
     List<PortDefinition> portDefinitions;
+
+    public static final enum Status {
+        Missing, Running, Stopped
+    }
 
 }

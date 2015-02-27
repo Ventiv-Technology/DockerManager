@@ -39,20 +39,38 @@ class EnvironmentController {
         DockerEnvironmentConfiguration envConfiguration = new DockerEnvironmentConfiguration(tierName, environmentName);
 
         // Loop through this Environment's Servers, and get any Instances running on that server.  Then find the ones that belong to this env
-        List<ServiceInstance> serviceInstances = envConfiguration.configuration.servers
+        List<ServiceInstance> deployedServiceInstances = envConfiguration.configuration.servers
                 .collect { getServiceInstances(it.hostname) }.flatten()
                 .findAll { it.getTierName() == tierName && it.getEnvironmentName() == environmentName }
 
         return envConfiguration.configuration.applications.collect { applicationDef ->
-            List<ServiceInstance> applicationServiceInstances = serviceInstances.findAll {
+            List<ServiceInstance> applicationServiceInstances = deployedServiceInstances.findAll {
                 it.getApplicationId() == applicationDef.id
             }
+
+            // Now make ServiceInstance objects for each one defined
+            List<ServiceInstance> definedServiceInstances = []
+            applicationDef.serviceInstances.each {
+                for (int i = 0; i < it.count; i++) {
+                    definedServiceInstances << new ServiceInstance([
+                            name: it.type,
+                            instanceNumber: i + 1
+                    ])
+                }
+            }
+
+            // Now, remove the ones that are found
+            List<ServiceInstance> missingServiceInstances = definedServiceInstances.findAll { definedServiceInstance ->
+                return !applicationServiceInstances.find { it.name == definedServiceInstance.name && it.instanceNumber == definedServiceInstance.instanceNumber }
+            }
+
 
             return [
                     id: applicationDef.id,
                     name: applicationDef.name,
                     url: applicationDef.url,
-                    serviceInstances: applicationServiceInstances
+                    serviceInstances: applicationServiceInstances,
+                    missingServiceInstances: missingServiceInstances.collect { it.name }
             ]
         }
     }
@@ -75,7 +93,7 @@ class EnvironmentController {
                         name: matcher[0][4],
                         instanceNumber: Integer.parseInt(matcher[0][5]),
                         serverName: hostName,
-                        containerRunning: c.getStatus().startsWith("Up"),
+                        status: c.getStatus().startsWith("Up") ? ServiceInstance.Status.Running : ServiceInstance.Status.Stopped,
                         containerStatus: c.getStatus(),
                         containerId: c.getId(),
                         containerImage: new DockerTag(c.getImage()),
