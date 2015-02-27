@@ -37,7 +37,7 @@ dependencies {
     compile("org.springframework.security:spring-security-ldap:3.2.5.RELEASE")
     compile("org.apache.directory.server:apacheds-server-jndi:1.5.5")
     compile("org.springframework.boot:spring-boot-starter-web")
-	compile("org.codehaus.groovy:groovy")
+	compile("org.codehaus.groovy:groovy-all")
     compile group: 'org.codehaus.groovy.modules.http-builder', name: 'http-builder', version: '0.7'
     compile 'com.jayway.jsonpath:json-path:1.2.0'
     compile 'com.netflix.feign:feign-core:8.0.0-rc.1'

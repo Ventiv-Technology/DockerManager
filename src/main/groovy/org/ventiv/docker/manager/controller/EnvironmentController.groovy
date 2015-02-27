@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerEnvironmentConfiguration
+import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
 
@@ -20,6 +22,7 @@ import javax.annotation.Resource
 class EnvironmentController {
 
     @Resource DockerService dockerService;
+    @Resource DockerServiceConfiguration dockerServiceConfiguration;
 
     @RequestMapping
     public Collection<String> getTiers() {
@@ -41,10 +44,15 @@ class EnvironmentController {
                 .findAll { it.getTierName() == tierName && it.getEnvironmentName() == environmentName }
 
         return envConfiguration.configuration.applications.collect { applicationDef ->
+            List<ServiceInstance> applicationServiceInstances = serviceInstances.findAll {
+                it.getApplicationId() == applicationDef.id
+            }
+
             return [
+                    id: applicationDef.id,
                     name: applicationDef.name,
                     url: applicationDef.url,
-                    serviceInstances: serviceInstances
+                    serviceInstances: applicationServiceInstances
             ]
         }
     }
@@ -58,15 +66,27 @@ class EnvironmentController {
             String matchingName = c.getNames().find { it =~ ServiceInstance.DOCKER_NAME_PATTERN }
             if (matchingName) {
                 def matcher = matchingName =~ ServiceInstance.DOCKER_NAME_PATTERN
+                def serviceInformation = dockerServiceConfiguration.getServiceConfiguration(matcher[0][4]);
+
                 answer << new ServiceInstance([
                         tierName: matcher[0][1],
                         environmentName: matcher[0][2],
-                        name: matcher[0][3],
-                        instanceNumber: Integer.parseInt(matcher[0][4]),
+                        applicationId: matcher[0][3],
+                        name: matcher[0][4],
+                        instanceNumber: Integer.parseInt(matcher[0][5]),
                         serverName: hostName,
+                        containerRunning: c.getStatus().startsWith("Up"),
+                        containerStatus: c.getStatus(),
                         containerId: c.getId(),
-                        containerImage: c.getImage(),
-                        containerCreatedDate: new Date(c.getCreated() * 1000)
+                        containerImage: new DockerTag(c.getImage()),
+                        containerCreatedDate: new Date(c.getCreated() * 1000),
+                        portDefinitions: c.getPorts().collect { Container.Port port ->
+                            return [
+                                    portType: serviceInformation.containerPorts.find { it.port == port.getPrivatePort() }.type,
+                                    hostPort: port.getPublicPort(),
+                                    containerPort: port.getPrivatePort()
+                            ]
+                        }
                 ])
             }
         }
