@@ -1,14 +1,17 @@
 package org.ventiv.docker.manager.controller
 
-import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.model.Container
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerEnvironmentConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.model.BuildApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
+import org.ventiv.docker.manager.model.PortDefinition
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
 
@@ -37,79 +40,84 @@ class EnvironmentController {
     @RequestMapping("/{tierName}/{environmentName}")
     public def getEnvironmentDetails(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
         DockerEnvironmentConfiguration envConfiguration = new DockerEnvironmentConfiguration(tierName, environmentName);
-
-        // Loop through this Environment's Servers, and get any Instances running on that server.  Then find the ones that belong to this env
-        List<ServiceInstance> deployedServiceInstances = envConfiguration.configuration.servers
-                .collect { getServiceInstances(it.hostname) }.flatten()
-                .findAll { it.getTierName() == tierName && it.getEnvironmentName() == environmentName }
+        List<ServiceInstance> serviceInstances = getServiceInstances(tierName, environmentName);
 
         return envConfiguration.configuration.applications.collect { applicationDef ->
-            List<ServiceInstance> applicationServiceInstances = deployedServiceInstances.findAll {
-                it.getApplicationId() == applicationDef.id
-            }
+            List<ServiceInstance> applicationInstances = serviceInstances.findAll { it.getApplicationId() == applicationDef.id };
 
             // Now make ServiceInstance objects for each one defined
-            List<ServiceInstance> definedServiceInstances = []
-            applicationDef.serviceInstances.each {
-                for (int i = 0; i < it.count; i++) {
-                    definedServiceInstances << new ServiceInstance([
-                            name: it.type,
-                            instanceNumber: i + 1
-                    ])
-                }
-            }
-
-            // Now, remove the ones that are found
-            List<ServiceInstance> missingServiceInstances = definedServiceInstances.findAll { definedServiceInstance ->
-                return !applicationServiceInstances.find { it.name == definedServiceInstance.name && it.instanceNumber == definedServiceInstance.instanceNumber }
-            }
-
+            List<String> requiredServices = applicationDef.serviceInstances.collect { [it.type] * it.count }.flatten()
+            List<String> missingServices = requiredServices - applicationInstances.collect { it.getName() }
 
             return [
                     id: applicationDef.id,
                     name: applicationDef.name,
                     url: applicationDef.url,
-                    serviceInstances: applicationServiceInstances,
-                    missingServiceInstances: missingServiceInstances.collect { it.name }
+                    serviceInstances: applicationInstances,
+                    missingServiceInstances: missingServices
             ]
         }
     }
 
-    private List<ServiceInstance> getServiceInstances(String hostName) {
-        DockerClient dc = dockerService.getDockerClient(hostName);
-        List<Container> containers = dc.listContainersCmd().withShowAll(true).exec();
+    /**
+     * Builds out an environment.  Ensures the docker environment of two things:
+     * 1.) Any missingServiceInstances (see getEnvironmentDetails) will be built out according to the requested versions
+     * 2.) Each serviceInstance (see getEnvironmentDetails) is on the proper version.  If not, it will destroy the container and rebuild.
+     */
+    @RequestMapping(value = "/{tierName}/{environmentName}", method = RequestMethod.POST)
+    public def buildEnvironment(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody BuildApplicationRequest buildRequest) {
+        def environmentDetails = getEnvironmentDetails(tierName, environmentName);
 
-        List<ServiceInstance> answer = [];
-        containers.each { Container c ->
-            String matchingName = c.getNames().find { it =~ ServiceInstance.DOCKER_NAME_PATTERN }
-            if (matchingName) {
-                def matcher = matchingName =~ ServiceInstance.DOCKER_NAME_PATTERN
-                def serviceInformation = dockerServiceConfiguration.getServiceConfiguration(matcher[0][4]);
+        // First, let's find any open services
+    }
 
-                answer << new ServiceInstance([
-                        tierName: matcher[0][1],
-                        environmentName: matcher[0][2],
-                        applicationId: matcher[0][3],
-                        name: matcher[0][4],
-                        instanceNumber: Integer.parseInt(matcher[0][5]),
-                        serverName: hostName,
-                        status: c.getStatus().startsWith("Up") ? ServiceInstance.Status.Running : ServiceInstance.Status.Stopped,
-                        containerStatus: c.getStatus(),
-                        containerId: c.getId(),
-                        containerImage: new DockerTag(c.getImage()),
-                        containerCreatedDate: new Date(c.getCreated() * 1000),
-                        portDefinitions: c.getPorts().collect { Container.Port port ->
-                            return [
-                                    portType: serviceInformation.containerPorts.find { it.port == port.getPrivatePort() }.type,
-                                    hostPort: port.getPublicPort(),
-                                    containerPort: port.getPrivatePort()
-                            ]
-                        }
+    @RequestMapping("/{tierName}/{environmentName}/serviceInstances")
+    public List<ServiceInstance> getServiceInstances(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
+        DockerEnvironmentConfiguration envConfiguration = new DockerEnvironmentConfiguration(tierName, environmentName);
+
+
+        List<ServiceInstance> definedServiceInstances = [];
+        envConfiguration.configuration.servers.each { def serverConf ->
+            String hostname = serverConf.hostname;
+            List<Container> containers = dockerService.getDockerClient(hostname).listContainersCmd().withShowAll(true).exec();
+
+            Map<String, Integer> instanceNumbers = [:]
+            serverConf.eligibleServices.each { def serviceConf ->
+                String serviceName = serviceConf.type;
+                instanceNumbers.put(serviceName, (instanceNumbers[serviceName] ?: 0) + 1);      // Increment/populate the service instance number
+                Integer instanceNumber = instanceNumbers[serviceName];
+                Container dockerContainer = containers.find { it.getNames()[0].startsWith("/${tierName}.${environmentName}.") && it.getNames()[0].endsWith(".${serviceName}.${instanceNumber}") }
+
+                ServiceInstance serviceInstance = new ServiceInstance([
+                        tierName: tierName,
+                        environmentName: environmentName,
+                        name: serviceName,
+                        serverName: hostname,
+                        instanceNumber: instanceNumber,
+                        status: ServiceInstance.Status.Available
                 ])
+
+                if (dockerContainer) {
+                    serviceInstance.setDockerName(dockerContainer.getNames()[0])
+                    serviceInstance.status = dockerContainer.getStatus().startsWith("Up") ? ServiceInstance.Status.Running : ServiceInstance.Status.Stopped;
+                    serviceInstance.containerStatus = dockerContainer.getStatus();
+                    serviceInstance.containerId = dockerContainer.getId();
+                    serviceInstance.containerImage = new DockerTag(dockerContainer.getImage());
+                    serviceInstance.containerCreatedDate = new Date(dockerContainer.getCreated() * 1000);
+                    serviceInstance.portDefinitions = dockerContainer.getPorts().collect { Container.Port port ->
+                        return new PortDefinition([
+                                portType: serviceConf.portMappings.find { it.port == port.getPublicPort() }.type,
+                                hostPort: port.getPublicPort(),
+                                containerPort: port.getPrivatePort()
+                        ])
+                    }
+                }
+
+                definedServiceInstances << serviceInstance;
             }
         }
 
-        return answer;
+        return definedServiceInstances;
     }
 
     private Map<String, List<String>> getAllEnvironments() {

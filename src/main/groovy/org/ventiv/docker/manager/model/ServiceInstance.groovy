@@ -20,9 +20,7 @@ class ServiceInstance {
     @JsonIgnore
     String environmentName;
 
-    @JsonIgnore
     String applicationId;
-
     String name;
     String serverName;
     Integer instanceNumber
@@ -34,8 +32,21 @@ class ServiceInstance {
 
     List<PortDefinition> portDefinitions;
 
+    public ServiceInstance setDockerName(String dockerName) {
+        def matcher = dockerName =~ DOCKER_NAME_PATTERN;
+        if (matcher) {
+            tierName = matcher[0][1];
+            environmentName = matcher[0][2];
+            applicationId = matcher[0][3];
+            name = matcher[0][4];
+            instanceNumber = Integer.parseInt(matcher[0][5]);
+        }
+
+        return this;
+    }
+
     public static final enum Status {
-        Missing, Running, Stopped
+        Available, Running, Stopped
     }
 
 }
