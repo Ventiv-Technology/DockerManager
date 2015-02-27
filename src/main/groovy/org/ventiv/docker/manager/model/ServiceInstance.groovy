@@ -1,32 +1,32 @@
 package org.ventiv.docker.manager.model
 
-import javax.persistence.Entity
-import javax.persistence.FetchType
-import javax.persistence.GeneratedValue
-import javax.persistence.GenerationType
-import javax.persistence.Id
-import javax.persistence.OneToMany
-import javax.persistence.Table
-import javax.persistence.UniqueConstraint
+import com.fasterxml.jackson.annotation.JsonIgnore
+import groovy.transform.ToString
 
 /**
- * Created by jcrygier on 2/26/15.
+ * An instantiated instance of a service, that has been assigned to a host / list of ports.  In order to keep track
+ * and not have to persist this in a database, we will use the Docker Name in a special format.  This format is as follows:
+ *
+ * <tierName>.<environmentName>.<name>.<instanceNumber>
  */
-@Entity
-@Table(uniqueConstraints = @UniqueConstraint(columnNames = ["tierName", "environmentName"]))
+@ToString
 class ServiceInstance {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
-    Long id;
+    public static final def DOCKER_NAME_PATTERN = /([a-zA-Z0-9][a-zA-Z0-9_-]*).([a-zA-Z0-9][a-zA-Z0-9_-]*).([a-zA-Z0-9][a-zA-Z0-9_-]*).([0-9])/
 
+    @JsonIgnore
     String tierName;
-    String environmentName;
-    String name;
-    String serviceName;
-    String serverName;
 
-    @OneToMany(targetEntity=PortDefinition.class, mappedBy="serviceInstance", fetch=FetchType.EAGER)
+    @JsonIgnore
+    String environmentName;
+
+    String name;
+    String serverName;
+    Integer instanceNumber
+    String containerId;
+    String containerImage;
+    Date containerCreatedDate;
+
     List<PortDefinition> portDefinitions;
 
 }

@@ -13,7 +13,8 @@ buildscript {
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
-apply plugin: 'spring-boot' 
+apply plugin: 'spring-boot'
+apply plugin: 'project-report'
 
 jar {
     baseName = 'dockermanager'
@@ -41,8 +42,13 @@ dependencies {
     compile 'com.jayway.jsonpath:json-path:1.2.0'
     compile 'com.netflix.feign:feign-core:8.0.0-rc.1'
     compile 'com.netflix.feign:feign-jackson:8.0.0-rc.1'
+    compile 'com.github.docker-java:docker-java:1.0.0'
 	runtime("com.h2database:h2")
     testCompile("org.springframework.boot:spring-boot-starter-test") 
+}
+
+configurations {
+    all*.exclude group: 'bouncycastle', module: "bcprov-jdk15"
 }
 
 eclipse {

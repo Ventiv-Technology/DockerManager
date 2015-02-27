@@ -1,0 +1,4 @@
+docker:
+  client:
+    boot2docker:
+      certPath: ~/.boot2docker/certs/boot2docker-vm/
