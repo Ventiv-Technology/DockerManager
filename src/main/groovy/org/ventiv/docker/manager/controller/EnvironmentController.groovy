@@ -1,6 +1,10 @@
 package org.ventiv.docker.manager.controller
 
+import com.github.dockerjava.api.command.CreateContainerResponse
 import com.github.dockerjava.api.model.Container
+import com.github.dockerjava.api.model.ExposedPort
+import com.github.dockerjava.api.model.HostConfig
+import com.github.dockerjava.api.model.Ports
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
@@ -9,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerEnvironmentConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.exception.NoAvailableServiceException
 import org.ventiv.docker.manager.model.BuildApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.PortDefinition
@@ -60,21 +65,52 @@ class EnvironmentController {
     }
 
     /**
-     * Builds out an environment.  Ensures the docker environment of two things:
+     * Builds out an application.  Ensures the docker environment of two things:
      * 1.) Any missingServiceInstances (see getEnvironmentDetails) will be built out according to the requested versions
      * 2.) Each serviceInstance (see getEnvironmentDetails) is on the proper version.  If not, it will destroy the container and rebuild.
      */
     @RequestMapping(value = "/{tierName}/{environmentName}", method = RequestMethod.POST)
-    public def buildEnvironment(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody BuildApplicationRequest buildRequest) {
+    public def buildApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody BuildApplicationRequest buildRequest) {
         def environmentDetails = getEnvironmentDetails(tierName, environmentName);
+        def applicationDetails = environmentDetails.find { it.id == buildRequest.getName() }
+        List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName);
 
-        // First, let's find any open services
+
+        // First, let's find any missing services
+        applicationDetails.missingServiceInstances.each { String missingService ->
+            // Find an 'Available' Service Instance
+            ServiceInstance toUse = allServiceInstances.find { it.getName() == missingService && it.getStatus() == ServiceInstance.Status.Available }
+            if (toUse) {
+                toUse.setApplicationId(buildRequest.getName());
+                String imageName = dockerServiceConfiguration.getServiceConfiguration(missingService).image
+                DockerTag toDeploy = new DockerTag(imageName)
+                toDeploy.setTag(buildRequest.getServiceVersions().get(missingService));
+
+                Ports portBindings = new Ports();
+                toUse.getPortDefinitions().each {
+                    portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding(it.getHostPort()));
+                }
+
+                HostConfig hostConfig = new HostConfig();
+                hostConfig.setPortBindings(portBindings);
+
+                CreateContainerResponse resp = dockerService.getDockerClient(toUse.getServerName()).createContainerCmd(toDeploy.toString())
+                    .withName(toUse.toString())
+                    .withHostConfig(hostConfig).exec();
+                dockerService.getDockerClient(toUse.getServerName()).startContainerCmd(resp.id).exec();
+
+                toUse.setStatus(ServiceInstance.Status.Running);
+            } else {
+                throw new NoAvailableServiceException(missingService, environmentName);
+            }
+        }
+
+        // TODO: Verify all running serviceInstances to ensure they're the correct version
     }
 
     @RequestMapping("/{tierName}/{environmentName}/serviceInstances")
     public List<ServiceInstance> getServiceInstances(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
         DockerEnvironmentConfiguration envConfiguration = new DockerEnvironmentConfiguration(tierName, environmentName);
-
 
         List<ServiceInstance> definedServiceInstances = [];
         envConfiguration.configuration.servers.each { def serverConf ->
@@ -94,7 +130,14 @@ class EnvironmentController {
                         name: serviceName,
                         serverName: hostname,
                         instanceNumber: instanceNumber,
-                        status: ServiceInstance.Status.Available
+                        status: ServiceInstance.Status.Available,
+                        portDefinitions: serviceConf.portMappings.collect { portMapping ->
+                            return new PortDefinition([
+                                    portType: portMapping.type,
+                                    hostPort: portMapping.port,
+                                    containerPort: dockerServiceConfiguration.getServiceConfiguration(serviceName).containerPorts.find { it.type == portMapping.type }.port
+                            ])
+                        }
                 ])
 
                 if (dockerContainer) {
@@ -106,7 +149,7 @@ class EnvironmentController {
                     serviceInstance.containerCreatedDate = new Date(dockerContainer.getCreated() * 1000);
                     serviceInstance.portDefinitions = dockerContainer.getPorts().collect { Container.Port port ->
                         return new PortDefinition([
-                                portType: serviceConf.portMappings.find { it.port == port.getPublicPort() }.type,
+                                portType: dockerServiceConfiguration.getServiceConfiguration(serviceName).containerPorts.find { it.port == port.getPrivatePort() }?.type,
                                 hostPort: port.getPublicPort(),
                                 containerPort: port.getPrivatePort()
                         ])

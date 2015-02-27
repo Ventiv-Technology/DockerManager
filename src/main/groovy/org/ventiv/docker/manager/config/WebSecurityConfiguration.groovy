@@ -26,6 +26,8 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                 .httpBasic()
                     .and()
                 .formLogin();
+
+        http.csrf().disable();
     }
 
     @Configuration

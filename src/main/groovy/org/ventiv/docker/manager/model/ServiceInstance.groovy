@@ -45,6 +45,12 @@ class ServiceInstance {
         return this;
     }
 
+    @Override
+    public String toString() {
+        return "${tierName}.${environmentName}.${applicationId}.${name}.${instanceNumber}"
+    }
+
+
     public static final enum Status {
         Available, Running, Stopped
     }

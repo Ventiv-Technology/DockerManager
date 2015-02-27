@@ -32,4 +32,18 @@ class DockerTag {
         return registry == null;
     }
 
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder()
+
+        if (registry)
+            sb.append(registry).append("/")
+
+        if (namespace != "library")
+            sb.append(namespace).append("/")
+
+        sb.append(repository).append(":").append(tag);
+
+        return sb.toString();
+    }
 }
