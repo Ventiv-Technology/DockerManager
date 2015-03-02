@@ -13,12 +13,12 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerEnvironmentConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
-import org.ventiv.docker.manager.exception.NoAvailableServiceException
 import org.ventiv.docker.manager.model.BuildApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.PortDefinition
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
+import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 
 import javax.annotation.Resource
 
@@ -52,12 +52,15 @@ class EnvironmentController {
 
             // Now make ServiceInstance objects for each one defined
             List<String> requiredServices = applicationDef.serviceInstances.collect { [it.type] * it.count }.flatten()
-            List<String> missingServices = requiredServices - applicationInstances.collect { it.getName() }
+            List<String> missingServices = new ArrayList<>(requiredServices)
+            applicationInstances.each { missingServices.remove(it.getName())  }  // Remove any that actually exist
 
             return [
                     id: applicationDef.id,
                     name: applicationDef.name,
                     url: applicationDef.url,
+                    tierName: tierName,
+                    environmentName: environmentName,
                     serviceInstances: applicationInstances,
                     missingServiceInstances: missingServices
             ]
@@ -75,34 +78,30 @@ class EnvironmentController {
         def applicationDetails = environmentDetails.find { it.id == buildRequest.getName() }
         List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName);
 
-
         // First, let's find any missing services
         applicationDetails.missingServiceInstances.each { String missingService ->
             // Find an 'Available' Service Instance
-            ServiceInstance toUse = allServiceInstances.find { it.getName() == missingService && it.getStatus() == ServiceInstance.Status.Available }
-            if (toUse) {
-                toUse.setApplicationId(buildRequest.getName());
-                String imageName = dockerServiceConfiguration.getServiceConfiguration(missingService).image
-                DockerTag toDeploy = new DockerTag(imageName)
-                toDeploy.setTag(buildRequest.getServiceVersions().get(missingService));
+            ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService, allServiceInstances, applicationDetails);
 
-                Ports portBindings = new Ports();
-                toUse.getPortDefinitions().each {
-                    portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding(it.getHostPort()));
-                }
+            toUse.setApplicationId(buildRequest.getName());
+            String imageName = dockerServiceConfiguration.getServiceConfiguration(missingService).image
+            DockerTag toDeploy = new DockerTag(imageName)
+            toDeploy.setTag(buildRequest.getServiceVersions().get(missingService));
 
-                HostConfig hostConfig = new HostConfig();
-                hostConfig.setPortBindings(portBindings);
-
-                CreateContainerResponse resp = dockerService.getDockerClient(toUse.getServerName()).createContainerCmd(toDeploy.toString())
-                    .withName(toUse.toString())
-                    .withHostConfig(hostConfig).exec();
-                dockerService.getDockerClient(toUse.getServerName()).startContainerCmd(resp.id).exec();
-
-                toUse.setStatus(ServiceInstance.Status.Running);
-            } else {
-                throw new NoAvailableServiceException(missingService, environmentName);
+            Ports portBindings = new Ports();
+            toUse.getPortDefinitions().each {
+                portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding(it.getHostPort()));
             }
+
+            HostConfig hostConfig = new HostConfig();
+            hostConfig.setPortBindings(portBindings);
+
+            CreateContainerResponse resp = dockerService.getDockerClient(toUse.getServerName()).createContainerCmd(toDeploy.toString())
+                .withName(toUse.toString())
+                .withHostConfig(hostConfig).exec();
+            dockerService.getDockerClient(toUse.getServerName()).startContainerCmd(resp.id).exec();
+
+            toUse.setStatus(ServiceInstance.Status.Running);
         }
 
         // TODO: Verify all running serviceInstances to ensure they're the correct version
