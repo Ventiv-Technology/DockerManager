@@ -1,10 +1,12 @@
 package org.ventiv.docker.manager.controller
 
+import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.CreateContainerResponse
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.Ports
+import groovy.util.logging.Slf4j
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
@@ -25,6 +27,7 @@ import javax.annotation.Resource
 /**
  * Created by jcrygier on 2/27/15.
  */
+@Slf4j
 @RequestMapping("/environment")
 @RestController
 class EnvironmentController {
@@ -82,29 +85,31 @@ class EnvironmentController {
         applicationDetails.missingServiceInstances.each { String missingService ->
             // Find an 'Available' Service Instance
             ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService, allServiceInstances, applicationDetails);
-
             toUse.setApplicationId(buildRequest.getName());
-            String imageName = dockerServiceConfiguration.getServiceConfiguration(missingService).image
-            DockerTag toDeploy = new DockerTag(imageName)
-            toDeploy.setTag(buildRequest.getServiceVersions().get(missingService));
 
-            Ports portBindings = new Ports();
-            toUse.getPortDefinitions().each {
-                portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding(it.getHostPort()));
-            }
+            // Create (and start) the container
+            createDockerContainer(toUse, buildRequest.getServiceVersions().get(missingService));
 
-            HostConfig hostConfig = new HostConfig();
-            hostConfig.setPortBindings(portBindings);
-
-            CreateContainerResponse resp = dockerService.getDockerClient(toUse.getServerName()).createContainerCmd(toDeploy.toString())
-                .withName(toUse.toString())
-                .withHostConfig(hostConfig).exec();
-            dockerService.getDockerClient(toUse.getServerName()).startContainerCmd(resp.id).exec();
-
+            // Mark this service instance as 'Running' so it won't get used again
             toUse.setStatus(ServiceInstance.Status.Running);
         }
 
-        // TODO: Verify all running serviceInstances to ensure they're the correct version
+        // Verify all running serviceInstances to ensure they're the correct version
+        allServiceInstances.each { ServiceInstance anInstance ->
+            if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
+                String expectedVersion = buildRequest.getServiceVersions()[anInstance.getName()];
+                String runningVersion = anInstance.getContainerImage().getTag();
+
+                // We have a version mismatch...destroy the container and rebuild it
+                if (expectedVersion != runningVersion) {
+                    // First, let's destroy the container
+                    destroyDockerContainer(anInstance);
+
+                    // Now, create a new one
+                    createDockerContainer(anInstance, buildRequest.getServiceVersions().get(anInstance.getName()));
+                }
+            }
+        }
     }
 
     @RequestMapping("/{tierName}/{environmentName}/serviceInstances")
@@ -169,6 +174,46 @@ class EnvironmentController {
 
         // Group by Directory, then Massage the ClassPathResource elements into the filename minus .yml
         return allEnvironments.groupBy { new File(it.path).getParentFile().getName() }.collectEntries { k, v -> [k, v.collect { it.getFilename().replaceAll("\\.yml", "") }] }
+    }
+
+    private String createDockerContainer(ServiceInstance instance, String desiredVersion) {
+        // Get the image name, so we can build out a DockerTag with the proper version
+        String imageName = dockerServiceConfiguration.getServiceConfiguration(instance.getName()).image
+        DockerTag toDeploy = new DockerTag(imageName)
+        toDeploy.setTag(desiredVersion);
+
+        // Build out port bindings
+        Ports portBindings = new Ports();
+        instance.getPortDefinitions().each {
+            portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding(it.getHostPort()));
+        }
+
+        HostConfig hostConfig = new HostConfig();
+        hostConfig.setPortBindings(portBindings);
+
+        // Do a docker pull, just to ensure we have the image locally
+        DockerClient docker = dockerService.getDockerClient(instance.getServerName())
+        log.info("Pulling docker image: '$toDeploy");
+        InputStream pullIn = docker.pullImageCmd(toDeploy.toString()).exec();
+        pullIn.eachLine {
+            log.debug(it);
+        }
+
+        // Create the actual container
+        log.info("Creating new Docker Container on Host: '${instance.getServerName()}' with image: '${toDeploy.toString()}' and name: '${instance.toString()}'")
+        CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
+                .withName(instance.toString())
+                .withHostConfig(hostConfig).exec();
+
+        log.info("Created container with ID: '${resp.id}'.  Starting...")
+        docker.startContainerCmd(resp.id).exec();
+
+        return resp.id;
+    }
+
+    private void destroyDockerContainer(ServiceInstance instance) {
+        log.info("Destroying docker container: '${instance.toString()}")
+        dockerService.getDockerClient(instance.getServerName()).removeContainerCmd(instance.toString()).withForce().exec();
     }
 
 
