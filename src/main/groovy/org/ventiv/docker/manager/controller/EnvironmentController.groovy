@@ -145,12 +145,7 @@ class EnvironmentController {
                 ])
 
                 if (dockerContainer) {
-                    serviceInstance.setDockerName(dockerContainer.getNames()[0])
-                    serviceInstance.status = dockerContainer.getStatus().startsWith("Up") ? ServiceInstance.Status.Running : ServiceInstance.Status.Stopped;
-                    serviceInstance.containerStatus = dockerContainer.getStatus();
-                    serviceInstance.containerId = dockerContainer.getId();
-                    serviceInstance.containerImage = new DockerTag(dockerContainer.getImage());
-                    serviceInstance.containerCreatedDate = new Date(dockerContainer.getCreated() * 1000);
+                    serviceInstance.withDockerContainer(dockerContainer);
                     serviceInstance.portDefinitions = dockerContainer.getPorts().collect { Container.Port port ->
                         return new PortDefinition([
                                 portType: dockerServiceConfiguration.getServiceConfiguration(serviceName).containerPorts.find { it.port == port.getPrivatePort() }?.type,
@@ -167,7 +162,7 @@ class EnvironmentController {
         return definedServiceInstances;
     }
 
-    private Map<String, List<String>> getAllEnvironments() {
+    public Map<String, List<String>> getAllEnvironments() {
         // Search for all YAML files under /data/env-config/tiers
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
         def allEnvironments = resolver.getResources("classpath:/data/env-config/tiers/**/*.yml")

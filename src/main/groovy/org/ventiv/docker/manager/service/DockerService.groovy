@@ -19,25 +19,20 @@ import javax.annotation.Resource
 class DockerService {
 
     @Resource PropertyService props;
-    private Map<String, DockerClient> dockerClientCache = [:]
 
     public DockerClient getDockerClient(String hostName) {
-        if (!dockerClientCache.containsKey(hostName)) {
-            String apiVersion = props["docker.client.${hostName}.apiVersion"] ?: "1.17"
-            String uri = props["docker.client.${hostName}.uri"] ?: "https://${hostName}:2376"
-            String certs = props["docker.client.${hostName}.certPath"] ?: "./certs/${hostName}"
-            certs = certs.replaceAll('~', System.getProperty('user.home'))
+        String apiVersion = props["docker.client.${hostName}.apiVersion"] ?: "1.17"
+        String uri = props["docker.client.${hostName}.uri"] ?: "https://${hostName}:2376"
+        String certs = props["docker.client.${hostName}.certPath"] ?: "./certs/${hostName}"
+        certs = certs.replaceAll('~', System.getProperty('user.home'))
 
-            DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
-                .withVersion(apiVersion)
-                .withUri(uri)
-                .withDockerCertPath(certs)
-                .build();
+        DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
+            .withVersion(apiVersion)
+            .withUri(uri)
+            .withDockerCertPath(certs)
+            .build();
 
-            dockerClientCache.put(hostName, DockerClientBuilder.getInstance(config).build());
-        }
-
-        return dockerClientCache[hostName];
+        return DockerClientBuilder.getInstance(config).build();
     }
 
 }

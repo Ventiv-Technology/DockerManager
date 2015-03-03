@@ -25,4 +25,18 @@ class DockerEnvironmentConfiguration {
         configuration = (Map<String, Object>) yaml.load(resource.getInputStream());
     }
 
+    List<Map<String, Object>> getServers() {
+        if (configuration)
+            return configuration.servers
+        else
+            return []
+    }
+
+    Set<String> getHostnames() {
+        if (configuration)
+            return configuration.servers*.hostname;
+        else
+            return [];
+    }
+
 }

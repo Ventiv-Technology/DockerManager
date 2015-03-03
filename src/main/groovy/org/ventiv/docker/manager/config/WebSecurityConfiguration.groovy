@@ -17,15 +17,21 @@ import javax.annotation.Resource
 @EnableWebSecurity
 class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
+    private static final boolean bypassSecurity = true;
+
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        http.authorizeRequests()
-                .anyRequest()
-                    .fullyAuthenticated()
-                    .and()
-                .httpBasic()
-                    .and()
-                .formLogin();
+        if (bypassSecurity)
+            http.authorizeRequests().anyRequest().permitAll();
+        else {
+            http.authorizeRequests()
+                    .anyRequest()
+                        .fullyAuthenticated()
+                        .and()
+                    .httpBasic()
+                        .and()
+                    .formLogin();
+        }
 
         http.csrf().disable();
     }
@@ -37,15 +43,19 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
         @Override
         public void init(AuthenticationManagerBuilder auth) throws Exception {
-            auth.ldapAuthentication()
-                    .userSearchBase(props["ldap.user.searchBase"])
-                    .userSearchFilter(props["ldap.user.searchFilter"])
-                    .groupSearchBase(props["ldap.group.searchBase"])
-                    .groupSearchFilter(props["ldap.group.searchFilter"])
-                    .contextSource()
+            if (bypassSecurity) {
+                auth.inMemoryAuthentication();
+            } else {
+                auth.ldapAuthentication()
+                        .userSearchBase(props["ldap.user.searchBase"])
+                        .userSearchFilter(props["ldap.user.searchFilter"])
+                        .groupSearchBase(props["ldap.group.searchBase"])
+                        .groupSearchFilter(props["ldap.group.searchFilter"])
+                        .contextSource()
                         .url(props["ldap.server.url"])
                         .managerDn(props["ldap.server.managerDn"])
                         .managerPassword(props["ldap.server.managerPassword"])
+            }
         }
     }
 }
