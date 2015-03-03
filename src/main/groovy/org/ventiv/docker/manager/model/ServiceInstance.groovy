@@ -61,7 +61,7 @@ class ServiceInstance {
 
         // Get the service configuration
         def serviceConfig = DockermanagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
-        this.serviceDescription = serviceConfig?.description;
+        this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
         this.portDefinitions = dockerContainer.getPorts().collect { Container.Port port ->
             return new PortDefinition([

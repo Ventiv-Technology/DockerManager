@@ -3,7 +3,7 @@ buildscript {
         springBootVersion = '1.2.1.RELEASE'
     }
     repositories {
-        mavenCentral()
+        jcenter()
     }
     dependencies {
         classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
@@ -24,9 +24,8 @@ sourceCompatibility = 1.7
 targetCompatibility = 1.7
 
 repositories {
-    mavenCentral()
+    jcenter()
 }
-
 
 dependencies {
     compile("org.springframework.boot:spring-boot-starter-actuator")
@@ -43,7 +42,23 @@ dependencies {
     compile 'com.netflix.feign:feign-core:8.0.0-rc.1'
     compile 'com.netflix.feign:feign-jackson:8.0.0-rc.1'
     compile 'com.github.docker-java:docker-java:1.0.0'
-	runtime("com.h2database:h2")
+
+    // Web Loading
+    compile 'org.webjars:webjars-locator:0.17'
+    compile 'org.ventiv:spring-boot-webjars-requirejs:1.0.2'
+
+    // Web Jars
+    compile 'org.webjars:angularjs:1.3.0'
+    compile 'org.webjars:angular-ui-router:0.2.11-1'
+    compile 'org.webjars:requirejs:2.1.14-3'
+    compile 'org.webjars:angular-ui-bootstrap:0.11.0-2'
+    compile 'org.webjars:jquery:2.1.1'
+    compile 'org.webjars:restangular:1.4.0-2'
+    compile 'org.webjars:lodash:2.4.1-6'
+    compile 'org.webjars:angular-translate:2.3.0'
+
+    runtime("com.h2database:h2")
+
     testCompile("org.springframework.boot:spring-boot-starter-test") 
 }
 

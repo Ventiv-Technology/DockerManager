@@ -1,0 +1,29 @@
+/* Move down content because we have a fixed navbar that is 50px tall */
+body {
+    padding-top: 50px;
+}
+
+/* Service Instance Formatting */
+.service-instance {
+    border: 1px solid;
+    border-color: #888888;
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+.service-status .Running {
+    color: #009900;
+}
+
+.service-status .Stopped {
+    color: #990000;
+}
+
+.service-instance > div {
+    margin-left: -10px;
+    margin-right: -10px;
+}
+
+.service-version {
+    color: #666666;
+}

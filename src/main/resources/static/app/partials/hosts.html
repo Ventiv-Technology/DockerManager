@@ -1,0 +1,17 @@
+<div class="container" id="hosts-details">
+    <!-- Example row of columns -->
+    <div class="row">
+        <div class="col-md-4 host" data-ng-repeat="host in hosts">
+            <h2>{{host.name}}</h2>
+            <div class="service-instance" data-ng-repeat="serviceInterface in host.serviceInterfaces">
+                <div class="row service-info">
+                    <div class="col-md-7 service-description">{{serviceInterface.serviceDescription}}</div>
+                    <div class="col-md-5 service-version">{{serviceInterface.containerImage.tag}}</div>
+                </div>
+                <div class="row service-status">
+                    <div class="col-md-12" data-ng-class="serviceInterface.status">{{serviceInterface.containerStatus}}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> <!-- /container -->

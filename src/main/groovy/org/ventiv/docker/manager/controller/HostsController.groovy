@@ -16,7 +16,7 @@ import javax.annotation.Resource
  * Created by jcrygier on 3/2/15.
  */
 @Slf4j
-@RequestMapping("/hosts")
+@RequestMapping("/api/hosts")
 @RestController
 @CompileStatic
 class HostsController {
@@ -42,7 +42,7 @@ class HostsController {
                     name: hostConfiguration.name,
                     hostname: hostConfiguration.hostname,
                     status: status,
-                    containers: hostContainers?.collect { new ServiceInstance().withDockerContainer(it) }
+                    serviceInterfaces: hostContainers?.collect { new ServiceInstance().withDockerContainer(it) }
             ]
         }
     }

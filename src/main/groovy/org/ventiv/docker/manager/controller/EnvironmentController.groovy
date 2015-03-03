@@ -28,7 +28,7 @@ import javax.annotation.Resource
  * Created by jcrygier on 2/27/15.
  */
 @Slf4j
-@RequestMapping("/environment")
+@RequestMapping("/api/environment")
 @RestController
 class EnvironmentController {
 

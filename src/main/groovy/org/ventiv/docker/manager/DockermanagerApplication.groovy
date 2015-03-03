@@ -3,10 +3,10 @@ package org.ventiv.docker.manager
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.ApplicationContext
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories
+import org.ventiv.webjars.requirejs.EnableWebJarsRequireJs
 
 @SpringBootApplication
-@EnableJpaRepositories("com.aon.esolutions.envmanager")
+@EnableWebJarsRequireJs
 class DockermanagerApplication {
 
     static ApplicationContext applicationContext;

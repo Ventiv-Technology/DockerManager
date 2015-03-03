@@ -17,7 +17,7 @@ import javax.annotation.Resource
  * Docker Service Controller, this will control anything to do with a docker 'service'.  A Service is a defined docker image
  * (or how to create an image).  It will also contain information about ports, volumes, etc...
  */
-@RequestMapping("/service")
+@RequestMapping("/api/service")
 @RestController
 class DockerServiceController {
 
