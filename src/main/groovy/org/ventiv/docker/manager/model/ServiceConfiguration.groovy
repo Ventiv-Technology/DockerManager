@@ -14,20 +14,24 @@ class ServiceConfiguration {
     ServiceBuildConfiguration build;
     Collection<PortMapptingConfiguration> containerPorts;
     Map<String, String> environment;
+    Integer maxPossibleVersions = 20;
 
     public List<String> getPossibleVersions() {
+        List<String> answer = [];
+
         if (getBuild()?.getVersionSelection())  // We know how to build an image
-            return getBuild().getVersionSelection().getPossibleVersions();
+            answer = getBuild().getVersionSelection().getPossibleVersions();
         else if (getImage()) {             // We already have a docker images
             DockerTag tag = new DockerTag(getImage());
 
             if (tag.getTag())  // We've specified a version in the config
-                return [ tag.getTag() ]
+                answer = [ tag.getTag() ]
             else if (tag.getRegistry())                  // We need to query the Docker Remote API to get the list of versions
-                return DockermanagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.namespace, tag.repository).keySet() as List<String>;
+                answer = DockermanagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.namespace, tag.repository).keySet() as List<String>;
         }
 
-        return [];
+        Integer toTake = Math.min(maxPossibleVersions, answer.size()) - 1;
+        return answer.sort().reverse()[0..toTake];
     }
 
 }

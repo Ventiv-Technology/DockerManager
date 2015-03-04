@@ -25,7 +25,7 @@ class VersionSelectionConfiguration {
             }
         }
 
-        return versions.sort().reverse();
+        return versions;
     }
 
 }
