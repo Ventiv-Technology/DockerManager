@@ -23,17 +23,28 @@
 
                 <hr>
 
+                <div class="row">
+                    <div class="col-md-2 col-md-offset-1">
+                        <select class="form-control" data-ng-model="application.selectedVersion" data-ng-options="option as option for option in application.availableVersions"></select>
+                    </div>
+                    <div class="col-md-1"><button class="btn btn-primary" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
+
+                </div>
+
+                <hr>
+
                 <div class="row env-service-instance" data-ng-repeat="serviceInstance in application.serviceInstances">
                     <div class="btn col-md-12" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}">
+                        <span>{{serviceInstance.serviceDescription}} on</span>
                         <span>{{serviceInstance.serverName}}</span>
-                        <span>[{{serviceInstance.containerImage.tag}} - deployed @ {{serviceInstance.containerCreatedDate | date:'short'}}]</span>
+                        <span>[{{serviceInstance.containerImage.tag}} - deployed @ {{serviceInstance.containerCreatedDate | date:'short'}} - {{serviceInstance.containerStatus}}]</span>
                     </div>
                 </div>
 
                 <hr>
 
                 <div class="row env-missing-service-instance" data-ng-repeat="missingService in application.missingServiceInstances track by $index">
-                    <div class="btn col-md-12 btn-warning">{{missingService.serviceName}} Missing</div>
+                    <div class="btn col-md-12 btn-warning">{{missingService.serviceDescription}} Missing</div>
                 </div>
 
             </div>

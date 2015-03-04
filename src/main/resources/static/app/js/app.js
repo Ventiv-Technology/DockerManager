@@ -80,5 +80,32 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     $scope.environment.applications = Restangular.one('environment', $stateParams.tierName).getList($stateParams.environmentId).$object;
                 }
             });
+
+            $scope.deployApplication = function(applicationDetails) {
+                var buildRequest = {
+                    name: applicationDetails.id,
+                    serviceVersions: applicationDetails.buildServiceVersionsTemplate
+                };
+
+                _.forIn(buildRequest.serviceVersions, function(value, key) {
+                    if (!value) {
+                        if (!applicationDetails.selectedVersion) {
+                            alert("Please Select a Version from the Dropdown before Deploying");
+                            throw "Please Select a Version from the Dropdown before Deploying";
+                        }
+                        buildRequest.serviceVersions[key] = applicationDetails.selectedVersion;
+                    }
+                });
+
+                console.log("Deploying build request:", buildRequest);
+                Restangular.one('environment', $stateParams.tierName).all($stateParams.environmentId).post(buildRequest).then(
+                    function success(response) {
+
+                    },
+                    function error(response) {
+                        alert("Error Building Environment: " + response.data.message);
+                    }
+                );
+            };
         })
 });

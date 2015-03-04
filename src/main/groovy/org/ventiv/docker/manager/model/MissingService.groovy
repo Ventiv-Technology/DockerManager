@@ -6,6 +6,7 @@ package org.ventiv.docker.manager.model
 class MissingService {
 
     String serviceName;
+    String serviceDescription;
     Collection<String> availableVersions;
 
 }

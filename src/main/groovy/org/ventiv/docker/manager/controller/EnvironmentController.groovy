@@ -73,7 +73,7 @@ class EnvironmentController {
                     tierName: tierName,
                     environmentName: environmentName,
                     serviceInstances: applicationInstances,
-                    missingServiceInstances: missingServices.collect { new MissingService([serviceName: it]) }
+                    missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) }
             ]).withApplicationConfiguration(applicationConfiguration))
         }
     }
@@ -85,18 +85,18 @@ class EnvironmentController {
      */
     @RequestMapping(value = "/{tierName}/{environmentName}", method = RequestMethod.POST)
     public def buildApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody BuildApplicationRequest buildRequest) {
-        def environmentDetails = getEnvironmentDetails(tierName, environmentName);
-        def applicationDetails = environmentDetails.find { it.id == buildRequest.getName() }
+        List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
+        ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == buildRequest.getName() }
         List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName);
 
         // First, let's find any missing services
-        applicationDetails.missingServiceInstances.each { String missingService ->
+        applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
             // Find an 'Available' Service Instance
-            ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService, allServiceInstances, applicationDetails);
+            ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), allServiceInstances, applicationDetails);
             toUse.setApplicationId(buildRequest.getName());
 
             // Create (and start) the container
-            createDockerContainer(toUse, buildRequest.getServiceVersions().get(missingService));
+            createDockerContainer(toUse, buildRequest.getServiceVersions().get(missingService.getServiceName()));
 
             // Mark this service instance as 'Running' so it won't get used again
             toUse.setStatus(ServiceInstance.Status.Running);
@@ -211,6 +211,14 @@ class EnvironmentController {
             missingService.setAvailableVersions(availableServiceVersions[missingService.getServiceName()]);
         }
 
+        // Build out buildServiceVersionsTemplate for services with one option
+        allServices.each { String serviceName ->
+            if (availableServiceVersions[serviceName].size() == 1)
+                applicationDetails.getBuildServiceVersionsTemplate().put(serviceName, availableServiceVersions[serviceName].first());
+            else
+                applicationDetails.getBuildServiceVersionsTemplate().put(serviceName, null);
+        }
+
         // Filter out any services that only have 1 available version, since we have no control over it anyway
         availableServiceVersions = availableServiceVersions.findAll { serviceName, availableVersions ->
             return availableVersions.size() > 1;
@@ -218,7 +226,9 @@ class EnvironmentController {
 
         // Determine the Available Aggregated Versions - check all unique service's version list, use it if there's just one
         List<String> availableAggregatedVersions = null;
-        if (availableServiceVersions.values().unique(false).size() == 1)
+        if (availableServiceVersions.size() == 0)
+            availableAggregatedVersions = [];
+        else if (availableServiceVersions.values().unique(false).size() == 1)
             availableAggregatedVersions = availableServiceVersions.values().unique(false).first()
 
         String deployedVersion = "Multiple"

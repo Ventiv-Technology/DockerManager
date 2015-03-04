@@ -8,6 +8,7 @@ define([], function() {
         TIER: "Tier",
         ENVIRONMENT: "Environment",
         URL: "URL:",
-        DEPLOYED_BUILD: "Deployed Build:"
+        DEPLOYED_BUILD: "Deployed Build:",
+        DEPLOY: "Deploy"
     }
 });

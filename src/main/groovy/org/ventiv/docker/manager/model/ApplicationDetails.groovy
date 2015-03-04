@@ -17,6 +17,7 @@ class ApplicationDetails {
     Collection<String> availableVersions;
     Collection<ServiceInstance> serviceInstances;
     List<MissingService> missingServiceInstances;
+    Map<String, String> buildServiceVersionsTemplate = [:];
 
     @JsonIgnore
     ApplicationConfiguration applicationConfiguration;
