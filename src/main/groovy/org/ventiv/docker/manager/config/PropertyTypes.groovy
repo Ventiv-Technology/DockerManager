@@ -8,9 +8,10 @@ import org.ventiv.docker.manager.DockermanagerApplication
  */
 enum PropertyTypes {
 
-    Active_Tiers;
+    Active_Tiers,
+    Environment_Configuration_Location;
 
-    private static Environment env = DockermanagerApplication.getApplicationContext().getBean(Environment);
+    private static Environment env = null;
     String propertyKey;
 
     private PropertyTypes() {
@@ -22,11 +23,11 @@ enum PropertyTypes {
     }
 
     String getValue() {
-        return env.getProperty(getPropertyKey())
+        return getEnv().getProperty(getPropertyKey())
     }
 
     Integer getInteger() {
-        return env.getProperty(getPropertyKey(), Integer);
+        return getEnv().getProperty(getPropertyKey(), Integer);
     }
 
     List<String> getStringListValue() {
@@ -36,14 +37,21 @@ enum PropertyTypes {
     public <T> List<T> getListValue(Class<T> targetType) {
         List<T> answer = []
         int idx = 0;
-        T lastValue = env.getProperty(propertyKey + "[${idx++}]", targetType);
+        T lastValue = getEnv().getProperty(propertyKey + "[${idx++}]", targetType);
 
         while (lastValue != null) {
             answer << lastValue;
-            lastValue = env.getProperty(propertyKey + "[${idx++}]", targetType);
+            lastValue = getEnv().getProperty(propertyKey + "[${idx++}]", targetType);
         }
 
         return answer;
+    }
+
+    private Environment getEnv() {
+        if (env == null)
+            env = DockermanagerApplication.getApplicationContext().getBean(Environment);
+
+        return env;
     }
 
 }

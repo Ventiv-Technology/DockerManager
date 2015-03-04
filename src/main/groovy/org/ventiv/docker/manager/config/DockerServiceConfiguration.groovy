@@ -1,41 +1,53 @@
 package org.ventiv.docker.manager.config
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
-import org.springframework.core.io.ClassPathResource
 import org.springframework.core.io.Resource
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
+import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.yaml.snakeyaml.Yaml
-
-import javax.annotation.PostConstruct
 
 /**
  * Created by jcrygier on 2/25/15.
  */
 @Slf4j
 @Service
+@CompileStatic
 class DockerServiceConfiguration {
 
-    Map<String, Object> configuration;
+    private List<ServiceConfiguration> config;
 
-    @PostConstruct
     public void readConfiguration() {
         Yaml yaml = new Yaml()
 
-        Resource resource = new ClassPathResource("/data/env-config/services.yml")
+        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
+        Resource resource = resolver.getResource(PropertyTypes.Environment_Configuration_Location.getValue() + "/services.yml")
 
         if (log.isDebugEnabled()) {
-            log.debug("Loading from YAML: " + resource);
+            log.debug("Loading service definition from YAML: " + resource);
         }
 
-        configuration = (Map<String, Object>) yaml.load(resource.getInputStream());
+        config = yaml.loadAs(resource.getInputStream(), ServiceConfigurationFile).getServices();
     }
 
     public List<String> getServiceNames() {
-        return configuration.services*.name;
+        return getConfiguration()*.getName();
     }
 
-    public Map<String, Object> getServiceConfiguration(String serviceName) {
-        return configuration.services.find { it.name == serviceName }
+    public ServiceConfiguration getServiceConfiguration(String serviceName) {
+        return getConfiguration().find { it.name == serviceName }
+    }
+
+    public List<ServiceConfiguration> getConfiguration() {
+        if (config == null)
+            readConfiguration();
+
+        return config;
+    }
+
+    public static final class ServiceConfigurationFile {
+        List<ServiceConfiguration> services;
     }
 
 }

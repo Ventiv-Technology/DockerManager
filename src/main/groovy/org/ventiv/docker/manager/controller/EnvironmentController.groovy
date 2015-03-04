@@ -14,16 +14,17 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
-import org.ventiv.docker.manager.config.DockerEnvironmentConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.config.PropertyTypes
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
+import org.ventiv.docker.manager.model.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.PortDefinition
+import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
@@ -119,18 +120,18 @@ class EnvironmentController {
         }
     }
 
+    @CompileStatic
     @RequestMapping("/{tierName}/{environmentName}/serviceInstances")
     public List<ServiceInstance> getServiceInstances(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
-        DockerEnvironmentConfiguration envConfiguration = new DockerEnvironmentConfiguration(tierName, environmentName);
+        EnvironmentConfiguration envConfiguration = getTiers()[tierName].find { it.getId() == environmentName }
 
         List<ServiceInstance> definedServiceInstances = [];
-        envConfiguration.configuration.servers.each { def serverConf ->
-            String hostname = serverConf.hostname;
-            List<Container> containers = dockerService.getDockerClient(hostname).listContainersCmd().withShowAll(true).exec();
+        envConfiguration.getServers().each { ServerConfiguration serverConf ->
+            List<Container> containers = dockerService.getDockerClient(serverConf.getHostname()).listContainersCmd().withShowAll(true).exec();
 
             Map<String, Integer> instanceNumbers = [:]
-            serverConf.eligibleServices.each { def serviceConf ->
-                String serviceName = serviceConf.type;
+            serverConf.getEligibleServices().each { EligibleServiceConfiguration serviceConf ->
+                String serviceName = serviceConf.getType();
                 instanceNumbers.put(serviceName, (instanceNumbers[serviceName] ?: 0) + 1);      // Increment/populate the service instance number
                 Integer instanceNumber = instanceNumbers[serviceName];
                 Container dockerContainer = containers.find { it.getNames()[0].startsWith("/${tierName}.${environmentName}.") && it.getNames()[0].endsWith(".${serviceName}.${instanceNumber}") }
@@ -139,7 +140,7 @@ class EnvironmentController {
                         tierName: tierName,
                         environmentName: environmentName,
                         name: serviceName,
-                        serverName: hostname,
+                        serverName: serverConf.getHostname(),
                         instanceNumber: instanceNumber,
                         status: ServiceInstance.Status.Available,
                         portDefinitions: serviceConf.portMappings.collect { portMapping ->
@@ -172,7 +173,7 @@ class EnvironmentController {
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
         // Search for all YAML files under /data/env-config/tiers
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
-        def allEnvironments = resolver.getResources("classpath:/data/env-config/tiers/**/*.yml")
+        def allEnvironments = resolver.getResources(PropertyTypes.Environment_Configuration_Location.getValue() + "/tiers/**/*.yml")
 
         // Group by Directory, then Massage the ClassPathResource elements into the filename minus .yml
         return allEnvironments.groupBy { new File(it.path).getParentFile().getName() }.collectEntries { String tierName, List<org.springframework.core.io.Resource> resources ->
