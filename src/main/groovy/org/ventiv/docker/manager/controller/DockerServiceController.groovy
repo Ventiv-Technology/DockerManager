@@ -5,10 +5,10 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.api.DockerRegistry
-import org.ventiv.docker.manager.build.VersionSelectionService
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.ImageLayerInformation
+import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.ventiv.docker.manager.service.DockerRegistryApiService
 
 import javax.annotation.Resource
@@ -21,7 +21,6 @@ import javax.annotation.Resource
 @RestController
 class DockerServiceController {
 
-    @Resource VersionSelectionService versionSelectionService;
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource DockerRegistryApiService dockerRegistryApiService;
 
@@ -32,9 +31,9 @@ class DockerServiceController {
 
     @RequestMapping("/{serviceName}")
     public List<String> getAvailableVersions(@PathVariable("serviceName") String serviceName) {
-        def serviceConfig = dockerServiceConfiguration.getServiceConfiguration(serviceName);
+        ServiceConfiguration serviceConfig = dockerServiceConfiguration.getServiceConfiguration(serviceName);
         if (serviceConfig) {
-            return versionSelectionService.getPossibleVersions(serviceConfig);
+            return serviceConfig.getPossibleVersions();
         }
     }
 

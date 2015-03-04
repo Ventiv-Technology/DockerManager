@@ -7,4 +7,12 @@ class VersionSelectionFilterConfiguration {
 
     String groovy;
 
+    String filter(String versionNumber) {
+        // Groovy Filter
+        if (getGroovy()) {
+            return Eval.me('versionNumber', versionNumber, getGroovy())
+        }
+
+        return versionNumber;
+    }
 }
