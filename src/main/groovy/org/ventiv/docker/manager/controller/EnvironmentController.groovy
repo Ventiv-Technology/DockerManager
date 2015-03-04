@@ -64,7 +64,7 @@ class EnvironmentController {
 
             return [
                     id: applicationDef.id,
-                    name: applicationDef.name,
+                    description: applicationDef.description,
                     url: applicationDef.url,
                     tierName: tierName,
                     environmentName: environmentName,

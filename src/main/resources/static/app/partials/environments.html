@@ -10,7 +10,33 @@
             <accordion-heading>
                 <span id="{{application.id}}-app">{{application.description}}</span>
             </accordion-heading>
-            {{environmentList}}
+            <div id="{{application.id}}-url">
+                <div class="row">
+                    <div class="col-md-2" translate="URL">URL:</div>
+                    <div class="col-md-10"><a href="{{application.url}}">{{application.url}}</a></div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-2" translate="DEPLOYED_BUILD">Deployed Build:</div>
+                    <div class="col-md-10">{{application.build}}</div>
+                </div>
+
+                <hr>
+
+                <div class="row env-service-instance" data-ng-repeat="serviceInstance in application.serviceInstances">
+                    <div class="btn col-md-12" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}">
+                        <span>{{serviceInstance.serverName}}</span>
+                        <span>[{{serviceInstance.containerImage.tag}} - deployed @ {{serviceInstance.containerCreatedDate | date:'short'}}]</span>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="row env-missing-service-instance" data-ng-repeat="missingService in application.missingServiceInstances">
+                    <div class="btn col-md-12 btn-warning">{{missingService}} Missing</div>
+                </div>
+
+            </div>
         </accordion-group>
     </accordion>
 </div> <!-- /container -->

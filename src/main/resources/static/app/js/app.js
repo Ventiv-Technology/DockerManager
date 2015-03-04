@@ -76,6 +76,8 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     $scope.environment = _.find(tiers[$stateParams.tierName], function (environment) {
                         return environment.id == $stateParams.environmentId;
                     });
+
+                    $scope.environment.applications = Restangular.one('environment', $stateParams.tierName).getList($stateParams.environmentId).$object;
                 }
             });
         })

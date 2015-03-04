@@ -6,6 +6,8 @@ define([], function() {
         ENVIRONMENTS: "Environments",
         APPLICATIONS: "Applications",
         TIER: "Tier",
-        ENVIRONMENT: "Environment"
+        ENVIRONMENT: "Environment",
+        URL: "URL:",
+        DEPLOYED_BUILD: "Deployed Build:"
     }
 });

@@ -38,3 +38,7 @@ body {
     font-size: larger;
     font-weight: bold;
 }
+
+.env-service-instance {
+    margin-bottom: 5px;
+}
