@@ -6,6 +6,7 @@ import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.Ports
+import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.web.bind.annotation.PathVariable
@@ -16,9 +17,12 @@ import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerEnvironmentConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.config.PropertyTypes
+import org.ventiv.docker.manager.model.ApplicationConfiguration
+import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.EnvironmentConfiguration
+import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.PortDefinition
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
@@ -37,6 +41,7 @@ class EnvironmentController {
 
     @Resource DockerService dockerService;
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
+    @Resource DockerServiceController dockerServiceController;
 
     @RequestMapping
     public Map<String, List<EnvironmentConfiguration>> getTiers() {
@@ -49,28 +54,26 @@ class EnvironmentController {
         getAllEnvironments()[tierName];
     }
 
+    @CompileStatic
     @RequestMapping("/{tierName}/{environmentName}")
-    public def getEnvironmentDetails(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
-        DockerEnvironmentConfiguration envConfiguration = new DockerEnvironmentConfiguration(tierName, environmentName);
+    public List<ApplicationDetails> getEnvironmentDetails(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
+        EnvironmentConfiguration envConfiguration = getTiers()[tierName].find { it.getId() == environmentName }
         List<ServiceInstance> serviceInstances = getServiceInstances(tierName, environmentName);
 
-        return envConfiguration.configuration.applications.collect { applicationDef ->
-            List<ServiceInstance> applicationInstances = serviceInstances.findAll { it.getApplicationId() == applicationDef.id };
+        return envConfiguration.getApplications().collect { ApplicationConfiguration applicationConfiguration ->
+            Collection<ServiceInstance> applicationInstances = serviceInstances.findAll { it.getApplicationId() == applicationConfiguration.getId() };
 
             // Now make ServiceInstance objects for each one defined
-            List<String> requiredServices = applicationDef.serviceInstances.collect { [it.type] * it.count }.flatten()
-            List<String> missingServices = new ArrayList<>(requiredServices)
+            List<String> requiredServices = (List<String>) applicationConfiguration.getServiceInstances().collect { [it.getType()] * it.getCount() }.flatten()
+            List<String> missingServices = new ArrayList<String>(requiredServices)
             applicationInstances.each { missingServices.remove(it.getName())  }  // Remove any that actually exist
 
-            return [
-                    id: applicationDef.id,
-                    description: applicationDef.description,
-                    url: applicationDef.url,
+            return populateVersions(new ApplicationDetails([
                     tierName: tierName,
                     environmentName: environmentName,
                     serviceInstances: applicationInstances,
-                    missingServiceInstances: missingServices
-            ]
+                    missingServiceInstances: missingServices.collect { new MissingService([serviceName: it]) }
+            ]).withApplicationConfiguration(applicationConfiguration))
         }
     }
 
@@ -181,6 +184,60 @@ class EnvironmentController {
                 return environmentConfiguration;
             }]
         }
+    }
+
+    /**
+     * Aggregate the versions of a given ApplicationDetail's ServiceInstance's into one version, if possible.
+     *
+     * @param applicationDetails
+     * @return
+     */
+    private ApplicationDetails populateVersions(ApplicationDetails applicationDetails) {
+        // Get all the services that are part of this application, and find the available versions for those services
+        Collection<String> allServices = applicationDetails.getApplicationConfiguration().getServiceInstances()*.getType();
+        Map<String, List<String>> availableServiceVersions = allServices.collectEntries { String serviceName ->
+            List<String> availableVersions = dockerServiceController.getAvailableVersions(serviceName)
+            return [(serviceName): availableVersions]
+        }
+
+        // Populate the available versions for each Service Instance
+        applicationDetails.getServiceInstances().each { ServiceInstance serviceInstance ->
+            serviceInstance.setAvailableVersions(availableServiceVersions[serviceInstance.getName()]);
+        }
+
+        // Populate the available versions for each missing Service
+        applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
+            missingService.setAvailableVersions(availableServiceVersions[missingService.getServiceName()]);
+        }
+
+        // Filter out any services that only have 1 available version, since we have no control over it anyway
+        availableServiceVersions = availableServiceVersions.findAll { serviceName, availableVersions ->
+            return availableVersions.size() > 1;
+        }
+
+        // Determine the Available Aggregated Versions - check all unique service's version list, use it if there's just one
+        List<String> availableAggregatedVersions = null;
+        if (availableServiceVersions.values().unique(false).size() == 1)
+            availableAggregatedVersions = availableServiceVersions.values().unique(false).first()
+
+        String deployedVersion = "Multiple"
+        if (!applicationDetails.getServiceInstances())                                      // We have nothing running!
+            deployedVersion = "Nothing Deployed"
+        else if (applicationDetails.getServiceInstances().size() == 1)                      // There's only 1 thing running!
+            deployedVersion = applicationDetails.getServiceInstances().first().getContainerImage().getTag();
+        else {                                                                              // Well Crap...we have multiple things running....do the aggregation logic
+            // Find only service instances that are in the filtered availableServiceVersions
+            Collection<ServiceInstance> uniqueServiceInstances = applicationDetails.getServiceInstances().findAll { availableServiceVersions.containsKey(it.getName()) }
+            if (uniqueServiceInstances.size() == 1)
+                deployedVersion = uniqueServiceInstances.first().getContainerImage().getTag();
+            else if (uniqueServiceInstances*.getContainerImage()*.getTag().flatten().unique().size() == 1)
+                deployedVersion = uniqueServiceInstances*.getContainerImage()*.getTag().flatten().unique();
+        }
+
+        applicationDetails.setVersion(deployedVersion)
+        applicationDetails.setAvailableVersions(availableAggregatedVersions);
+
+        return applicationDetails
     }
 
     private String createDockerContainer(ServiceInstance instance, String desiredVersion) {

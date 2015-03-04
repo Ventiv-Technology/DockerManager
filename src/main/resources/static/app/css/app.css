@@ -42,3 +42,7 @@ body {
 .env-service-instance {
     margin-bottom: 5px;
 }
+
+.env-missing-service-instance {
+    margin-bottom: 5px;
+}

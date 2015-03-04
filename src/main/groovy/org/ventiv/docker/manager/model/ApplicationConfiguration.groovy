@@ -1,7 +1,10 @@
 package org.ventiv.docker.manager.model
 
 /**
- * Created by jcrygier on 3/4/15.
+ * Data representing an Application's Configuration.  This differentiates from an ApplicationDetails object by being
+ * a configuration as opposed to what is actually running.
+ *
+ * Generally configured via YAML.
  */
 class ApplicationConfiguration {
 

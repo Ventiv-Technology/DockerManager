@@ -33,6 +33,7 @@ class ServiceInstance {
     String containerId;
     DockerTag containerImage;
     Date containerCreatedDate;
+    Collection<String> availableVersions;
 
     List<PortDefinition> portDefinitions;
 

@@ -18,7 +18,7 @@
 
                 <div class="row">
                     <div class="col-md-2" translate="DEPLOYED_BUILD">Deployed Build:</div>
-                    <div class="col-md-10">{{application.build}}</div>
+                    <div class="col-md-10">{{application.version}}</div>
                 </div>
 
                 <hr>
@@ -32,7 +32,7 @@
 
                 <hr>
 
-                <div class="row env-missing-service-instance" data-ng-repeat="missingService in application.missingServiceInstances">
+                <div class="row env-missing-service-instance" data-ng-repeat="missingService in application.missingServiceInstances track by $index">
                     <div class="btn col-md-12 btn-warning">{{missingService}} Missing</div>
                 </div>
 
