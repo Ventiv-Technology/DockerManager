@@ -11,4 +11,4 @@ In order to open source this project, Ventiv Technology things will have to be r
 
 - /src/main/resources/data/env-config
 - /src/main/resources/config/application-aes.properties
-- Security Keys for Docker Hosts ????
+- Security Keys for Docker Hosts /certs

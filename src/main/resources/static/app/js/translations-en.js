@@ -4,6 +4,8 @@ define([], function() {
         HOSTS: "Hosts",
         TIERS: "Tiers",
         ENVIRONMENTS: "Environments",
-        APPLICATIONS: "Applications"
+        APPLICATIONS: "Applications",
+        TIER: "Tier",
+        ENVIRONMENT: "Environment"
     }
 });

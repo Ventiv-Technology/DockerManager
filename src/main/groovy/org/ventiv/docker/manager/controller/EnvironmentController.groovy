@@ -15,12 +15,15 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerEnvironmentConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.config.PropertyTypes
 import org.ventiv.docker.manager.model.BuildApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
+import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.PortDefinition
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
+import org.yaml.snakeyaml.Yaml
 
 import javax.annotation.Resource
 
@@ -36,8 +39,9 @@ class EnvironmentController {
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
 
     @RequestMapping
-    public Collection<String> getTiers() {
-        getAllEnvironments().keySet();
+    public Map<String, List<EnvironmentConfiguration>> getTiers() {
+        List<String> activeTiers = PropertyTypes.Active_Tiers.getStringListValue()
+        getAllEnvironments().findAll { k, v -> activeTiers.contains(k) };
     }
 
     @RequestMapping("/{tierName}")
@@ -162,13 +166,21 @@ class EnvironmentController {
         return definedServiceInstances;
     }
 
-    public Map<String, List<String>> getAllEnvironments() {
+    public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
         // Search for all YAML files under /data/env-config/tiers
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
         def allEnvironments = resolver.getResources("classpath:/data/env-config/tiers/**/*.yml")
 
         // Group by Directory, then Massage the ClassPathResource elements into the filename minus .yml
-        return allEnvironments.groupBy { new File(it.path).getParentFile().getName() }.collectEntries { k, v -> [k, v.collect { it.getFilename().replaceAll("\\.yml", "") }] }
+        return allEnvironments.groupBy { new File(it.path).getParentFile().getName() }.collectEntries { String tierName, List<org.springframework.core.io.Resource> resources ->
+            [tierName, resources.collect { org.springframework.core.io.Resource yamlConfig ->
+                String environmentId = yamlConfig.getFilename().replaceAll("\\.yml", "")
+                EnvironmentConfiguration environmentConfiguration = new Yaml().loadAs(yamlConfig.getInputStream(), EnvironmentConfiguration)
+                environmentConfiguration?.setId(environmentId);
+
+                return environmentConfiguration;
+            }]
+        }
     }
 
     private String createDockerContainer(ServiceInstance instance, String desiredVersion) {

@@ -1,0 +1,16 @@
+<div class="container" id="hosts-details">
+    <div id="environment-header" data-ng-show="isMultipleTiers()">
+        <span class="environment-title" translate="ENVIRONMENT">Environment</span>: <span class="environment-description">{{environment.description}}</span>
+
+        <hr>
+    </div>
+
+    <accordion close-others="false" is-open="true">
+        <accordion-group data-ng-repeat="application in environment.applications">
+            <accordion-heading>
+                <span id="{{application.id}}-app">{{application.description}}</span>
+            </accordion-heading>
+            {{environmentList}}
+        </accordion-group>
+    </accordion>
+</div> <!-- /container -->

@@ -30,26 +30,53 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     templateUrl: '/app/partials/hosts.html',
                     controller: 'HostsController'
                 })
-                .state('tiers', {
-                    url: '/tiers',
-                    templateUrl: '/app/partials/tiers.html'
-                })
-                .state('environments', {
-                    url: '/environments',
-                    templateUrl: '/app/partials/environments.html'
-                })
-                .state('applications', {
-                    url: '/applications',
-                    templateUrl: '/app/partials/applications.html'
+                .state('environment', {
+                    url: '/env/{tierName}/{environmentId}',
+                    templateUrl: '/app/partials/environments.html',
+                    controller: 'EnvironmentController'
                 });
         })
 
-        .controller('MainController', function($scope, $modal, Restangular) {
+        .controller('MainController', function($scope, $stateParams, Restangular) {
+            Restangular.one('environment').get().then(function(environments) {
+                $scope.tiers = environments.plain();
 
+                $scope.environments = [];
+                _.forOwn($scope.tiers, function(environmentList, tierName) {
+                    _.each(environmentList, function(environment) {
+                        environment.tierName = tierName;
+                        $scope.environments.push(environment);
+                    });
+                });
+            });
+
+            $scope.isMultipleTiers = function() {
+                if ($scope.tiers)
+                    return Object.keys($scope.tiers).length > 1;
+                else
+                    return false;
+            };
+
+            $scope.getTierClass = function(tierName) {
+                if ($stateParams.tierName == tierName)
+                    return "active";
+                else
+                    return "inactive";
+            };
         })
 
         .controller('HostsController', function($scope, Restangular) {
             var hostsInterface = Restangular.all('hosts');
             $scope.hosts = hostsInterface.getList().$object;
+        })
+
+        .controller('EnvironmentController', function($scope, $stateParams, Restangular) {
+            $scope.$watch("tiers", function(tiers) {
+                if (tiers !== undefined) {
+                    $scope.environment = _.find(tiers[$stateParams.tierName], function (environment) {
+                        return environment.id == $stateParams.environmentId;
+                    });
+                }
+            });
         })
 });

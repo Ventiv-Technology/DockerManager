@@ -2,7 +2,7 @@
     <!-- Example row of columns -->
     <div class="row">
         <div class="col-md-4 host" data-ng-repeat="host in hosts">
-            <h2>{{host.name}}</h2>
+            <h2>{{host.description}}</h2>
             <div class="service-instance" data-ng-repeat="serviceInterface in host.serviceInterfaces">
                 <div class="row service-info">
                     <div class="col-md-7 service-description">{{serviceInterface.serviceDescription}}</div>

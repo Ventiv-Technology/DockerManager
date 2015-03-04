@@ -28,14 +28,23 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href="#" translate="DOCKER_MANAGER">Docker Manager</a>
+            <a class="navbar-brand" href="/" translate="DOCKER_MANAGER">Docker Manager</a>
         </div>
         <div class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
                 <li ui-sref-active="active"><a href ui-sref="hosts" translate="HOSTS">Hosts</a></li>
-                <li ui-sref-active="active"><a href ui-sref="tiers" translate="TIERS">Tiers</a></li>
-                <li ui-sref-active="active"><a href ui-sref="environments" translate="ENVIRONMENTS">Environments</a></li>
-                <li ui-sref-active="active"><a href ui-sref="applications" translate="APPLICATIONS">Applications</a></li>
+
+                <!-- Tier Dropdowns (If Multiple tiers) -->
+                <li class="dropdown" data-ng-class="getTierClass(tierName)" data-ng-show="isMultipleTiers()" data-ng-repeat="(tierName, environmentList) in tiers">
+                    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span translate="TIER">Tier</span>: {{tierName}} <span class="caret"></span></a>
+                    <ul class="dropdown-menu" role="menu">
+                        <li ui-sref-active="active" data-ng-repeat="environment in environmentList"><a href ui-sref="environment({ tierName: tierName, environmentId: environment.id})">{{environment.description}}</a></li>
+                    </ul>
+                </li>
+                <!-- /Tier Dropdowns -->
+
+                <!-- Environments (If One Environment) -->
+                <li ui-sref-active="active" data-ng-show="!isMultipleTiers()" data-ng-repeat="environment in environments"><a href ui-sref="environment({tierName: environment.tierName, environmentId: environment.id})">{{environment.description}}</a></li>
             </ul>
         </div><!--/.nav-collapse -->
     </div>

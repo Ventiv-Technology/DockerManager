@@ -5,8 +5,8 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import org.ventiv.docker.manager.config.DockerEnvironmentConfiguration
-import org.ventiv.docker.manager.config.PropertyTypes
+import org.ventiv.docker.manager.model.EnvironmentConfiguration
+import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
 
@@ -26,37 +26,32 @@ class HostsController {
 
     @RequestMapping
     public def getHostDetails() {
-        return getAllHosts().collect { def hostConfiguration ->
+        return getAllHosts().collect { ServerConfiguration serverConfiguration ->
             List<Container> hostContainers = null;
             String status = "Online";
 
             try {
-                hostContainers = dockerService.getDockerClient(hostConfiguration.hostname.toString()).listContainersCmd().withShowAll(true).exec()
+                hostContainers = dockerService.getDockerClient(serverConfiguration.getHostname()).listContainersCmd().withShowAll(true).exec()
             } catch (Exception ex) {
-                log.error("Unable to fetch containers from '${hostConfiguration.hostname}'", ex)
+                log.error("Unable to fetch containers from '${serverConfiguration.getHostname()}'", ex)
                 status = "Disconnected"
             }
 
             return [
-                    id: hostConfiguration.id,
-                    name: hostConfiguration.name,
-                    hostname: hostConfiguration.hostname,
+                    id: serverConfiguration.getId(),
+                    description: serverConfiguration.getDescription(),
+                    hostname: serverConfiguration.getHostname(),
                     status: status,
                     serviceInterfaces: hostContainers?.collect { new ServiceInstance().withDockerContainer(it) }
             ]
         }
     }
 
-    private List<Map<String, Object>> getAllHosts() {
-        List<String> activeTiers = PropertyTypes.Active_Tiers.getStringListValue();
-        List<Map<String, Object>> answer = [];
-
-        environmentController.getAllEnvironments().each { tierName, environmentList ->
-            if (activeTiers.contains(tierName)) {
-                environmentList.each { environmentName ->
-                    DockerEnvironmentConfiguration envConfiguration = new DockerEnvironmentConfiguration(tierName, environmentName);
-                    answer.addAll(envConfiguration.getServers());
-                }
+    private List<ServerConfiguration> getAllHosts() {
+        List<ServerConfiguration> answer = [];
+        environmentController.getTiers().each { String tierId, List<EnvironmentConfiguration> envConfigurations ->
+            envConfigurations.each {
+                if (it && it.getServers()) answer.addAll(it.getServers());
             }
         }
 

@@ -1,6 +1,6 @@
 /* Move down content because we have a fixed navbar that is 50px tall */
 body {
-    padding-top: 50px;
+    padding-top: 55px;
 }
 
 /* Service Instance Formatting */
@@ -26,4 +26,15 @@ body {
 
 .service-version {
     color: #666666;
+}
+
+/* Environment Formatting */
+.environment-title {
+    font-size: x-large;
+    font-weight: bolder;
+}
+
+.environment-description {
+    font-size: larger;
+    font-weight: bold;
 }
