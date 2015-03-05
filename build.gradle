@@ -25,6 +25,9 @@ targetCompatibility = 1.7
 
 repositories {
     jcenter()
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots"
+    }
 }
 
 dependencies {
@@ -41,7 +44,7 @@ dependencies {
     compile 'com.jayway.jsonpath:json-path:1.2.0'
     compile 'com.netflix.feign:feign-core:8.0.0-rc.1'
     compile 'com.netflix.feign:feign-jackson:8.0.0-rc.1'
-    compile 'com.github.docker-java:docker-java:1.0.0'
+    compile 'com.github.docker-java:docker-java:1.0.1-SNAPSHOT'
 
     // Web Loading
     compile 'org.webjars:webjars-locator:0.17'

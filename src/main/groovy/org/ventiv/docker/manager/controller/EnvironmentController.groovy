@@ -256,6 +256,8 @@ class EnvironmentController {
     }
 
     private String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {
+        ServerConfiguration serverConfiguration = getTiers()[applicationDetails.getTierName()].find { it.getId() == applicationDetails.getEnvironmentName() }.getServers().find { it.getHostname() == instance.getServerName() }
+
         // Get the image name, so we can build out a DockerTag with the proper version
         String imageName = dockerServiceConfiguration.getServiceConfiguration(instance.getName()).image
         DockerTag toDeploy = new DockerTag(imageName)
@@ -264,11 +266,16 @@ class EnvironmentController {
         // Build out port bindings
         Ports portBindings = new Ports();
         instance.getPortDefinitions().each {
-            portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding(it.getHostPort()));
+            portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding("0.0.0.0", it.getHostPort()));
         }
 
         HostConfig hostConfig = new HostConfig();
         hostConfig.setPortBindings(portBindings);
+
+        if (serverConfiguration.getResolveHostname()) {
+            InetAddress address = InetAddress.getByName(instance.getServerName());
+            hostConfig.setExtraHosts(["${address.getHostName()}:${address.getHostAddress()}"] as String[]);
+        }
 
         // Get the environment variables
         Map<String, String> env = [:]
@@ -308,7 +315,11 @@ class EnvironmentController {
         }
 
         // Create the actual container
-        log.info("Creating new Docker Container on Host: '${instance.getServerName()}' with image: '${toDeploy.toString()}', name: '${instance.toString()}', env: ${env.collect {k, v -> "$k=$v"}}")
+        log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
+                "with image: '${toDeploy.toString()}', " +
+                "name: '${instance.toString()}', " +
+                "ports: ${portBindings.getBindings().collect { ExposedPort p, Ports.Binding[] bnd -> bnd.collect { it.getHostIp() + ":" + it.getHostPort() }.join(",")  + '->' + p.getPort() } }," +
+                "env: ${env.collect {k, v -> "$k=$v"}}")
         CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
