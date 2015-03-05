@@ -27,6 +27,11 @@ class ServiceInstance {
     String name;
     String serviceDescription;
     String serverName;
+
+    /**
+     * Derived URL for this service instance, if the ServiceConfiguration has a 'url' defined.
+     */
+    String url;
     Integer instanceNumber
     Status status;
     String containerStatus;

@@ -25,6 +25,7 @@ import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.PortDefinition
 import org.ventiv.docker.manager.model.ServerConfiguration
+import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
@@ -69,9 +70,16 @@ class EnvironmentController {
             List<String> missingServices = new ArrayList<String>(requiredServices)
             applicationInstances.each { missingServices.remove(it.getName())  }  // Remove any that actually exist
 
+            // Derive the URL
+            String url = applicationConfiguration.getUrl();
+            if (applicationConfiguration.getServiceInstanceUrl()) {
+                url = applicationInstances.find { it.getName() == applicationConfiguration.getServiceInstanceUrl() }?.getUrl()
+            }
+
             return populateVersions(new ApplicationDetails([
                     tierName: tierName,
                     environmentName: environmentName,
+                    url: url,
                     serviceInstances: applicationInstances,
                     missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) }
             ]).withApplicationConfiguration(applicationConfiguration))
@@ -132,6 +140,7 @@ class EnvironmentController {
             Map<String, Integer> instanceNumbers = [:]
             serverConf.getEligibleServices().each { EligibleServiceConfiguration serviceConf ->
                 String serviceName = serviceConf.getType();
+                ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceName);
                 instanceNumbers.put(serviceName, (instanceNumbers[serviceName] ?: 0) + 1);      // Increment/populate the service instance number
                 Integer instanceNumber = instanceNumbers[serviceName];
                 Container dockerContainer = containers.find { it.getNames()[0].startsWith("/${tierName}.${environmentName}.") && it.getNames()[0].endsWith(".${serviceName}.${instanceNumber}") }
@@ -147,7 +156,7 @@ class EnvironmentController {
                             return new PortDefinition([
                                     portType: portMapping.type,
                                     hostPort: portMapping.port,
-                                    containerPort: dockerServiceConfiguration.getServiceConfiguration(serviceName).containerPorts.find { it.type == portMapping.type }.port
+                                    containerPort: serviceConfiguration.containerPorts.find { it.type == portMapping.type }.port
                             ])
                         }
                 ])
@@ -156,11 +165,27 @@ class EnvironmentController {
                     serviceInstance.withDockerContainer(dockerContainer);
                     serviceInstance.portDefinitions = dockerContainer.getPorts().collect { Container.Port port ->
                         return new PortDefinition([
-                                portType: dockerServiceConfiguration.getServiceConfiguration(serviceName).containerPorts.find { it.port == port.getPrivatePort() }?.type,
+                                portType: serviceConfiguration.containerPorts.find { it.port == port.getPrivatePort() }?.type,
                                 hostPort: port.getPublicPort(),
                                 containerPort: port.getPrivatePort()
                         ])
                     }
+                }
+
+                // Derive the URL
+                if (serviceConfiguration.getUrl()) {
+                    if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
+                        Map<String, Integer> ports = serviceInstance?.getPortDefinitions()?.collectEntries { PortDefinition portDefinition ->
+                            [portDefinition.getPortType(), portDefinition.getHostPort()]
+                        }
+
+                        Binding b = new Binding([server: serviceInstance.getServerName(), port: ports]);
+                        GroovyShell sh = new GroovyShell(b);
+                        serviceInstance.setUrl(sh.evaluate('"' + serviceConfiguration.getUrl() + '"').toString());
+                    } else if (serviceInstance.getStatus() == ServiceInstance.Status.Stopped)
+                        serviceInstance.setUrl(serviceInstance.getServiceDescription() + " is Stopped")
+                    else
+                        serviceInstance.setUrl(serviceInstance.getServiceDescription() + " is Missing")
                 }
 
                 definedServiceInstances << serviceInstance;

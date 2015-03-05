@@ -3,18 +3,44 @@ package org.ventiv.docker.manager.model
 import org.ventiv.docker.manager.DockermanagerApplication
 import org.ventiv.docker.manager.service.DockerRegistryApiService
 
+import javax.annotation.Nullable
+import javax.validation.constraints.NotNull
+
 /**
  * Created by jcrygier on 3/4/15.
  */
 class ServiceConfiguration {
 
+    @NotNull
     String name;
+
+    @NotNull
     String description;
+
+    @NotNull
     String image;
-    ServiceBuildConfiguration build;
-    Collection<PortMapptingConfiguration> containerPorts;
-    Map<String, String> environment;
+
+    @Nullable
     Integer maxPossibleVersions = 20;
+
+    /**
+     * Url to get to this Service, to be populated with variables from a ServiceInstance at runtime.
+     *
+     * Variables Include:
+     * - server: ServiceInstance.serverName
+     * - port.<portType>: ServiceInstance.portDefinitions.find { it.type == portType }.hostPort
+     */
+    @Nullable
+    String url;
+
+    @Nullable
+    ServiceBuildConfiguration build;
+
+    @Nullable
+    Collection<PortMapptingConfiguration> containerPorts;
+
+    @Nullable
+    Map<String, String> environment;
 
     public List<String> getPossibleVersions() {
         List<String> answer = [];

@@ -26,7 +26,6 @@ class ApplicationDetails {
         this.applicationConfiguration = appConfig;
         this.id = appConfig.getId();
         this.description = appConfig.getDescription();
-        this.url = appConfig.getUrl();
 
         return this;
     }
