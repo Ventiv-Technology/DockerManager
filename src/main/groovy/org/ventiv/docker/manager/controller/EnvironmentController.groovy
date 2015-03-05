@@ -104,7 +104,7 @@ class EnvironmentController {
             toUse.setApplicationId(buildRequest.getName());
 
             // Create (and start) the container
-            createDockerContainer(toUse, buildRequest.getServiceVersions().get(missingService.getServiceName()));
+            createDockerContainer(applicationDetails, toUse, buildRequest.getServiceVersions().get(missingService.getServiceName()));
 
             // Mark this service instance as 'Running' so it won't get used again
             toUse.setStatus(ServiceInstance.Status.Running);
@@ -119,10 +119,10 @@ class EnvironmentController {
                 // We have a version mismatch...destroy the container and rebuild it
                 if (expectedVersion != runningVersion) {
                     // First, let's destroy the container
-                    destroyDockerContainer(anInstance);
+                    destroyDockerContainer(applicationDetails, anInstance);
 
                     // Now, create a new one
-                    createDockerContainer(anInstance, buildRequest.getServiceVersions().get(anInstance.getName()));
+                    createDockerContainer(applicationDetails, anInstance, buildRequest.getServiceVersions().get(anInstance.getName()));
                 }
             }
         }
@@ -145,6 +145,7 @@ class EnvironmentController {
                 Integer instanceNumber = instanceNumbers[serviceName];
                 Container dockerContainer = containers.find { it.getNames()[0].startsWith("/${tierName}.${environmentName}.") && it.getNames()[0].endsWith(".${serviceName}.${instanceNumber}") }
 
+                // Create a shell of an instance, just in case there is no docker container to get the info from.
                 ServiceInstance serviceInstance = new ServiceInstance([
                         tierName: tierName,
                         environmentName: environmentName,
@@ -161,31 +162,9 @@ class EnvironmentController {
                         }
                 ])
 
+                // Now, if the docker container exists, overwrite all the info with the real info
                 if (dockerContainer) {
                     serviceInstance.withDockerContainer(dockerContainer);
-                    serviceInstance.portDefinitions = dockerContainer.getPorts().collect { Container.Port port ->
-                        return new PortDefinition([
-                                portType: serviceConfiguration.containerPorts.find { it.port == port.getPrivatePort() }?.type,
-                                hostPort: port.getPublicPort(),
-                                containerPort: port.getPrivatePort()
-                        ])
-                    }
-                }
-
-                // Derive the URL
-                if (serviceConfiguration.getUrl()) {
-                    if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
-                        Map<String, Integer> ports = serviceInstance?.getPortDefinitions()?.collectEntries { PortDefinition portDefinition ->
-                            [portDefinition.getPortType(), portDefinition.getHostPort()]
-                        }
-
-                        Binding b = new Binding([server: serviceInstance.getServerName(), port: ports]);
-                        GroovyShell sh = new GroovyShell(b);
-                        serviceInstance.setUrl(sh.evaluate('"' + serviceConfiguration.getUrl() + '"').toString());
-                    } else if (serviceInstance.getStatus() == ServiceInstance.Status.Stopped)
-                        serviceInstance.setUrl(serviceInstance.getServiceDescription() + " is Stopped")
-                    else
-                        serviceInstance.setUrl(serviceInstance.getServiceDescription() + " is Missing")
                 }
 
                 definedServiceInstances << serviceInstance;
@@ -276,7 +255,7 @@ class EnvironmentController {
         return applicationDetails
     }
 
-    private String createDockerContainer(ServiceInstance instance, String desiredVersion) {
+    private String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {
         // Get the image name, so we can build out a DockerTag with the proper version
         String imageName = dockerServiceConfiguration.getServiceConfiguration(instance.getName()).image
         DockerTag toDeploy = new DockerTag(imageName)
@@ -291,6 +270,35 @@ class EnvironmentController {
         HostConfig hostConfig = new HostConfig();
         hostConfig.setPortBindings(portBindings);
 
+        // Get the environment variables
+        Map<String, String> env = [:]
+        if (dockerServiceConfiguration.getServiceConfiguration(instance.getName()).getEnvironment())
+            env.putAll(dockerServiceConfiguration.getServiceConfiguration(instance.getName()).getEnvironment())
+        if (applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() }.getEnvironment())
+            env.putAll(applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() }.getEnvironment())
+
+        // Resolve them
+        def resolutionVariables = [
+                application: applicationDetails,
+                serviceInstances: applicationDetails.getServiceInstances().collectEntries { ServiceInstance serviceInstance ->
+                    return [serviceInstance.getName(), [
+                            server: serviceInstance.getServerName(),
+                            port: serviceInstance.getPortDefinitions().collectEntries {
+                                return [it.getPortType(), it.getHostPort()]
+                            }
+                    ]]
+                }
+        ]
+
+        Binding b = new Binding(resolutionVariables);
+        GroovyShell sh = new GroovyShell(b);
+        env.each { k, v ->
+            if (v.contains('$'))
+                env.put(k, sh.evaluate('"' + v + '"').toString())
+        }
+
+        instance.setResolvedEnvironmentVariables(env);
+
         // Do a docker pull, just to ensure we have the image locally
         DockerClient docker = dockerService.getDockerClient(instance.getServerName())
         log.info("Pulling docker image: '$toDeploy");
@@ -300,20 +308,28 @@ class EnvironmentController {
         }
 
         // Create the actual container
-        log.info("Creating new Docker Container on Host: '${instance.getServerName()}' with image: '${toDeploy.toString()}' and name: '${instance.toString()}'")
+        log.info("Creating new Docker Container on Host: '${instance.getServerName()}' with image: '${toDeploy.toString()}', name: '${instance.toString()}', env: ${env.collect {k, v -> "$k=$v"}}")
         CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
                 .withName(instance.toString())
+                .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
                 .withHostConfig(hostConfig).exec();
 
         log.info("Created container with ID: '${resp.id}'.  Starting...")
         docker.startContainerCmd(resp.id).exec();
 
+        // Create a ServiceInstance out of this Container
+        Container container = docker.listContainersCmd().withShowAll(true).exec().find { it.getId() == resp.id }
+        if (container) applicationDetails.getServiceInstances() << instance.withDockerContainer(container);
+
         return resp.id;
     }
 
-    private void destroyDockerContainer(ServiceInstance instance) {
+    private void destroyDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance) {
         log.info("Destroying docker container: '${instance.toString()}")
         dockerService.getDockerClient(instance.getServerName()).removeContainerCmd(instance.toString()).withForce().exec();
+
+        // Remove this ServiceInstance from the Application
+        applicationDetails.getServiceInstances().remove(instance);
     }
 
 

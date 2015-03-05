@@ -42,6 +42,8 @@ class ServiceInstance {
 
     List<PortDefinition> portDefinitions;
 
+    Map<String, String> resolvedEnvironmentVariables;
+
     public ServiceInstance setDockerName(String dockerName) {
         def matcher = dockerName =~ DOCKER_NAME_PATTERN;
         if (matcher) {
@@ -69,12 +71,29 @@ class ServiceInstance {
         def serviceConfig = DockermanagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
+        // Determine the Port Definitions
         this.portDefinitions = dockerContainer.getPorts().collect { Container.Port port ->
             return new PortDefinition([
                     portType: serviceConfig?.containerPorts?.find { it.port == port.getPrivatePort() }?.type,
                     hostPort: port.getPublicPort(),
                     containerPort: port.getPrivatePort()
             ])
+        }
+
+        // Determine the URL
+        if (serviceConfig?.getUrl()) {
+            if (this.status == Status.Running) {
+                Map<String, Integer> ports = getPortDefinitions()?.collectEntries { PortDefinition portDefinition ->
+                    [portDefinition.getPortType(), portDefinition.getHostPort()]
+                }
+
+                Binding b = new Binding([server: getServerName(), port: ports]);
+                GroovyShell sh = new GroovyShell(b);
+                setUrl(sh.evaluate('"' + serviceConfig.getUrl() + '"').toString());
+            } else if (getStatus() == ServiceInstance.Status.Stopped)
+                setUrl(getServiceDescription() + " is Stopped")
+            else
+                setUrl(getServiceDescription() + " is Missing")
         }
 
         return this;
