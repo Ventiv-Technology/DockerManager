@@ -95,7 +95,7 @@ class EnvironmentController {
     public def buildApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody BuildApplicationRequest buildRequest) {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
         ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == buildRequest.getName() }
-        List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName);
+        List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName)
 
         // First, let's find any missing services
         applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
@@ -111,7 +111,7 @@ class EnvironmentController {
         }
 
         // Verify all running serviceInstances to ensure they're the correct version
-        allServiceInstances.each { ServiceInstance anInstance ->
+        new ArrayList(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
             if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
                 String expectedVersion = buildRequest.getServiceVersions()[anInstance.getName()];
                 String runningVersion = anInstance.getContainerImage().getTag();
