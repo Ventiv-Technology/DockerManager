@@ -2,10 +2,13 @@ package org.ventiv.docker.manager.controller
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.CreateContainerResponse
+import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.HostConfig
+import com.github.dockerjava.api.model.PortBinding
 import com.github.dockerjava.api.model.Ports
+import com.github.dockerjava.api.model.Volume
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
@@ -27,6 +30,7 @@ import org.ventiv.docker.manager.model.PortDefinition
 import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 import org.yaml.snakeyaml.Yaml
@@ -257,21 +261,16 @@ class EnvironmentController {
 
     private String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {
         ServerConfiguration serverConfiguration = getTiers()[applicationDetails.getTierName()].find { it.getId() == applicationDetails.getEnvironmentName() }.getServers().find { it.getHostname() == instance.getServerName() }
+        ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(instance.getName());
+        ServiceInstanceConfiguration serviceInstanceConfiguration = applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() };
 
         // Get the image name, so we can build out a DockerTag with the proper version
-        String imageName = dockerServiceConfiguration.getServiceConfiguration(instance.getName()).image
+        String imageName = serviceConfiguration.image
         DockerTag toDeploy = new DockerTag(imageName)
         toDeploy.setTag(desiredVersion);
 
-        // Build out port bindings
-        Ports portBindings = new Ports();
-        instance.getPortDefinitions().each {
-            portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding("0.0.0.0", it.getHostPort()));
-        }
-
+        // Build a host config, just in case we need to resolve the host name
         HostConfig hostConfig = new HostConfig();
-        hostConfig.setPortBindings(portBindings);
-
         if (serverConfiguration.getResolveHostname()) {
             InetAddress address = InetAddress.getByName(instance.getServerName());
             hostConfig.setExtraHosts(["${address.getHostName()}:${address.getHostAddress()}"] as String[]);
@@ -279,8 +278,8 @@ class EnvironmentController {
 
         // Get the environment variables
         Map<String, String> env = [:]
-        if (dockerServiceConfiguration.getServiceConfiguration(instance.getName()).getEnvironment())
-            env.putAll(dockerServiceConfiguration.getServiceConfiguration(instance.getName()).getEnvironment())
+        if (serviceConfiguration.getEnvironment())
+            env.putAll(serviceConfiguration.getEnvironment())
         if (applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() }.getEnvironment())
             env.putAll(applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() }.getEnvironment())
 
@@ -318,15 +317,24 @@ class EnvironmentController {
         log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
                 "with image: '${toDeploy.toString()}', " +
                 "name: '${instance.toString()}', " +
-                "ports: ${portBindings.getBindings().collect { ExposedPort p, Ports.Binding[] bnd -> bnd.collect { it.getHostIp() + ":" + it.getHostPort() }.join(",")  + '->' + p.getPort() } }," +
                 "env: ${env.collect {k, v -> "$k=$v"}}")
         CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
-                .withHostConfig(hostConfig).exec();
+                .withVolumes(serviceConfiguration.getContainerVolumes().collect { new Volume(it.getPath()) } as Volume[])
+                .withExposedPorts(serviceConfiguration.getContainerPorts().collect { new ExposedPort(it.getPort()) } as ExposedPort[])
+                .withHostConfig(hostConfig)
+                .exec();
 
-        log.info("Created container with ID: '${resp.id}'.  Starting...")
-        docker.startContainerCmd(resp.id).exec();
+        // Now start the container
+        log.info("Starting container '${resp.id}' with " +
+                "ports: ${instance.getPortDefinitions().collect { '0.0.0.0:' + it.getHostPort() + '->' + it.getContainerPort() } }," +
+                "volumes: ${serviceInstanceConfiguration.getVolumeMappings().collect { volumeMapping -> volumeMapping.getPath() + '->' + serviceConfiguration.getContainerVolumes().find { it.getType() == volumeMapping.getType() }.getPath() } }")
+        docker.startContainerCmd(resp.id)
+                .withBinds(serviceInstanceConfiguration.getVolumeMappings().collect { volumeMapping -> new Bind(volumeMapping.getPath(), new Volume(serviceConfiguration.getContainerVolumes().find { it.getType() == volumeMapping.getType() }.getPath())) } as Bind[])
+                .withPortBindings(instance.getPortDefinitions().collect { new PortBinding(new Ports.Binding("0.0.0.0", it.getHostPort()), new ExposedPort(it.getContainerPort())) } as PortBinding[])
+                .withExtraHosts(hostConfig.getExtraHosts())
+                .exec();
 
         // Create a ServiceInstance out of this Container
         Container container = docker.listContainersCmd().withShowAll(true).exec().find { it.getId() == resp.id }

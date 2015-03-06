@@ -43,4 +43,7 @@ class ServiceInstanceConfiguration {
     @Nullable
     Map<String, String> environment;
 
+    @Nullable
+    List<VolumeMapping> volumeMappings;
+
 }

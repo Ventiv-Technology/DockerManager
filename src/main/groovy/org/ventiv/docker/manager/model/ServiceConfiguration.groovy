@@ -71,6 +71,13 @@ class ServiceConfiguration {
     @Nullable
     Map<String, String> environment;
 
+    /**
+     * List of Volumes that are allowed for this container, each mapped to a type.  This will be used to match up
+     * to a server's mapping to make the assignment at deployment time.
+     */
+    @Nullable
+    List<VolumeMapping> containerVolumes;
+
     public List<String> getPossibleVersions() {
         List<String> answer = [];
 
