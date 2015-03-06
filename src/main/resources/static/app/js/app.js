@@ -127,6 +127,18 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     }
                 );
             };
+
+            $scope.getRunning = function(application) {
+                return _.filter(application.serviceInstances, function(serviceInstance) {
+                    return serviceInstance.status == 'Running';
+                });
+            };
+
+            $scope.getStopped = function(application) {
+                return _.filter(application.serviceInstances, function(serviceInstance) {
+                    return serviceInstance.status == 'Stopped';
+                });
+            };
         })
 
         .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window) {
