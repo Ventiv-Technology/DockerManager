@@ -2,6 +2,7 @@ package org.ventiv.docker.manager.controller
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.CreateContainerResponse
+import com.github.dockerjava.api.command.StartContainerCmd
 import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
@@ -328,13 +329,18 @@ class EnvironmentController {
 
         // Now start the container
         log.info("Starting container '${resp.id}' with " +
-                "ports: ${instance.getPortDefinitions().collect { '0.0.0.0:' + it.getHostPort() + '->' + it.getContainerPort() } }," +
-                "volumes: ${serviceInstanceConfiguration.getVolumeMappings().collect { volumeMapping -> volumeMapping.getPath() + '->' + serviceConfiguration.getContainerVolumes().find { it.getType() == volumeMapping.getType() }.getPath() } }")
-        docker.startContainerCmd(resp.id)
-                .withBinds(serviceInstanceConfiguration.getVolumeMappings().collect { volumeMapping -> new Bind(volumeMapping.getPath(), new Volume(serviceConfiguration.getContainerVolumes().find { it.getType() == volumeMapping.getType() }.getPath())) } as Bind[])
+                "ports: ${instance.getPortDefinitions().collect { '0.0.0.0:' + it.getHostPort() + '->' + it.getContainerPort() } }, " +
+                "volumes: ${serviceInstanceConfiguration.getVolumeMappings()?.collect { volumeMapping -> volumeMapping.getPath() + '->' + serviceConfiguration.getContainerVolumes()?.find { it.getType() == volumeMapping.getType() }?.getPath() } }")
+        StartContainerCmd startCmd = docker.startContainerCmd(resp.id)
                 .withPortBindings(instance.getPortDefinitions().collect { new PortBinding(new Ports.Binding("0.0.0.0", it.getHostPort()), new ExposedPort(it.getContainerPort())) } as PortBinding[])
-                .withExtraHosts(hostConfig.getExtraHosts())
-                .exec();
+
+        if (serviceInstanceConfiguration.getVolumeMappings())
+            startCmd.withBinds(serviceInstanceConfiguration.getVolumeMappings()?.collect { volumeMapping -> new Bind(volumeMapping.getPath(), new Volume(serviceConfiguration.getContainerVolumes().find { it.getType() == volumeMapping.getType() }.getPath())) } as Bind[])
+
+        if (hostConfig.getExtraHosts())
+            startCmd.withExtraHosts(hostConfig.getExtraHosts());
+
+        startCmd.exec();
 
         // Create a ServiceInstance out of this Container
         Container container = docker.listContainersCmd().withShowAll(true).exec().find { it.getId() == resp.id }
