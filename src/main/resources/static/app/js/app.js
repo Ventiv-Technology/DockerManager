@@ -70,7 +70,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             $scope.hosts = hostsInterface.getList().$object;
         })
 
-        .controller('EnvironmentController', function($scope, $stateParams, Restangular) {
+        .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular) {
             $scope.$watch("tiers", function(tiers) {
                 if (tiers !== undefined) {
                     $scope.environment = _.find(tiers[$stateParams.tierName], function (environment) {
@@ -80,6 +80,22 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     $scope.environment.applications = Restangular.one('environment', $stateParams.tierName).getList($stateParams.environmentId).$object;
                 }
             });
+
+            $scope.serviceInstanceDetails = function(serviceInstance) {
+                var serviceInstanceDetailsModal = $modal.open({
+                    templateUrl: '/app/partials/serviceInstanceDetails.html',
+                    controller: 'ServiceInstanceDetailsController',
+                    windowClass: 'service-instance-details',
+                    size: 'lg',
+                    resolve: {
+                        serviceInstance: function() { return serviceInstance }
+                    }
+                });
+
+                serviceInstanceDetailsModal.result.then(function () {
+
+                });
+            };
 
             $scope.deployApplication = function(applicationDetails) {
                 var buildRequest = {
@@ -107,5 +123,27 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     }
                 );
             };
+        })
+
+        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window) {
+            $scope.serviceInstance = serviceInstance;
+
+            $scope.getStdOut = function(tail) {
+                if (tail === undefined)
+                    tail = 0;
+
+                $window.open("/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId + "/stdout?tail=" + tail, '_blank');
+            };
+
+            $scope.getStdErr = function(tail) {
+                if (tail === undefined)
+                    tail = 0;
+
+                $window.open("/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId + "/stderr?tail=" + tail, '_blank');
+            };
+
+            $scope.cancel = function() {
+                $modalInstance.dismiss('cancel');
+            }
         })
 });

@@ -1,9 +1,13 @@
 package org.ventiv.docker.manager.controller
 
+import com.github.dockerjava.api.command.LogContainerCmd
 import com.github.dockerjava.api.model.Container
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.apache.commons.io.IOUtils
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
@@ -11,6 +15,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
 
 import javax.annotation.Resource
+import javax.servlet.http.HttpServletResponse
 
 /**
  * Created by jcrygier on 3/2/15.
@@ -45,6 +50,24 @@ class HostsController {
                     serviceInterfaces: hostContainers?.collect { new ServiceInstance().withDockerContainer(it) }
             ]
         }
+    }
+
+    @RequestMapping("/{hostName}/{containerId}/stdout")
+    public void getStdOutLog(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
+        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdOut()
+        if (tail)
+            cmd.withTail(tail);
+
+        IOUtils.copy(cmd.exec(), response.getOutputStream());
+    }
+
+    @RequestMapping("/{hostName}/{containerId}/stderr")
+    public void getStdErrLog(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
+        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdErr()
+        if (tail)
+            cmd.withTail(tail);
+
+        IOUtils.copy(cmd.exec(), response.getOutputStream());
     }
 
     private List<ServerConfiguration> getAllHosts() {

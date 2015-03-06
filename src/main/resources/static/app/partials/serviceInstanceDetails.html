@@ -1,0 +1,65 @@
+<div class="" id="service-instance-details" >
+    <div class="modal-header">
+        <h3 class="modal-title"><span translate="SERVICE_INSTANCE">Service Instance</span>: {{serviceInstance.serviceDescription}}</h3>
+    </div>
+    <div class="modal-body">
+        <div class="row">
+            <div class="col-md-2" translate="DEPLOYED_BUILD">Deployed Build:</div>
+            <div class="col-md-10">{{serviceInstance.containerImage.tag}}</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2" translate="STATUS">Status:</div>
+            <div class="col-md-10">{{serviceInstance.status}} - {{serviceInstance.containerStatus}}</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2" translate="DEPLOYED">Deployed:</div>
+            <div class="col-md-10">{{serviceInstance.containerCreatedDate | date:'fullDate'}} {{serviceInstance.containerCreatedDate | date:'mediumTime'}}</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2" translate="URL">Url:</div>
+            <div class="col-md-10"><a href="{{serviceInstance.url}}">{{serviceInstance.url}}</a></div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2" translate="SERVER_NAME">Server Name:</div>
+            <div class="col-md-10">{{serviceInstance.serverName}}</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2" translate="INSTANCE_NUMBER">Instance Number:</div>
+            <div class="col-md-10">{{serviceInstance.instanceNumber}}</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2" translate="CONTAINER_ID">Container Id:</div>
+            <div class="col-md-10">{{serviceInstance.containerId}}</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2" translate="CONTAINER_IMAGE">Container Image:</div>
+            <div class="col-md-10">{{serviceInstance.containerImage.registry}}<span data-ng-if="serviceInstance.containerImage.namespace != 'library'">/{{serviceInstance.containerImage.namespace}}</span>/{{serviceInstance.containerImage.repository}}:{{serviceInstance.containerImage.tag}}</div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2" translate="PORTS">Ports:</div>
+            <div class="col-md-2" translate="PORT_TYPE"><b>Port Type</b></div>
+            <div class="col-md-8" translate="PORT_MAPPING"><b>Port Mapping</b></div>
+        </div>
+
+        <div class="row" data-ng-repeat="portDefinition in serviceInstance.portDefinitions">
+            <div class="col-md-2">&nbsp;</div>
+            <div class="col-md-2">{{portDefinition.portType}}</div>
+            <div class="col-md-8">{{portDefinition.hostPort}} -> {{portDefinition.containerPort}}</div>
+        </div>
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary" ng-click="getStdOut()" translate="STD_OUT">Std Out</button>
+        <button class="btn btn-primary" ng-click="getStdErr()" translate="STD_ERR">Std Err</button>
+        <button class="btn btn-warning" ng-click="cancel()" translate="CANCEL">Cancel</button>
+    </div>
+
+</div>

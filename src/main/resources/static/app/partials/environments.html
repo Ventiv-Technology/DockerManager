@@ -34,7 +34,7 @@
                 <hr>
 
                 <div class="row env-service-instance" data-ng-repeat="serviceInstance in application.serviceInstances">
-                    <div class="btn col-md-12" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}">
+                    <div class="btn col-md-12" data-ng-click="serviceInstanceDetails(serviceInstance)" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}">
                         <span>{{serviceInstance.serviceDescription}} on</span>
                         <span>{{serviceInstance.serverName}}</span>
                         <span>[{{serviceInstance.containerImage.tag}} - deployed @ {{serviceInstance.containerCreatedDate | date:'short'}} - {{serviceInstance.containerStatus}}]</span>
