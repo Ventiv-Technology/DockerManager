@@ -97,7 +97,7 @@ class EnvironmentController {
      * 2.) Each serviceInstance (see getEnvironmentDetails) is on the proper version.  If not, it will destroy the container and rebuild.
      */
     @RequestMapping(value = "/{tierName}/{environmentName}", method = RequestMethod.POST)
-    public def buildApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody BuildApplicationRequest buildRequest) {
+    public ApplicationDetails buildApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody BuildApplicationRequest buildRequest) {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
         ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == buildRequest.getName() }
         List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName)
@@ -131,6 +131,9 @@ class EnvironmentController {
                 }
             }
         }
+
+        // Re-fetch the latest
+        return getEnvironmentDetails(tierName, environmentName).find { it.getId() == buildRequest.getName() };
     }
 
     @CompileStatic

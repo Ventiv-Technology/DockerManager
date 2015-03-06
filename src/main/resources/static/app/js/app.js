@@ -1,10 +1,10 @@
 'use strict';
 
-define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap'], function ($, angular, translations) {
+define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy'], function ($, angular, translations) {
 
     // Declare app level module which depends on filters, and services
 
-    return angular.module('myApp', ['ui.bootstrap', 'restangular', 'pascalprecht.translate', 'ui.router'])
+    return angular.module('myApp', ['ui.bootstrap', 'restangular', 'pascalprecht.translate', 'ui.router', 'cgBusy'])
         .config(function (RestangularProvider, $translateProvider, $stateProvider, $urlRouterProvider) {
             // Configure RESTAngular
             RestangularProvider.setBaseUrl("/api");
@@ -38,7 +38,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
         })
 
         .controller('MainController', function($scope, $stateParams, Restangular) {
-            Restangular.one('environment').get().then(function(environments) {
+            $scope.asyncExecutionPromise = Restangular.one('environment').get().then(function(environments) {
                 $scope.tiers = environments.plain();
 
                 $scope.environments = [];
@@ -77,7 +77,8 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         return environment.id == $stateParams.environmentId;
                     });
 
-                    $scope.environment.applications = Restangular.one('environment', $stateParams.tierName).getList($stateParams.environmentId).$object;
+                    $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).getList($stateParams.environmentId);
+                    $scope.environment.applications = $scope.asyncExecutionPromise.$object;
                 }
             });
 
@@ -114,9 +115,12 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 });
 
                 console.log("Deploying build request:", buildRequest);
-                Restangular.one('environment', $stateParams.tierName).all($stateParams.environmentId).post(buildRequest).then(
+                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).all($stateParams.environmentId).post(buildRequest).then(
                     function success(response) {
-
+                        applicationDetails.serviceInstances = response.serviceInstances;
+                        applicationDetails.missingServiceInstances = response.missingServiceInstances;
+                        applicationDetails.version = response.version;
+                        applicationDetails.url = response.url;
                     },
                     function error(response) {
                         alert("Error Building Environment: " + response.data.message);
