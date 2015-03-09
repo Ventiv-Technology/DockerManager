@@ -6,11 +6,9 @@ docker:
       apiVersion: 1.15
 
 environment:
-  configuration:
-    location: classpath:/data/env-config
+  configLocation: classpath:/data/env-config
 
 
-active:
-  tiers:
-    - development
-    - localhost
+activeTiers:
+  - development
+  - localhost

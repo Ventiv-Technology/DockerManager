@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
+import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
-import org.ventiv.docker.manager.config.PropertyTypes
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationRequest
@@ -46,6 +46,7 @@ import javax.annotation.Resource
 @RestController
 class EnvironmentController {
 
+    @Resource DockerManagerConfiguration props;
     @Resource DockerService dockerService;
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource DockerServiceController dockerServiceController;
@@ -53,7 +54,7 @@ class EnvironmentController {
 
     @RequestMapping
     public Map<String, List<EnvironmentConfiguration>> getTiers() {
-        List<String> activeTiers = PropertyTypes.Active_Tiers.getStringListValue()
+        List<String> activeTiers = props.activeTiers;
         getAllEnvironments().findAll { k, v -> activeTiers.contains(k) };
     }
 
@@ -235,7 +236,7 @@ class EnvironmentController {
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
         // Search for all YAML files under /data/env-config/tiers
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
-        def allEnvironments = resolver.getResources(PropertyTypes.Environment_Configuration_Location.getValue() + "/tiers/**/*.yml")
+        def allEnvironments = resolver.getResources(props.environment.configLocation + "/tiers/**/*.yml")
 
         // Group by Directory, then Massage the ClassPathResource elements into the filename minus .yml
         return allEnvironments.groupBy { new File(it.path).getParentFile().getName() }.collectEntries { String tierName, List<org.springframework.core.io.Resource> resources ->

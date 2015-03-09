@@ -3,7 +3,7 @@ package org.ventiv.docker.manager.model
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.github.dockerjava.api.model.Container
 import groovy.transform.ToString
-import org.ventiv.docker.manager.DockermanagerApplication
+import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 
 /**
@@ -68,7 +68,7 @@ class ServiceInstance {
         this.containerCreatedDate = new Date(dockerContainer.getCreated() * 1000);
 
         // Get the service configuration
-        def serviceConfig = DockermanagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
+        def serviceConfig = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
         // Determine the Port Definitions

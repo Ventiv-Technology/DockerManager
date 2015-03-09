@@ -16,13 +16,14 @@ import org.yaml.snakeyaml.Yaml
 @CompileStatic
 class DockerServiceConfiguration {
 
+    @javax.annotation.Resource DockerManagerConfiguration props;
     private List<ServiceConfiguration> config;
 
     public void readConfiguration() {
         Yaml yaml = new Yaml()
 
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
-        Resource resource = resolver.getResource(PropertyTypes.Environment_Configuration_Location.getValue() + "/services.yml")
+        Resource resource = resolver.getResource(props.environment.configLocation + "/services.yml")
 
         if (log.isDebugEnabled()) {
             log.debug("Loading service definition from YAML: " + resource);

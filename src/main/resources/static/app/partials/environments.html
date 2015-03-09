@@ -27,10 +27,10 @@
                     <div class="col-md-2 col-md-offset-1">
                         <select class="form-control" data-ng-model="application.selectedVersion" data-ng-options="option as option for option in application.availableVersions"></select>
                     </div>
-                    <div class="col-md-1"><button class="btn btn-primary" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
-                    <div class="col-md-1"><button class="btn btn-warning" data-ng-click="statusChangeApplication(application, 'stop')" translate="STOP">Stop</button></div>
-                    <div class="col-md-1"><button class="btn btn-warning" data-ng-click="statusChangeApplication(application, 'start')" translate="START">Start</button></div>
-                    <div class="col-md-1"><button class="btn btn-warning" data-ng-click="statusChangeApplication(application, 'restart')" translate="RESTART">Restart</button></div>
+                    <div class="col-md-1"><button class="btn btn-primary btn-block" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
+                    <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'stop')" translate="STOP">Stop</button></div>
+                    <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'start')" translate="START">Start</button></div>
+                    <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'restart')" translate="RESTART">Restart</button></div>
                 </div>
 
                 <hr>

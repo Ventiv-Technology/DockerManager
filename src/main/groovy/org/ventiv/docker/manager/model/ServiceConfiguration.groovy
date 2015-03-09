@@ -1,6 +1,6 @@
 package org.ventiv.docker.manager.model
 
-import org.ventiv.docker.manager.DockermanagerApplication
+import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.service.DockerRegistryApiService
 
 import javax.annotation.Nullable
@@ -89,7 +89,7 @@ class ServiceConfiguration {
             if (tag.getTag())  // We've specified a version in the config
                 answer = [ tag.getTag() ]
             else if (tag.getRegistry())                  // We need to query the Docker Remote API to get the list of versions
-                answer = DockermanagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.namespace, tag.repository).keySet() as List<String>;
+                answer = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.namespace, tag.repository).keySet() as List<String>;
         }
 
         Integer toTake = Math.min(maxPossibleVersions, answer.size()) - 1;

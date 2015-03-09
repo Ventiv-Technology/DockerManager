@@ -6,7 +6,6 @@ import org.springframework.security.config.annotation.authentication.configurers
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
-import org.ventiv.docker.manager.service.PropertyService
 
 import javax.annotation.Resource
 
@@ -17,11 +16,11 @@ import javax.annotation.Resource
 @EnableWebSecurity
 class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
-    private static final boolean bypassSecurity = true;
+    @Resource DockerManagerConfiguration props;
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
-        if (bypassSecurity)
+        if (props.auth.bypass)
             http.authorizeRequests().anyRequest().permitAll();
         else {
             http.authorizeRequests()
@@ -29,6 +28,7 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                         .fullyAuthenticated()
                         .and()
                     .httpBasic()
+                        .realmName(props.auth.basicRealm)
                         .and()
                     .formLogin();
         }
@@ -39,22 +39,22 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
     @Configuration
     protected static class AuthenticationConfiguration extends GlobalAuthenticationConfigurerAdapter {
 
-        @Resource PropertyService props;
+        @Resource DockerManagerConfiguration props;
 
         @Override
         public void init(AuthenticationManagerBuilder auth) throws Exception {
-            if (bypassSecurity) {
+            if (props.auth.bypass) {
                 auth.inMemoryAuthentication();
-            } else {
+            } else if (props.auth.type == DockerManagerConfiguration.SecurityConfiguration.SecurityType.Ldap) {
                 auth.ldapAuthentication()
-                        .userSearchBase(props["ldap.user.searchBase"])
-                        .userSearchFilter(props["ldap.user.searchFilter"])
-                        .groupSearchBase(props["ldap.group.searchBase"])
-                        .groupSearchFilter(props["ldap.group.searchFilter"])
+                        .userSearchBase(props.ldap.user.searchBase)
+                        .userSearchFilter(props.ldap.user.searchFilter)
+                        .groupSearchBase(props.ldap.group.searchBase)
+                        .groupSearchFilter(props.ldap.group.searchFilter)
                         .contextSource()
-                        .url(props["ldap.server.url"])
-                        .managerDn(props["ldap.server.managerDn"])
-                        .managerPassword(props["ldap.server.managerPassword"])
+                            .url(props.ldap.server.url)
+                            .managerDn(props.ldap.server.managerDn)
+                            .managerPassword(props.ldap.server.managerPassword)
             }
         }
     }
