@@ -70,7 +70,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             $scope.hosts = hostsInterface.getList().$object;
         })
 
-        .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular) {
+        .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular, $http) {
             $scope.$watch("tiers", function(tiers) {
                 if (tiers !== undefined) {
                     $scope.environment = _.find(tiers[$stateParams.tierName], function (environment) {
@@ -124,6 +124,18 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     },
                     function error(response) {
                         alert("Error Building Environment: " + response.data.message);
+                    }
+                );
+            };
+
+            $scope.statusChangeApplication = function(applicationDetails, status) {
+                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all(status).post().then(
+                    function success(response) {
+                        applicationDetails.serviceInstances = response.serviceInstances;
+                    },
+                    function error(response) {
+                        alert("Problems " + status + "ing Application...");
+                        throw "Problems " + status + "ing Application...";
                     }
                 );
             };

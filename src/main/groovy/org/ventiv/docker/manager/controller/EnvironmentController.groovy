@@ -184,15 +184,51 @@ class EnvironmentController {
     }
 
     @CompileStatic
-    @RequestMapping("/{tierName}/{environmentName}/app/{applicationId}/stop")
-    public void stopApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/stop", method = RequestMethod.POST)
+    public ApplicationDetails stopApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
         ApplicationDetails application = getEnvironmentDetails(tierName, environmentName).find { it.getId() == applicationId }
 
         application.getServiceInstances().each { ServiceInstance serviceInstance ->
             if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
                 hostsController.stopContainer(serviceInstance.getServerName(), serviceInstance.getContainerId());
+                serviceInstance.setStatus(ServiceInstance.Status.Stopped);
+                serviceInstance.setContainerStatus("Exited (???) 0 seconds ago")
             }
         }
+
+        return application;
+    }
+
+    @CompileStatic
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/start", method = RequestMethod.POST)
+    public ApplicationDetails startApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
+        ApplicationDetails application = getEnvironmentDetails(tierName, environmentName).find { it.getId() == applicationId }
+
+        application.getServiceInstances().each { ServiceInstance serviceInstance ->
+            if (serviceInstance.getStatus() == ServiceInstance.Status.Stopped) {
+                hostsController.startContainer(serviceInstance.getServerName(), serviceInstance.getContainerId());
+                serviceInstance.setStatus(ServiceInstance.Status.Running);
+                serviceInstance.setContainerStatus("Up 0 seconds")
+            }
+        }
+
+        return application;
+    }
+
+    @CompileStatic
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/restart", method = RequestMethod.POST)
+    public ApplicationDetails restartApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
+        ApplicationDetails application = getEnvironmentDetails(tierName, environmentName).find { it.getId() == applicationId }
+
+        application.getServiceInstances().each { ServiceInstance serviceInstance ->
+            if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
+                hostsController.restartContainer(serviceInstance.getServerName(), serviceInstance.getContainerId());
+                serviceInstance.setStatus(ServiceInstance.Status.Running);
+                serviceInstance.setContainerStatus("Up 0 seconds")
+            }
+        }
+
+        return application;
     }
 
 
