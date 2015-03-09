@@ -49,6 +49,7 @@ class EnvironmentController {
     @Resource DockerService dockerService;
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource DockerServiceController dockerServiceController;
+    @Resource HostsController hostsController;
 
     @RequestMapping
     public Map<String, List<EnvironmentConfiguration>> getTiers() {
@@ -181,6 +182,19 @@ class EnvironmentController {
 
         return definedServiceInstances;
     }
+
+    @CompileStatic
+    @RequestMapping("/{tierName}/{environmentName}/app/{applicationId}/stop")
+    public void stopApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
+        ApplicationDetails application = getEnvironmentDetails(tierName, environmentName).find { it.getId() == applicationId }
+
+        application.getServiceInstances().each { ServiceInstance serviceInstance ->
+            if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
+                hostsController.stopContainer(serviceInstance.getServerName(), serviceInstance.getContainerId());
+            }
+        }
+    }
+
 
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
         // Search for all YAML files under /data/env-config/tiers

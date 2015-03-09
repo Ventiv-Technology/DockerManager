@@ -7,6 +7,7 @@ import groovy.util.logging.Slf4j
 import org.apache.commons.io.IOUtils
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.model.EnvironmentConfiguration
@@ -68,6 +69,41 @@ class HostsController {
             cmd.withTail(tail);
 
         IOUtils.copy(cmd.exec(), response.getOutputStream());
+    }
+
+    /**
+     * Stops a container that is already running.
+     *
+     * @param hostName
+     * @param containerId
+     */
+    @RequestMapping(value = "/{hostName}/{containerId}/stop", method = RequestMethod.POST)
+    public void stopContainer(@PathVariable String hostName, @PathVariable String containerId) {
+        dockerService.getDockerClient(hostName).stopContainerCmd(containerId).exec();
+    }
+
+    /**
+     * Starts a container that has already been created.  NOTE: This container should have been started already with
+     * the correct binding, since this command will not rebind volumes or ports.
+     *
+     * @param hostName
+     * @param containerId
+     */
+    @RequestMapping(value = "/{hostName}/{containerId}/start", method = RequestMethod.POST)
+    public void startContainer(@PathVariable String hostName, @PathVariable String containerId) {
+        dockerService.getDockerClient(hostName).startContainerCmd(containerId).exec();
+    }
+
+    /**
+     * Re-Starts a container that has already been created.  NOTE: This container should have been started already with
+     * the correct binding, since this command will not rebind volumes or ports.
+     *
+     * @param hostName
+     * @param containerId
+     */
+    @RequestMapping(value = "/{hostName}/{containerId}/restart", method = RequestMethod.POST)
+    public void restartContainer(@PathVariable String hostName, @PathVariable String containerId) {
+        dockerService.getDockerClient(hostName).restartContainerCmd(containerId).exec();
     }
 
     private List<ServerConfiguration> getAllHosts() {

@@ -22,6 +22,9 @@ define([], function() {
         PORT_TYPE: "Port Type",
         PORT_MAPPING: "Port Mapping",
         STD_OUT: "Standard Out",
-        STD_ERR: "Standard Error"
+        STD_ERR: "Standard Error",
+        STOP: "Stop",
+        START: "Start",
+        RESTART: "Restart"
     }
 });

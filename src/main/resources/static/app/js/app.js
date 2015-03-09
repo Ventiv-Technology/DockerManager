@@ -141,25 +141,62 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             };
         })
 
-        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window) {
+        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {
+            var rootHostsUrl = "/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId;
             $scope.serviceInstance = serviceInstance;
 
             $scope.getStdOut = function(tail) {
                 if (tail === undefined)
                     tail = 0;
 
-                $window.open("/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId + "/stdout?tail=" + tail, '_blank');
+                $window.open(rootHostsUrl + "/stdout?tail=" + tail, '_blank');
             };
 
             $scope.getStdErr = function(tail) {
                 if (tail === undefined)
                     tail = 0;
 
-                $window.open("/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId + "/stderr?tail=" + tail, '_blank');
+                $window.open(rootHostsUrl + "/stderr?tail=" + tail, '_blank');
             };
 
             $scope.cancel = function() {
                 $modalInstance.dismiss('cancel');
+            };
+
+            $scope.stopInstance = function() {
+                $scope.asyncExecutionPromise = $http.post(rootHostsUrl + "/stop").then(
+                    function success() {
+                        $scope.serviceInstance.status = "Stopped";
+                        $scope.serviceInstance.containerStatus = "Exited (???) 0 seconds ago"
+                    }, function error() {
+                        alert("Problems stopping Container...");
+                        throw "Problems stopping Container...";
+                    }
+                );
+            };
+
+            $scope.startInstance = function() {
+                $scope.asyncExecutionPromise = $http.post(rootHostsUrl + "/start").then(
+                    function success() {
+                        $scope.serviceInstance.status = "Running";
+                        $scope.serviceInstance.containerStatus = "Up 0 seconds"
+                    }, function error() {
+                        alert("Problems starting Container...");
+                        throw "Problems starting Container...";
+                    }
+                );
+            };
+
+            $scope.restartInstance = function() {
+                $scope.asyncExecutionPromise = $http.post(rootHostsUrl + "/restart").then(
+                    function success() {
+                        $scope.serviceInstance.status = "Running";
+                        $scope.serviceInstance.containerStatus = "Up 0 seconds"
+                    }, function error() {
+                        alert("Problems restarting Container...");
+                        throw "Problems restarting Container...";
+                    }
+                );
             }
         })
 });
