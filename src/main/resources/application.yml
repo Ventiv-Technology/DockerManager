@@ -1,3 +1,5 @@
+auth.bypass: false
+
 docker:
   client:
     boot2docker:
