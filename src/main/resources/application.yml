@@ -6,7 +6,7 @@ docker:
       apiVersion: 1.15
 
 environment:
-  configLocation: classpath:/data/env-config
+  configLocation: file:./config/env-config
 
 
 activeTiers:

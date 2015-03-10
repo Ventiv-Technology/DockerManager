@@ -13,7 +13,7 @@ import javax.annotation.Resource
  *
  * - docker.client.<hostName>.apiVersion: Default: 1.17
  * - docker.client.<hostName>.uri: Default: https://<hostName>:2376
- * - docker.client.<hostName>.certPath: Default: ./certs/<hostName>
+ * - docker.client.<hostName>.certPath: Default: ./config/certs/<hostName>
  */
 @Service
 class DockerService {
@@ -23,7 +23,7 @@ class DockerService {
     public DockerClient getDockerClient(String hostName) {
         String apiVersion = props["docker.client.${hostName}.apiVersion"] ?: "1.17"
         String uri = props["docker.client.${hostName}.uri"] ?: "https://${hostName}:2376"
-        String certs = props["docker.client.${hostName}.certPath"] ?: "./certs/${hostName}"
+        String certs = props["docker.client.${hostName}.certPath"] ?: "./config/certs/${hostName}"
         certs = certs.replaceAll('~', System.getProperty('user.home'))
 
         DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
