@@ -236,7 +236,7 @@ class EnvironmentController {
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
         // Search for all YAML files under /data/env-config/tiers
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
-        def allEnvironments = resolver.getResources(props.environment.configLocation + "/tiers/**/*.yml")
+        def allEnvironments = resolver.getResources(props.config.location + "/tiers/**/*.yml")
 
         // Group by Directory, then Massage the ClassPathResource elements into the filename minus .yml
         return allEnvironments.groupBy { new File(it.path).getParentFile().getName() }.collectEntries { String tierName, List<org.springframework.core.io.Resource> resources ->

@@ -12,7 +12,7 @@ import org.ventiv.docker.manager.model.ServiceConfiguration
 class NoAvailableServiceException extends RuntimeException {
 
     NoAvailableServiceException(String serviceName, ApplicationDetails applicationDetails) {
-        super("No available service '$serviceName'.\nPlease add:\n\n- type: ${serviceName}\n  portMappings:\n${getExampleMappings(serviceName)}\n\nas a child of eligibleServices of a server in: ${DockerManagerApplication.props.environment.configLocation}/tiers/${applicationDetails.getTierName()}/${applicationDetails.getEnvironmentName()}.yml")
+        super("No available service '$serviceName'.\nPlease add:\n\n- type: ${serviceName}\n  portMappings:\n${getExampleMappings(serviceName)}\n\nas a child of eligibleServices of a server in: ${DockerManagerApplication.props.config.location}/tiers/${applicationDetails.getTierName()}/${applicationDetails.getEnvironmentName()}.yml")
     }
 
     private static String getExampleMappings(String serviceName) {

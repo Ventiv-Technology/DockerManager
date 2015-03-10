@@ -1,6 +1,6 @@
 buildscript {
     ext {
-        springBootVersion = '1.2.1.RELEASE'
+        springBootVersion = '1.2.2.RELEASE'
     }
     repositories {
         jcenter()
@@ -45,6 +45,7 @@ dependencies {
     compile 'com.netflix.feign:feign-core:8.0.0-rc.1'
     compile 'com.netflix.feign:feign-jackson:8.0.0-rc.1'
     compile 'com.github.docker-java:docker-java:1.0.1-SNAPSHOT'
+    compile 'org.eclipse.jgit:org.eclipse.jgit:3.7.0.201502260915-r'
 
     // Web Loading
     compile 'org.webjars:webjars-locator:0.17'

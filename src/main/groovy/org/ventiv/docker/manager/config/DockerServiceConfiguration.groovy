@@ -23,7 +23,7 @@ class DockerServiceConfiguration {
         Yaml yaml = new Yaml()
 
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
-        Resource resource = resolver.getResource(props.environment.configLocation + "/services.yml")
+        Resource resource = resolver.getResource(props.config.location + "/services.yml")
 
         if (log.isDebugEnabled()) {
             log.debug("Loading service definition from YAML: " + resource);

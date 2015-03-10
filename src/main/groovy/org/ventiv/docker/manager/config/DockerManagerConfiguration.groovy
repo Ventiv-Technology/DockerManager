@@ -10,8 +10,8 @@ class DockerManagerConfiguration {
 
     List<String> activeTiers;
     LdapConfiguration ldap;
-    EnvironmentConfiguration environment;
     SecurityConfiguration auth;
+    ConfigurationConfig config;
 
     @ConfigurationProperties
     public static class LdapConfiguration {
@@ -34,13 +34,6 @@ class DockerManagerConfiguration {
     }
 
     @ConfigurationProperties
-    public static class EnvironmentConfiguration {
-
-        String configLocation;
-
-    }
-
-    @ConfigurationProperties
     public static class SecurityConfiguration {
 
         boolean bypass = false;
@@ -49,6 +42,24 @@ class DockerManagerConfiguration {
 
         public static enum SecurityType {
             Ldap
+        }
+
+    }
+
+    @ConfigurationProperties
+    public static class ConfigurationConfig {
+
+        String location = "file:./config/env-config";
+        GitConfig git;
+
+        @ConfigurationProperties
+        public static class GitConfig {
+            String location = "config"
+            String url;
+            String user;
+            String password;
+            String branch = "master";
+            Long refreshPeriod = 0L;            // 0 means do not refresh
         }
 
     }
