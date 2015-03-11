@@ -10,6 +10,10 @@ buildscript {
     }
 }
 
+plugins {
+    id "com.github.hierynomus.license" version "0.11.0"
+}
+
 apply plugin: 'groovy'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
@@ -80,4 +84,11 @@ eclipse {
 
 task wrapper(type: Wrapper) {
     gradleVersion = '2.3'
+}
+
+license {
+    header rootProject.file('LICENSE')
+    strictCheck true
+    ext.year = Calendar.getInstance().get(Calendar.YEAR)
+    ext.name = 'Ventiv Technology'
 }
