@@ -40,7 +40,7 @@ class GitService implements Runnable {
 
     @PostConstruct
     void cloneGitIfNecessary() {
-        if (props.config.git.url) {
+        if (props?.config?.git?.url) {
             File cloneLocation = new File(props.config.git.location);
 
             if (props.config.git.user)

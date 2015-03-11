@@ -11,7 +11,7 @@ class DockerManagerConfiguration {
     List<String> activeTiers;
     LdapConfiguration ldap;
     SecurityConfiguration auth;
-    ConfigurationConfig config;
+    ConfigurationConfig config = new ConfigurationConfig();
 
     @ConfigurationProperties
     public static class LdapConfiguration {
