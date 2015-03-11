@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.controller
 
+import com.github.dockerjava.api.NotModifiedException
 import com.github.dockerjava.api.command.LogContainerCmd
 import com.github.dockerjava.api.model.Container
 import groovy.transform.CompileStatic
@@ -119,6 +120,21 @@ class HostsController {
     @RequestMapping(value = "/{hostName}/{containerId}/restart", method = RequestMethod.POST)
     public void restartContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).restartContainerCmd(containerId).exec();
+    }
+
+    /**
+     * Stops and removes a container.
+     *
+     * @param hostName
+     * @param containerId
+     */
+    @RequestMapping(value = "/{hostName}/{containerId}/remove", method = RequestMethod.POST)
+    public void removeContainer(@PathVariable String hostName, @PathVariable String containerId) {
+        try {
+            stopContainer(hostName, containerId);
+        } catch (NotModifiedException ignored) {}       // This happens if the container is already stopped
+
+        dockerService.getDockerClient(hostName).removeContainerCmd(containerId).exec();
     }
 
     private List<ServerConfiguration> getAllHosts() {

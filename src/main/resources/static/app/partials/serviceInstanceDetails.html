@@ -74,9 +74,10 @@
     </div>
 
     <div class="modal-footer">
-        <button class="btn btn-warning" ng-click="stopInstance()" translate="STOP" data-ng-show="serviceInstance.status == 'Running'">Stop</button>
-        <button class="btn btn-warning" ng-click="startInstance()" translate="START" data-ng-show="serviceInstance.status == 'Stopped'">Start</button>
-        <button class="btn btn-warning" ng-click="restartInstance()" translate="RESTART" data-ng-show="serviceInstance.status == 'Running'">Restart</button>
+        <button class="btn btn-danger" ng-click="postContainerOperation('remove')" translate="Remove">Remove</button>
+        <button class="btn btn-warning" ng-click="postContainerOperation('stop')" translate="STOP" data-ng-show="serviceInstance.status == 'Running'">Stop</button>
+        <button class="btn btn-warning" ng-click="postContainerOperation('start')" translate="START" data-ng-show="serviceInstance.status == 'Stopped'">Start</button>
+        <button class="btn btn-warning" ng-click="postContainerOperation('restart')" translate="RESTART" data-ng-show="serviceInstance.status == 'Running'">Restart</button>
         <button class="btn btn-primary" ng-click="getStdOut()" translate="STD_OUT">Std Out</button>
         <button class="btn btn-primary" ng-click="getStdErr()" translate="STD_ERR">Std Err</button>
         <button class="btn btn-info" ng-click="cancel()" translate="CANCEL">Cancel</button>

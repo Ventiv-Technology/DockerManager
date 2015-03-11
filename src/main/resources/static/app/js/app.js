@@ -92,10 +92,16 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         return environment.id == $stateParams.environmentId;
                     });
 
-                    $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).getList($stateParams.environmentId);
-                    $scope.environment.applications = $scope.asyncExecutionPromise.$object;
+                    $scope.refreshEnvironment($stateParams.tierName, $stateParams.environmentId);
                 }
             });
+
+            $scope.refreshEnvironment = function(tierName, environmentId) {
+                $scope.asyncExecutionPromise = Restangular.one('environment', tierName).getList(environmentId);
+                $scope.environment.applications = $scope.asyncExecutionPromise.$object;
+
+                return $scope.asyncExecutionPromise;
+            };
 
             $scope.serviceInstanceDetails = function(serviceInstance) {
                 var serviceInstanceDetailsModal = $modal.open({
@@ -104,7 +110,9 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     windowClass: 'service-instance-details',
                     size: 'lg',
                     resolve: {
-                        serviceInstance: function() { return serviceInstance }
+                        serviceInstance: function() { return serviceInstance },
+                        environmentInfo: function() { return { tierName: $stateParams.tierName, environmentId: $stateParams.environmentId }},
+                        refreshEnvironmentCall: function() { return function() { return $scope.refreshEnvironment($stateParams.tierName, $stateParams.environmentId); }}
                     }
                 });
 
@@ -168,7 +176,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             };
         })
 
-        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {
+        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, environmentInfo, refreshEnvironmentCall, $window, $http) {
             var rootHostsUrl = "/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId;
             $scope.serviceInstance = serviceInstance;
 
@@ -190,40 +198,21 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 $modalInstance.dismiss('cancel');
             };
 
-            $scope.stopInstance = function() {
-                $scope.asyncExecutionPromise = $http.post(rootHostsUrl + "/stop").then(
+            $scope.postContainerOperation = function(operation) {
+                $scope.asyncExecutionPromise = $http.post(rootHostsUrl + "/" + operation).then(
                     function success() {
-                        $scope.serviceInstance.status = "Stopped";
-                        $scope.serviceInstance.containerStatus = "Exited (???) 0 seconds ago"
-                    }, function error() {
-                        alert("Problems stopping Container...");
-                        throw "Problems stopping Container...";
+                        refreshEnvironmentCall().then(function(data) {
+                            var application = _.find(data, function(app) { return app.id == $scope.serviceInstance.applicationId });
+                            var newServiceInstance = _.find(application.serviceInstances, function(si) { return si.name == $scope.serviceInstance.name });
+
+                            $scope.serviceInstance = newServiceInstance;
+                        });
+                    },
+                    function error() {
+                        alert("Problems performing " + operation + " operation on container...");
+                        throw "Problems performing " + operation + " operation on container...";
                     }
                 );
             };
-
-            $scope.startInstance = function() {
-                $scope.asyncExecutionPromise = $http.post(rootHostsUrl + "/start").then(
-                    function success() {
-                        $scope.serviceInstance.status = "Running";
-                        $scope.serviceInstance.containerStatus = "Up 0 seconds"
-                    }, function error() {
-                        alert("Problems starting Container...");
-                        throw "Problems starting Container...";
-                    }
-                );
-            };
-
-            $scope.restartInstance = function() {
-                $scope.asyncExecutionPromise = $http.post(rootHostsUrl + "/restart").then(
-                    function success() {
-                        $scope.serviceInstance.status = "Running";
-                        $scope.serviceInstance.containerStatus = "Up 0 seconds"
-                    }, function error() {
-                        alert("Problems restarting Container...");
-                        throw "Problems restarting Container...";
-                    }
-                );
-            }
         })
 });
