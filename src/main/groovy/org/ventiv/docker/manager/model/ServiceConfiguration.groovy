@@ -108,7 +108,7 @@ class ServiceConfiguration {
         }
 
         Integer toTake = Math.min(maxPossibleVersions, answer.size()) - 1;
-        return answer.sort().reverse()[0..toTake];
+        return answer ? answer.sort().reverse()[0..toTake] : [ 'latest' ];
     }
 
 }

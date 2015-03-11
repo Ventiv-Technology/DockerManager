@@ -94,7 +94,7 @@ class GitService implements Runnable {
 
                 PullResult pullResult = git.pull().setCredentialsProvider(credentialsProvider).call();
 
-                if (pullResult.getMergeResult().getMergeStatus() == MergeResult.MergeStatus.FAST_FORWARD) {
+                if (pullResult?.getMergeResult()?.getMergeStatus() == MergeResult.MergeStatus.FAST_FORWARD) {
                     dockerServiceConfiguration.readConfiguration();
                 }
 

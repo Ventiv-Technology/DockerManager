@@ -39,6 +39,11 @@ class DockerTag {
             namespace = matcher[0][2] ?: "library"
             repository = matcher[0][3]
             tag = matcher[0][4]
+
+            if (!registry?.contains('.')) {
+                namespace = registry;
+                registry = null;
+            }
         }
     }
 
