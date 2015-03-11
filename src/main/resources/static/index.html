@@ -64,6 +64,9 @@
                 <!-- Environments (If One Environment) -->
                 <li ui-sref-active="active" data-ng-show="!isMultipleTiers()" data-ng-repeat="environment in environments"><a href ui-sref="environment({tierName: environment.tierName, environmentId: environment.id})">{{environment.description}}</a></li>
             </ul>
+            <ul class="nav navbar-nav navbar-right">
+                <li class="navbar-right"><a class="navbar-right" href="/logout">Logout: {{userDetails.name}}</a></li>
+            </ul>
         </div><!--/.nav-collapse -->
     </div>
 </div>

@@ -1,0 +1,8 @@
+auth.type: InMemory
+auth.realm: Docker Manager (In Memory Auth)
+
+auth.users:
+  - login: admin
+    password: admin
+    roles:
+      - ADMIN

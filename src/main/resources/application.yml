@@ -6,3 +6,5 @@ docker:
       certPath: ~/.boot2docker/certs/boot2docker-vm/
     atld-devtools02.int.aonesolutions.us:
       apiVersion: 1.15
+
+spring.thymeleaf.mode: LEGACYHTML5

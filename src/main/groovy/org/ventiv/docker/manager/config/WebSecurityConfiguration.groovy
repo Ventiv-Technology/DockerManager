@@ -18,6 +18,7 @@ package org.ventiv.docker.manager.config
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.authentication.configurers.GlobalAuthenticationConfigurerAdapter
+import org.springframework.security.config.annotation.authentication.configurers.provisioning.InMemoryUserDetailsManagerConfigurer
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
@@ -39,13 +40,19 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
             http.authorizeRequests().anyRequest().permitAll();
         else {
             http.authorizeRequests()
+                    .antMatchers("/webjars/**/*").permitAll()
+                    .antMatchers("/app/css/*").permitAll()
+                    .antMatchers("/health").permitAll()
                     .anyRequest()
                         .fullyAuthenticated()
                         .and()
-                    .httpBasic()
-                        .realmName(props.auth.basicRealm)
+                    .formLogin()
+                        .loginPage("/login")
+                        .permitAll()
                         .and()
-                    .formLogin();
+                    .logout()
+                        .logoutUrl("/logout")
+                        .permitAll()
         }
 
         http.csrf().disable();
@@ -59,7 +66,13 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         @Override
         public void init(AuthenticationManagerBuilder auth) throws Exception {
             if (props.auth.bypass) {
-                auth.inMemoryAuthentication();
+                auth.inMemoryAuthentication()
+            } else if (props.auth.type == DockerManagerConfiguration.SecurityConfiguration.SecurityType.InMemory) {
+                InMemoryUserDetailsManagerConfigurer inMem = auth.inMemoryAuthentication();
+
+                props.auth.users.each {
+                    inMem.withUser(it.login).password(it.password).roles(it.roles as String[])
+                }
             } else if (props.auth.type == DockerManagerConfiguration.SecurityConfiguration.SecurityType.Ldap) {
                 auth.ldapAuthentication()
                         .userSearchBase(props.ldap.user.searchBase)

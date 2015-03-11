@@ -52,7 +52,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 });
         })
 
-        .controller('MainController', function($scope, $stateParams, Restangular) {
+        .controller('MainController', function($scope, $stateParams, Restangular, $http) {
             $scope.asyncExecutionPromise = Restangular.one('environment').get().then(function(environments) {
                 $scope.tiers = environments.plain();
 
@@ -63,6 +63,10 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         $scope.environments.push(environment);
                     });
                 });
+            });
+
+            $http.get("/health").then(function(response) {
+                $scope.userDetails = response.data.user.user;
             });
 
             $scope.isMultipleTiers = function() {

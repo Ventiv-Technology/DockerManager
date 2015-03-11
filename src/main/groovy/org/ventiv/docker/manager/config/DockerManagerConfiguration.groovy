@@ -53,10 +53,18 @@ class DockerManagerConfiguration {
 
         boolean bypass = false;
         SecurityType type;
-        String basicRealm = "Docker Manager";
+        String realm = "Docker Manager";
+        List<SecurityUser> users;
+
+        @ConfigurationProperties
+        public static class SecurityUser {
+            String login;
+            String password;
+            List<String> roles;
+        }
 
         public static enum SecurityType {
-            Ldap
+            Ldap, InMemory
         }
 
     }
