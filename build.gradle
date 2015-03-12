@@ -51,6 +51,7 @@ dependencies {
     compile 'com.netflix.feign:feign-jackson:8.0.0-rc.1'
     compile 'com.github.docker-java:docker-java:1.0.1-SNAPSHOT'
     compile 'org.eclipse.jgit:org.eclipse.jgit:3.7.0.201502260915-r'
+    compile 'org.jdeferred:jdeferred-core:1.2.3'
 
     // Web Loading
     compile 'org.webjars:webjars-locator:0.21'
@@ -69,7 +70,8 @@ dependencies {
 
     runtime("com.h2database:h2")
 
-    testCompile("org.springframework.boot:spring-boot-starter-test") 
+    testCompile("org.springframework.boot:spring-boot-starter-test")
+    testCompile('org.spockframework:spock-spring')
 }
 
 configurations {

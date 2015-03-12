@@ -27,6 +27,9 @@ import com.github.dockerjava.api.model.Ports
 import com.github.dockerjava.api.model.Volume
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.jdeferred.AlwaysCallback
+import org.jdeferred.ProgressCallback
+import org.jdeferred.Promise
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
@@ -66,6 +69,9 @@ class EnvironmentController {
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource DockerServiceController dockerServiceController;
     @Resource HostsController hostsController;
+
+    Map<String, Promise> buildingServices = [:]
+    Map<String, String> lastBuildStatusForService = [:]
 
     @RequestMapping
     public Map<String, List<EnvironmentConfiguration>> getTiers() {
@@ -247,6 +253,51 @@ class EnvironmentController {
         return application;
     }
 
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/buildImage", method = RequestMethod.POST)
+    public void buildImage(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
+        ApplicationConfiguration applicationConfiguration = getAllEnvironments()[tierName].find { it.getId() == environmentName }.getApplications().find { it.getId() == applicationId }
+        Collection<String> serviceNames = applicationConfiguration.getServiceInstances()*.getType().unique()
+        Collection<ServiceConfiguration> serviceConfigurations = serviceNames.collect { return dockerServiceConfiguration.getServiceConfiguration(it) }
+
+        serviceConfigurations.each { ServiceConfiguration serviceConfiguration ->
+            if (serviceConfiguration.getBuild() && !buildingServices.containsKey(serviceConfiguration.getName())) {
+                log.debug("Scheduling build for service: ${serviceConfiguration.getName()}");
+                Promise<Map<String, Object>, Exception, String> buildPromise = serviceConfiguration.getBuild().execute();
+
+                // Keep that promise around, so we can get status / completion events
+                buildingServices[serviceConfiguration.getName()] = buildPromise;
+
+                // Be sure to remove it from the cache when we're done building
+                buildPromise.always({ Promise.State state, def result, Exception rejection ->
+                    log.debug("Build is finished for service: ${serviceConfiguration.getName()}");
+                    buildingServices.remove(serviceConfiguration.getName());
+
+                    if (state == Promise.State.RESOLVED)
+                        lastBuildStatusForService[serviceConfiguration.getName()] = "Finished";
+                    else if (state == Promise.State.REJECTED) {
+                        log.error("Build for ${serviceConfiguration.getName()} failed", rejection);
+                        lastBuildStatusForService[serviceConfiguration.getName()] = "Errored (Please check logs): ${rejection.getMessage()}".toString();
+                    }
+                } as AlwaysCallback)
+
+                buildPromise.progress({ String progress ->
+                    log.debug("Build Progress for ${serviceConfiguration.getName()}: $progress");
+                    lastBuildStatusForService[serviceConfiguration.getName()] = progress;
+                } as ProgressCallback<String>)
+            }
+        }
+    }
+
+    @CompileStatic
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/buildImage", method = RequestMethod.GET)
+    public Map<String, String> getBuildImageStatus(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
+        ApplicationConfiguration applicationConfiguration = getAllEnvironments()[tierName].find { it.getId() == environmentName }.getApplications().find { it.getId() == applicationId }
+        Collection<String> serviceNames = applicationConfiguration.getServiceInstances()*.getType().unique()
+
+        return serviceNames.collectEntries { String service ->
+            return [service, lastBuildStatusForService[service]]
+        }
+    }
 
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
         // Search for all YAML files under /data/env-config/tiers

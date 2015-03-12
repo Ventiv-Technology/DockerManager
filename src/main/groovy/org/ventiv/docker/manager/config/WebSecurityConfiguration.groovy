@@ -65,6 +65,8 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
         @Override
         public void init(AuthenticationManagerBuilder auth) throws Exception {
+            auth.eraseCredentials(false);
+
             if (props.auth.bypass) {
                 auth.inMemoryAuthentication()
             } else if (props.auth.type == DockerManagerConfiguration.SecurityConfiguration.SecurityType.InMemory) {

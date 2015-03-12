@@ -14,6 +14,12 @@
  * the License.
  */
 package org.ventiv.docker.manager.model
+
+import org.jdeferred.ProgressCallback
+import org.jdeferred.Promise
+import org.jdeferred.impl.DeferredObject
+import org.springframework.security.core.context.SecurityContextHolder
+
 /**
  * Created by jcrygier on 3/4/15.
  */
@@ -22,6 +28,42 @@ class ServiceBuildConfiguration {
     String vcs;
     String url;
     String dockerFile;
+
+    List<ServiceBuildStage> stages;
     VersionSelectionConfiguration versionSelection;
+
+    public Promise<Map<String, Object>, Exception, String> execute() {
+        DeferredObject<Map<String, Object>, Exception, String> deferred = new DeferredObject<>();
+        Map<String, Object> buildContext = [
+                userAuthentication: SecurityContextHolder.getContext().getAuthentication()
+        ]
+
+        Thread.start {
+            getStages().eachWithIndex { ServiceBuildStage buildStage, Integer idx ->
+                if (deferred.isPending()) {
+                    deferred.notify("Currently building ${idx + 1} of ${getStages().size()}")
+                    try {
+                        Promise buildPromise = buildStage.execute(buildContext);
+
+                        buildPromise.progress({ String progress ->
+                            deferred.notify("Progress for ${idx + 1} of ${getStages().size()}: ${progress}");
+                        } as ProgressCallback<String>)
+
+                        // Wait till this stage is done, then move on
+                        buildPromise.waitSafely();
+
+                        deferred.notify("Finished building ${idx + 1} of ${getStages().size()}")
+                    } catch (Exception e) {
+                        deferred.reject(e);
+                    }
+                }
+            }
+
+            if (deferred.isPending())
+                deferred.resolve(buildContext);
+        }
+
+        return deferred.promise();
+    }
 
 }
