@@ -64,7 +64,7 @@ class DockerManagerConfiguration {
         }
 
         public static enum SecurityType {
-            Ldap, InMemory
+            Ldap, InMemory, AllowAnyone
         }
 
     }

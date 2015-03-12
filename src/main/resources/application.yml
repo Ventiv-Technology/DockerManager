@@ -1,4 +1,6 @@
 auth.bypass: false
+auth.type: AllowAnyone
+auth.realm: Docker Manager (Allow Anyone)
 
 docker:
   client:

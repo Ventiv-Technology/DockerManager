@@ -22,6 +22,7 @@ import org.springframework.security.config.annotation.authentication.configurers
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
+import org.ventiv.docker.manager.service.AllowAnyoneAuthenticationProvider
 
 import javax.annotation.Resource
 
@@ -85,7 +86,8 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                             .url(props.ldap.server.url)
                             .managerDn(props.ldap.server.managerDn)
                             .managerPassword(props.ldap.server.managerPassword)
-            }
+            } else if (props.auth.type == DockerManagerConfiguration.SecurityConfiguration.SecurityType.AllowAnyone)
+                auth.authenticationProvider(new AllowAnyoneAuthenticationProvider());
         }
     }
 }

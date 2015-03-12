@@ -16,7 +16,10 @@ class UserHealthIndicator extends AbstractHealthIndicator {
     protected void doHealthCheck(Health.Builder builder) throws Exception {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication()
         if (auth) {
-            builder.up().withDetail("user", auth);
+            builder.up().withDetail("user", [
+                    name: auth.getName(),
+                    authorities: auth.getAuthorities()
+            ]);
         }
     }
 
