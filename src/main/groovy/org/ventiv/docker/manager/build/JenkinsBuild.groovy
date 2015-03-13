@@ -1,3 +1,18 @@
+/*
+ * Copyright (c) 2014 - 2015 Ventiv Technology
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package org.ventiv.docker.manager.build
 
 import feign.Feign
@@ -26,13 +41,13 @@ class JenkinsBuild implements AsyncBuildStage {
     JenkinsApi mockJenkinsApi;
 
     @Override
-    Promise doBuild(Map<String, String> buildSettings, Map<String, Object> buildContext) {
+    Promise doBuild(Map<String, String> buildSettings, BuildContext buildContext) {
         Deferred deferred = new DeferredObject();
 
         JenkinsApi api = getJenkinsApi(buildSettings, buildContext)
         BuildStartedResponse resp = api.startNewBuild(buildSettings['jobName']);
 
-        buildContext['buildStartedResponse'] = resp;
+        buildContext.getExtraParameters()['buildStartedResponse'] = resp;
 
         Thread.start {
             pollForCompletion(buildSettings, buildContext, deferred, api);
@@ -41,8 +56,8 @@ class JenkinsBuild implements AsyncBuildStage {
         return deferred.promise();
     }
 
-    void pollForCompletion(Map<String, String> buildSettings, Map<String, Object> buildContext, Deferred deferred, JenkinsApi api) {
-        BuildQueueStatus queueStatus = api.getBuildQueueStatus(buildContext.buildStartedResponse.queueId);
+    void pollForCompletion(Map<String, String> buildSettings, BuildContext buildContext, Deferred deferred, JenkinsApi api) {
+        BuildQueueStatus queueStatus = api.getBuildQueueStatus(buildContext.extraParameters.buildStartedResponse.queueId);
         long sleepTime = 1000;
 
         deferred.notify("Jenkins job queued")
@@ -50,7 +65,7 @@ class JenkinsBuild implements AsyncBuildStage {
         // Poll until we have enough information in the queue status
         while (queueStatus.getExecutable()?.getNumber() == null) {
             sleep(sleepTime);
-            queueStatus = api.getBuildQueueStatus(buildContext.buildStartedResponse.queueId);
+            queueStatus = api.getBuildQueueStatus(buildContext.extraParameters.buildStartedResponse.queueId);
         }
 
         deferred.notify("Jenkins job ${queueStatus.getTask().getName()} #${queueStatus.getExecutable().getNumber()} building...");
@@ -71,11 +86,13 @@ class JenkinsBuild implements AsyncBuildStage {
 
         if (buildStatus.getResult() == BuildStatus.BuildResult.FAILURE)
             deferred.reject("Build Failure");
-        else
+        else {
+            buildContext.setBuildingVersion(queueStatus.getExecutable().getNumber().toString())
             deferred.resolve("Build Success");
+        }
     }
 
-    private JenkinsApi getJenkinsApi(Map<String, String> buildSettings, Map<String, Object> buildContext) {
+    private JenkinsApi getJenkinsApi(Map<String, String> buildSettings, BuildContext buildContext) {
         if (mockJenkinsApi)
             return mockJenkinsApi;
 
@@ -87,7 +104,9 @@ class JenkinsBuild implements AsyncBuildStage {
 
         if (authType == AuthenticationType.CurrentUser) {
             Authentication auth = (Authentication) buildContext.userAuthentication;
-            String authHeader = "${auth.getPrincipal().username}:${auth.getCredentials()}".bytes.encodeBase64().toString()
+
+            String userName = auth.getPrincipal() instanceof String ? auth.getPrincipal() : auth.getPrincipal().username;
+            String authHeader = "${userName}:${auth.getCredentials()}".bytes.encodeBase64().toString()
 
             feignBuilder.requestInterceptor(new HeaderRequestInterceptor([Authorization: "Basic " + authHeader]))
         } else if (authType == AuthenticationType.ProvidedUserPassword) {

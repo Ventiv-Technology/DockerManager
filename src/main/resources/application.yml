@@ -10,3 +10,6 @@ docker:
       apiVersion: 1.15
 
 spring.thymeleaf.mode: LEGACYHTML5
+
+# Set the session timeout to 1 day
+server.session-timeout: 86400

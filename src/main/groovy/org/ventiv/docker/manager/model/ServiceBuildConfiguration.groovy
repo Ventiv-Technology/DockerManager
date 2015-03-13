@@ -19,6 +19,7 @@ import org.jdeferred.ProgressCallback
 import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
 import org.springframework.security.core.context.SecurityContextHolder
+import org.ventiv.docker.manager.build.BuildContext
 
 /**
  * Created by jcrygier on 3/4/15.
@@ -32,11 +33,11 @@ class ServiceBuildConfiguration {
     List<ServiceBuildStage> stages;
     VersionSelectionConfiguration versionSelection;
 
-    public Promise<Map<String, Object>, Exception, String> execute() {
-        DeferredObject<Map<String, Object>, Exception, String> deferred = new DeferredObject<>();
-        Map<String, Object> buildContext = [
+    public Promise<BuildContext, Exception, String> execute() {
+        DeferredObject<BuildContext, Exception, String> deferred = new DeferredObject<>();
+        BuildContext buildContext = new BuildContext([
                 userAuthentication: SecurityContextHolder.getContext().getAuthentication()
-        ]
+        ])
 
         Thread.start {
             getStages().eachWithIndex { ServiceBuildStage buildStage, Integer idx ->

@@ -13,26 +13,17 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.controller
+package org.ventiv.docker.manager.build
 
-import org.springframework.stereotype.Controller
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.servlet.ModelAndView
-import org.ventiv.docker.manager.config.DockerManagerConfiguration
-
-import javax.annotation.Resource
+import org.springframework.security.core.Authentication
 
 /**
- * Created by jcrygier on 3/11/15.
+ * Created by jcrygier on 3/13/15.
  */
-@Controller
-class LoginController {
+class BuildContext {
 
-    @Resource DockerManagerConfiguration props;
-
-    @RequestMapping("/login")
-    def loginTest() {
-        return new ModelAndView("login", [props: props])
-    }
+    Authentication userAuthentication;
+    String buildingVersion;
+    Map<String, Object> extraParameters = [:]
 
 }

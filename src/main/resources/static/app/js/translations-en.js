@@ -40,6 +40,8 @@ define([], function() {
         STD_ERR: "Standard Error",
         STOP: "Stop",
         START: "Start",
-        RESTART: "Restart"
+        RESTART: "Restart",
+        BUILD: "Build",
+        BUILDING_IMAGE: "Building Image..."
     }
 });

@@ -33,6 +33,7 @@ class ApplicationDetails {
     Collection<ServiceInstance> serviceInstances;
     List<MissingService> missingServiceInstances;
     Map<String, String> buildServiceVersionsTemplate = [:];
+    def buildStatus;
 
     @JsonIgnore
     ApplicationConfiguration applicationConfiguration;

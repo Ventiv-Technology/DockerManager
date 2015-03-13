@@ -15,11 +15,11 @@
  */
 'use strict';
 
-define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy'], function ($, angular, translations) {
+define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService'], function ($, angular, translations) {
 
     // Declare app level module which depends on filters, and services
 
-    return angular.module('myApp', ['ui.bootstrap', 'restangular', 'pascalprecht.translate', 'ui.router', 'cgBusy'])
+    return angular.module('myApp', ['ui.bootstrap', 'restangular', 'pascalprecht.translate', 'ui.router', 'cgBusy', 'myApp.statusService'])
         .config(function (RestangularProvider, $translateProvider, $stateProvider, $urlRouterProvider) {
             // Configure RESTAngular
             RestangularProvider.setBaseUrl("/api");
@@ -52,7 +52,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 });
         })
 
-        .controller('MainController', function($scope, $stateParams, Restangular, $http) {
+        .controller('MainController', function($scope, $stateParams, Restangular, $http, StatusService) {
             $scope.asyncExecutionPromise = Restangular.one('environment').get().then(function(environments) {
                 $scope.tiers = environments.plain();
 
@@ -89,7 +89,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             $scope.hosts = hostsInterface.getList().$object;
         })
 
-        .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular, $http) {
+        .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular, $http, StatusService) {
             $scope.$watch("tiers", function(tiers) {
                 if (tiers !== undefined) {
                     $scope.environment = _.find(tiers[$stateParams.tierName], function (environment) {
@@ -97,6 +97,16 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     });
 
                     $scope.refreshEnvironment($stateParams.tierName, $stateParams.environmentId);
+                }
+            });
+
+            // Listen to Build Status events, and update our copy
+            StatusService.subscribe("BuildStatusEvent", function(eventSource) {
+                if (eventSource.tierName == $stateParams.tierName && eventSource.environmentName == $stateParams.environmentId) {
+                    var buildingApplication = _.find($scope.environment.applications, function(application) { return application.id == eventSource.applicationName });
+                    buildingApplication.buildStatus = eventSource;
+
+                    $scope.$digest();
                 }
             });
 
@@ -165,6 +175,14 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         throw "Problems " + status + "ing Application...";
                     }
                 );
+            };
+
+            $scope.buildApplication = function(applicationDetails) {
+                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all("buildImage").post().then(
+                    function success(response) {
+                        // There actually is no response, you have to GET the status
+                    }
+                )
             };
 
             $scope.getRunning = function(application) {

@@ -25,7 +25,9 @@
     <accordion close-others="false" is-open="true">
         <accordion-group data-ng-repeat="application in environment.applications">
             <accordion-heading>
-                <span id="{{application.id}}-app">{{application.description}}</span><span class="pull-right">(Running: {{getRunning(application).length}}, Stopped: {{getStopped(application).length}}, Missing: {{application.missingServiceInstances.length}})</span>
+                <span id="{{application.id}}-app">{{application.description}}</span>
+                <span data-ng-show="application.buildStatus.building"> - <a href="" translate="BUILDING_IMAGE">Building Image...</a></span>
+                <span class="pull-right">(Running: {{getRunning(application).length}}, Stopped: {{getStopped(application).length}}, Missing: {{application.missingServiceInstances.length}})</span>
             </accordion-heading>
             <div id="{{application.id}}-url">
                 <div class="row">
@@ -48,6 +50,16 @@
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'stop')" translate="STOP">Stop</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'start')" translate="START">Start</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'restart')" translate="RESTART">Restart</button></div>
+                    <div class="col-md-1"><button class="btn btn-primary btn-block" data-ng-show="!application.buildStatus.building" data-ng-click="buildApplication(application)" translate="BUILD">Build</button></div>
+                </div>
+
+                <div data-ng-show="application.buildStatus.building" id="build-info">
+                    <hr>
+
+                    <div class="row" data-ng-repeat="(buildingService, buildingServiceStatus) in application.buildStatus.serviceBuildStatus">
+                        <div class="col-md-2">{{buildingService}}:</div>
+                        <div class="col-md-10">{{buildingServiceStatus}}</div>
+                    </div>
                 </div>
 
                 <hr>

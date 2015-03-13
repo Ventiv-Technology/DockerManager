@@ -30,6 +30,7 @@ import groovy.util.logging.Slf4j
 import org.jdeferred.AlwaysCallback
 import org.jdeferred.ProgressCallback
 import org.jdeferred.Promise
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
@@ -38,6 +39,7 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.event.BuildStatusEvent
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationRequest
@@ -69,6 +71,7 @@ class EnvironmentController {
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource DockerServiceController dockerServiceController;
     @Resource HostsController hostsController;
+    @Resource ApplicationEventPublisher eventPublisher;
 
     Map<String, Promise> buildingServices = [:]
     Map<String, String> lastBuildStatusForService = [:]
@@ -109,7 +112,8 @@ class EnvironmentController {
                     environmentName: environmentName,
                     url: url,
                     serviceInstances: applicationInstances,
-                    missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) }
+                    missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) },
+                    buildStatus: getBuildImageStatus(tierName, environmentName, applicationConfiguration.getId())
             ]).withApplicationConfiguration(applicationConfiguration))
         }
     }
@@ -272,31 +276,44 @@ class EnvironmentController {
                     log.debug("Build is finished for service: ${serviceConfiguration.getName()}");
                     buildingServices.remove(serviceConfiguration.getName());
 
-                    if (state == Promise.State.RESOLVED)
+                    if (state == Promise.State.RESOLVED) {
                         lastBuildStatusForService[serviceConfiguration.getName()] = "Finished";
-                    else if (state == Promise.State.REJECTED) {
+
+                        publishBuildStatusEvent(tierName, environmentName, applicationId, false);
+                    } else if (state == Promise.State.REJECTED) {
                         log.error("Build for ${serviceConfiguration.getName()} failed", rejection);
                         lastBuildStatusForService[serviceConfiguration.getName()] = "Errored (Please check logs): ${rejection.getMessage()}".toString();
+
+                        publishBuildStatusEvent(tierName, environmentName, applicationId, false);
                     }
                 } as AlwaysCallback)
 
                 buildPromise.progress({ String progress ->
                     log.debug("Build Progress for ${serviceConfiguration.getName()}: $progress");
                     lastBuildStatusForService[serviceConfiguration.getName()] = progress;
+
+                    publishBuildStatusEvent(tierName, environmentName, applicationId, true);
                 } as ProgressCallback<String>)
             }
         }
     }
 
+    private void publishBuildStatusEvent(String tierName, String environmentName, String applicationId, boolean building) {
+        eventPublisher.publishEvent(new BuildStatusEvent(tierName, environmentName, applicationId, building, getBuildImageStatus(tierName, environmentName, applicationId).serviceBuildStatus));
+    }
+
     @CompileStatic
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/buildImage", method = RequestMethod.GET)
-    public Map<String, String> getBuildImageStatus(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
+    public def getBuildImageStatus(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
         ApplicationConfiguration applicationConfiguration = getAllEnvironments()[tierName].find { it.getId() == environmentName }.getApplications().find { it.getId() == applicationId }
         Collection<String> serviceNames = applicationConfiguration.getServiceInstances()*.getType().unique()
 
-        return serviceNames.collectEntries { String service ->
-            return [service, lastBuildStatusForService[service]]
-        }
+        boolean building = serviceNames.find { buildingServices[it] }
+
+        return [
+                building: building,
+                serviceBuildStatus: serviceNames.collectEntries { String service -> return [service, lastBuildStatusForService[service]] }
+        ]
     }
 
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
