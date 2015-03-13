@@ -27,9 +27,6 @@ import com.github.dockerjava.api.model.Ports
 import com.github.dockerjava.api.model.Volume
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
-import org.jdeferred.AlwaysCallback
-import org.jdeferred.ProgressCallback
-import org.jdeferred.Promise
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.web.bind.annotation.PathVariable
@@ -39,16 +36,17 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
-import org.ventiv.docker.manager.event.BuildStatusEvent
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
-import org.ventiv.docker.manager.model.BuildApplicationRequest
+import org.ventiv.docker.manager.model.BuildApplicationInfo
+import org.ventiv.docker.manager.model.DeployApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.PortDefinition
 import org.ventiv.docker.manager.model.ServerConfiguration
+import org.ventiv.docker.manager.model.ServiceBuildInfo
 import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
@@ -73,8 +71,7 @@ class EnvironmentController {
     @Resource HostsController hostsController;
     @Resource ApplicationEventPublisher eventPublisher;
 
-    Map<String, Promise> buildingServices = [:]
-    Map<String, String> lastBuildStatusForService = [:]
+    Map<String, BuildApplicationInfo> buildingApplications = [:]
 
     @RequestMapping
     public Map<String, List<EnvironmentConfiguration>> getTiers() {
@@ -113,7 +110,7 @@ class EnvironmentController {
                     url: url,
                     serviceInstances: applicationInstances,
                     missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) },
-                    buildStatus: getBuildImageStatus(tierName, environmentName, applicationConfiguration.getId())
+                    buildStatus: buildingApplications.get("$tierName.$environmentName.${applicationConfiguration.getId()}")?.getBuildStatus()
             ]).withApplicationConfiguration(applicationConfiguration))
         }
     }
@@ -124,19 +121,19 @@ class EnvironmentController {
      * 2.) Each serviceInstance (see getEnvironmentDetails) is on the proper version.  If not, it will destroy the container and rebuild.
      */
     @RequestMapping(value = "/{tierName}/{environmentName}", method = RequestMethod.POST)
-    public ApplicationDetails buildApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody BuildApplicationRequest buildRequest) {
+    public ApplicationDetails deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody DeployApplicationRequest deployRequest) {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
-        ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == buildRequest.getName() }
+        ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == deployRequest.getName() }
         List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName)
 
         // First, let's find any missing services
         applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
             // Find an 'Available' Service Instance
             ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), allServiceInstances, applicationDetails);
-            toUse.setApplicationId(buildRequest.getName());
+            toUse.setApplicationId(deployRequest.getName());
 
             // Create (and start) the container
-            createDockerContainer(applicationDetails, toUse, buildRequest.getServiceVersions().get(missingService.getServiceName()));
+            createDockerContainer(applicationDetails, toUse, deployRequest.getServiceVersions().get(missingService.getServiceName()));
 
             // Mark this service instance as 'Running' so it won't get used again
             toUse.setStatus(ServiceInstance.Status.Running);
@@ -145,7 +142,7 @@ class EnvironmentController {
         // Verify all running serviceInstances to ensure they're the correct version
         new ArrayList(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
             if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
-                String expectedVersion = buildRequest.getServiceVersions()[anInstance.getName()];
+                String expectedVersion = deployRequest.getServiceVersions()[anInstance.getName()];
                 String runningVersion = anInstance.getContainerImage().getTag();
 
                 // We have a version mismatch...destroy the container and rebuild it
@@ -154,13 +151,13 @@ class EnvironmentController {
                     destroyDockerContainer(applicationDetails, anInstance);
 
                     // Now, create a new one
-                    createDockerContainer(applicationDetails, anInstance, buildRequest.getServiceVersions().get(anInstance.getName()));
+                    createDockerContainer(applicationDetails, anInstance, deployRequest.getServiceVersions().get(anInstance.getName()));
                 }
             }
         }
 
         // Re-fetch the latest
-        return getEnvironmentDetails(tierName, environmentName).find { it.getId() == buildRequest.getName() };
+        return getEnvironmentDetails(tierName, environmentName).find { it.getId() == deployRequest.getName() };
     }
 
     @CompileStatic
@@ -257,63 +254,24 @@ class EnvironmentController {
         return application;
     }
 
-    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/buildImage", method = RequestMethod.POST)
-    public void buildImage(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
-        ApplicationConfiguration applicationConfiguration = getAllEnvironments()[tierName].find { it.getId() == environmentName }.getApplications().find { it.getId() == applicationId }
-        Collection<String> serviceNames = applicationConfiguration.getServiceInstances()*.getType().unique()
-        Collection<ServiceConfiguration> serviceConfigurations = serviceNames.collect { return dockerServiceConfiguration.getServiceConfiguration(it) }
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/buildApplication", method = RequestMethod.POST)
+    public void buildApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
+        String applicationKey = "$tierName.$environmentName.$applicationId";
+        if (!buildingApplications.containsKey(applicationKey) || !buildingApplications[applicationKey].isBuilding()) {
+            ApplicationDetails applicationDetails = getEnvironmentDetails(tierName, environmentName).find { it.getId() == applicationId}
+            BuildApplicationInfo buildApplicationInfo = new BuildApplicationInfo(applicationDetails);
+            buildingApplications[applicationKey] = buildApplicationInfo;
 
-        serviceConfigurations.each { ServiceConfiguration serviceConfiguration ->
-            if (serviceConfiguration.getBuild() && !buildingServices.containsKey(serviceConfiguration.getName())) {
-                log.debug("Scheduling build for service: ${serviceConfiguration.getName()}");
-                Promise<Map<String, Object>, Exception, String> buildPromise = serviceConfiguration.getBuild().execute();
+            buildApplicationInfo.getServiceBuildInfoList().each { ServiceBuildInfo serviceBuildInfo ->
+                ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceBuildInfo.getServiceName());
 
-                // Keep that promise around, so we can get status / completion events
-                buildingServices[serviceConfiguration.getName()] = buildPromise;
-
-                // Be sure to remove it from the cache when we're done building
-                buildPromise.always({ Promise.State state, def result, Exception rejection ->
-                    log.debug("Build is finished for service: ${serviceConfiguration.getName()}");
-                    buildingServices.remove(serviceConfiguration.getName());
-
-                    if (state == Promise.State.RESOLVED) {
-                        lastBuildStatusForService[serviceConfiguration.getName()] = "Finished";
-
-                        publishBuildStatusEvent(tierName, environmentName, applicationId, false);
-                    } else if (state == Promise.State.REJECTED) {
-                        log.error("Build for ${serviceConfiguration.getName()} failed", rejection);
-                        lastBuildStatusForService[serviceConfiguration.getName()] = "Errored (Please check logs): ${rejection.getMessage()}".toString();
-
-                        publishBuildStatusEvent(tierName, environmentName, applicationId, false);
-                    }
-                } as AlwaysCallback)
-
-                buildPromise.progress({ String progress ->
-                    log.debug("Build Progress for ${serviceConfiguration.getName()}: $progress");
-                    lastBuildStatusForService[serviceConfiguration.getName()] = progress;
-
-                    publishBuildStatusEvent(tierName, environmentName, applicationId, true);
-                } as ProgressCallback<String>)
+                // Let's make sure that this service can be built - TODO: Ensure that this service isn't being built from another application
+                if (serviceConfiguration.getBuild()) {
+                    log.debug("Scheduling build for service: ${serviceConfiguration.getName()}");
+                    serviceBuildInfo.setPromise(serviceConfiguration.getBuild().execute());
+                }
             }
         }
-    }
-
-    private void publishBuildStatusEvent(String tierName, String environmentName, String applicationId, boolean building) {
-        eventPublisher.publishEvent(new BuildStatusEvent(tierName, environmentName, applicationId, building, getBuildImageStatus(tierName, environmentName, applicationId).serviceBuildStatus));
-    }
-
-    @CompileStatic
-    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/buildImage", method = RequestMethod.GET)
-    public def getBuildImageStatus(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
-        ApplicationConfiguration applicationConfiguration = getAllEnvironments()[tierName].find { it.getId() == environmentName }.getApplications().find { it.getId() == applicationId }
-        Collection<String> serviceNames = applicationConfiguration.getServiceInstances()*.getType().unique()
-
-        boolean building = serviceNames.find { buildingServices[it] }
-
-        return [
-                building: building,
-                serviceBuildStatus: serviceNames.collectEntries { String service -> return [service, lastBuildStatusForService[service]] }
-        ]
     }
 
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {

@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.event
 
 import org.springframework.context.ApplicationEvent
+import org.ventiv.docker.manager.model.BuildStatus
 
 /**
  * Created by jcrygier on 3/13/15.
@@ -26,14 +27,8 @@ class BuildStatusEvent extends ApplicationEvent {
      * Create a new ApplicationEvent.
      * @param source the component that published the event (never {@code null})
      */
-    BuildStatusEvent(String tierName, String environmentName, String applicationName, boolean building, Map<String, String> serviceBuildStatus) {
-        super([
-                tierName: tierName,
-                environmentName: environmentName,
-                applicationName: applicationName,
-                building: building,
-                serviceBuildStatus: serviceBuildStatus
-        ]);
+    BuildStatusEvent(BuildStatus buildStatus) {
+        super(buildStatus);
     }
 
 }

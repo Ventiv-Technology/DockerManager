@@ -16,9 +16,9 @@
 package org.ventiv.docker.manager.model
 
 /**
- * Information needed to build out an Application
+ * Information needed to deploy an Application
  */
-class BuildApplicationRequest {
+class DeployApplicationRequest {
 
     /**
      * Application Name to build out

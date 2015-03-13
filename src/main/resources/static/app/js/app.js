@@ -103,10 +103,12 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             // Listen to Build Status events, and update our copy
             StatusService.subscribe("BuildStatusEvent", function(eventSource) {
                 if (eventSource.tierName == $stateParams.tierName && eventSource.environmentName == $stateParams.environmentId) {
-                    var buildingApplication = _.find($scope.environment.applications, function(application) { return application.id == eventSource.applicationName });
-                    buildingApplication.buildStatus = eventSource;
+                    var buildingApplication = _.find($scope.environment.applications, function(application) { return application.id == eventSource.applicationId });
 
-                    $scope.$digest();
+                    if (buildingApplication) {
+                        buildingApplication.buildStatus = eventSource;
+                        $scope.$digest();
+                    }
                 }
             });
 
@@ -178,7 +180,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             };
 
             $scope.buildApplication = function(applicationDetails) {
-                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all("buildImage").post().then(
+                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all("buildApplication").post().then(
                     function success(response) {
                         // There actually is no response, you have to GET the status
                     }
