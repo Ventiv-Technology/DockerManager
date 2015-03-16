@@ -13,10 +13,26 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.exception
+package org.ventiv.docker.manager.event
+
+import org.springframework.context.ApplicationEvent
 
 /**
  * Created by jcrygier on 3/16/15.
  */
-class JenkinsBuildFailedException extends RuntimeException {
+class DeploymentStartedEvent extends ApplicationEvent {
+
+    /**
+     * Create a new ApplicationEvent.
+     * @param source the component that published the event (never {@code null})
+     */
+    DeploymentStartedEvent(String tierName, String environmentName, String applicationId, Map<String, String> serviceVersions) {
+        super([
+                tierName: tierName,
+                environmentName: environmentName,
+                applicationId: applicationId,
+                serviceVersions: serviceVersions
+        ])
+    }
+
 }

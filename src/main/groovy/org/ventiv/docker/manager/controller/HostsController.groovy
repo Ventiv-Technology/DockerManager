@@ -21,11 +21,15 @@ import com.github.dockerjava.api.model.Container
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.apache.commons.io.IOUtils
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.ventiv.docker.manager.event.ContainerRemovedEvent
+import org.ventiv.docker.manager.event.ContainerStartedEvent
+import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
@@ -45,6 +49,7 @@ class HostsController {
 
     @Resource EnvironmentController environmentController;
     @Resource DockerService dockerService;
+    @Resource ApplicationEventPublisher eventPublisher;
 
     @RequestMapping
     public def getHostDetails() {
@@ -96,6 +101,7 @@ class HostsController {
     @RequestMapping(value = "/{hostName}/{containerId}/stop", method = RequestMethod.POST)
     public void stopContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).stopContainerCmd(containerId).exec();
+        eventPublisher.publishEvent(new ContainerStoppedEvent(getServiceInstance(hostName, containerId)))
     }
 
     /**
@@ -108,6 +114,7 @@ class HostsController {
     @RequestMapping(value = "/{hostName}/{containerId}/start", method = RequestMethod.POST)
     public void startContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).startContainerCmd(containerId).exec();
+        eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
     }
 
     /**
@@ -120,6 +127,7 @@ class HostsController {
     @RequestMapping(value = "/{hostName}/{containerId}/restart", method = RequestMethod.POST)
     public void restartContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).restartContainerCmd(containerId).exec();
+        eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
     }
 
     /**
@@ -135,6 +143,13 @@ class HostsController {
         } catch (NotModifiedException ignored) {}       // This happens if the container is already stopped
 
         dockerService.getDockerClient(hostName).removeContainerCmd(containerId).exec();
+
+        ServiceInstance serviceInstance = getServiceInstance(hostName, containerId);
+        eventPublisher.publishEvent(new ContainerRemovedEvent(serviceInstance))
+    }
+
+    private ServiceInstance getServiceInstance(String hostName, String containerId) {
+        return new ServiceInstance().withDockerContainer(dockerService.getDockerClient(hostName).inspectContainerCmd(containerId).exec());
     }
 
     private List<ServerConfiguration> getAllHosts() {

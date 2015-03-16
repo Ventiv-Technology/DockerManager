@@ -13,10 +13,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.exception
+package org.ventiv.docker.manager.event
+
+import org.springframework.context.ApplicationEvent
+import org.ventiv.docker.manager.model.ServiceInstance
 
 /**
  * Created by jcrygier on 3/16/15.
  */
-class JenkinsBuildFailedException extends RuntimeException {
+abstract class AbstractApplicationEvent extends ApplicationEvent {
+
+    AbstractApplicationEvent(ServiceInstance serviceInstance) {
+        super([
+                tierName: serviceInstance.getTierName(),
+                environmentName: serviceInstance.getEnvironmentName(),
+                applicationId: serviceInstance.getApplicationId(),
+                serviceInstance: serviceInstance
+        ])
+    }
+
 }

@@ -100,21 +100,33 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 }
             });
 
-            // Listen to Build Status events, and update our copy
-            StatusService.subscribe("BuildStatusEvent", function(eventSource) {
-                if (eventSource.tierName == $stateParams.tierName && eventSource.environmentName == $stateParams.environmentId) {
-                    var buildingApplication = _.find($scope.environment.applications, function(application) { return application.id == eventSource.applicationId });
-
-                    if (buildingApplication) {
-                        buildingApplication.buildStatus = eventSource;
-                        $scope.$digest();
-                    }
-                }
-            });
-
             $scope.refreshEnvironment = function(tierName, environmentId) {
                 $scope.asyncExecutionPromise = Restangular.one('environment', tierName).getList(environmentId);
                 $scope.environment.applications = $scope.asyncExecutionPromise.$object;
+
+                // Listen to Build Status events, and update our copy
+                StatusService.subscribeForApplication("BuildStatusEvent", $scope.environment.applications, function(application, eventSource) {
+                    application.buildStatus = eventSource;
+                    $scope.$digest();
+                });
+
+                // Listen to Start / Stop events
+                var serviceInstanceStatusChangeCallback = function(application, eventSource) {
+                    var serviceInstance = _.find(application.serviceInstances, function(serviceInstance) {
+                        return serviceInstance.name == eventSource.serviceInstance.name &&
+                            serviceInstance.instanceNumber == eventSource.serviceInstance.instanceNumber;
+                    });
+
+                    if (serviceInstance) {
+                        serviceInstance.containerStatus = eventSource.serviceInstance.containerStatus;
+                        serviceInstance.status = eventSource.serviceInstance.status;
+                    }
+
+                    $scope.$digest();
+                };
+
+                StatusService.subscribeForApplication("ContainerStoppedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
+                StatusService.subscribeForApplication("ContainerStartedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
 
                 return $scope.asyncExecutionPromise;
             };
@@ -127,8 +139,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     size: 'lg',
                     resolve: {
                         serviceInstance: function() { return serviceInstance },
-                        environmentInfo: function() { return { tierName: $stateParams.tierName, environmentId: $stateParams.environmentId }},
-                        refreshEnvironmentCall: function() { return function() { return $scope.refreshEnvironment($stateParams.tierName, $stateParams.environmentId); }}
+                        environmentInfo: function() { return { tierName: $stateParams.tierName, environmentId: $stateParams.environmentId }}
                     }
                 });
 
@@ -200,7 +211,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             };
         })
 
-        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, environmentInfo, refreshEnvironmentCall, $window, $http) {
+        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, environmentInfo, $window, $http) {
             var rootHostsUrl = "/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId;
             $scope.serviceInstance = serviceInstance;
 
@@ -225,12 +236,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             $scope.postContainerOperation = function(operation) {
                 $scope.asyncExecutionPromise = $http.post(rootHostsUrl + "/" + operation).then(
                     function success() {
-                        refreshEnvironmentCall().then(function(data) {
-                            var application = _.find(data, function(app) { return app.id == $scope.serviceInstance.applicationId });
-                            var newServiceInstance = _.find(application.serviceInstances, function(si) { return si.name == $scope.serviceInstance.name });
-
-                            $scope.serviceInstance = newServiceInstance;
-                        });
+                        // Do nothing, our WebSocket will be listening to service instance changes
                     },
                     function error() {
                         alert("Problems performing " + operation + " operation on container...");

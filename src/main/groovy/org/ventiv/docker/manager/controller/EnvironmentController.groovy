@@ -36,6 +36,11 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.event.ContainerDestroyedEvent
+import org.ventiv.docker.manager.event.ContainerStartedEvent
+import org.ventiv.docker.manager.event.CreateContainerEvent
+import org.ventiv.docker.manager.event.DeploymentStartedEvent
+import org.ventiv.docker.manager.event.PullImageEvent
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationInfo
@@ -125,6 +130,8 @@ class EnvironmentController {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
         ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == deployRequest.getName() }
         List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName)
+
+        eventPublisher.publishEvent(new DeploymentStartedEvent(tierName, environmentName, applicationDetails.getId(), deployRequest.getServiceVersions()))
 
         // First, let's find any missing services
         applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
@@ -403,17 +410,14 @@ class EnvironmentController {
 
         // Do a docker pull, just to ensure we have the image locally
         DockerClient docker = dockerService.getDockerClient(instance.getServerName())
-        log.info("Pulling docker image: '$toDeploy");
+        eventPublisher.publishEvent(new PullImageEvent(instance));
         InputStream pullIn = docker.pullImageCmd(toDeploy.toString()).exec();
         pullIn.eachLine {
             log.debug(it);
         }
 
         // Create the actual container
-        log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
-                "with image: '${toDeploy.toString()}', " +
-                "name: '${instance.toString()}', " +
-                "env: ${env.collect {k, v -> "$k=$v"}}")
+        eventPublisher.publishEvent(new CreateContainerEvent(instance, env));
         CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
@@ -436,6 +440,7 @@ class EnvironmentController {
             startCmd.withExtraHosts(hostConfig.getExtraHosts());
 
         startCmd.exec();
+        eventPublisher.publishEvent(new ContainerStartedEvent(instance))
 
         // Create a ServiceInstance out of this Container
         Container container = docker.listContainersCmd().withShowAll(true).exec().find { it.getId() == resp.id }
@@ -447,6 +452,9 @@ class EnvironmentController {
     private void destroyDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance) {
         log.info("Destroying docker container: '${instance.toString()}")
         dockerService.getDockerClient(instance.getServerName()).removeContainerCmd(instance.toString()).withForce().exec();
+
+        // Let everyone know we've destroyed a container
+        eventPublisher.publishEvent(new ContainerDestroyedEvent(instance))
 
         // Remove this ServiceInstance from the Application
         applicationDetails.getServiceInstances().remove(instance);

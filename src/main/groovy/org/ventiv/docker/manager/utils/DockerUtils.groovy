@@ -13,10 +13,26 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.exception
+package org.ventiv.docker.manager.utils
+
+import org.joda.time.DateTime
+import org.ocpsoft.prettytime.PrettyTime
 
 /**
  * Created by jcrygier on 3/16/15.
  */
-class JenkinsBuildFailedException extends RuntimeException {
+class DockerUtils {
+
+    public static Date convertDockerDate(String dte) {
+        return new DateTime(dte).toDate();
+    }
+
+    public static String getStatusTime(Date statusDate, Date now = new Date()) {
+        return new PrettyTime(now).format(statusDate);
+    }
+
+    public static String getStatusTime(String dte) {
+        return getStatusTime(convertDockerDate(dte));
+    }
+
 }

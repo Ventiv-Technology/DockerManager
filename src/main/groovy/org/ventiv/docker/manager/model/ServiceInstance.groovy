@@ -16,10 +16,15 @@
 package org.ventiv.docker.manager.model
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import com.github.dockerjava.api.command.InspectContainerResponse
 import com.github.dockerjava.api.model.Container
+import com.github.dockerjava.api.model.ExposedPort
+import com.github.dockerjava.api.model.Ports
+import groovy.transform.CompileStatic
 import groovy.transform.ToString
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.utils.DockerUtils
 
 /**
  * An instantiated instance of a service, that has been assigned to a host / list of ports.  In order to keep track
@@ -76,14 +81,14 @@ class ServiceInstance {
 
     public ServiceInstance withDockerContainer(Container dockerContainer) {
         this.setDockerName(dockerContainer.getNames()[0])
-        this.status = dockerContainer.getStatus().startsWith("Up") ? ServiceInstance.Status.Running : ServiceInstance.Status.Stopped;
+        this.status = dockerContainer.getStatus().startsWith("Up") ? Status.Running : Status.Stopped;
         this.containerStatus = dockerContainer.getStatus();
         this.containerId = dockerContainer.getId();
         this.containerImage = new DockerTag(dockerContainer.getImage());
         this.containerCreatedDate = new Date(dockerContainer.getCreated() * 1000);
 
         // Get the service configuration
-        def serviceConfig = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
+        ServiceConfiguration serviceConfig = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
         // Determine the Port Definitions
@@ -96,6 +101,40 @@ class ServiceInstance {
         }
 
         // Determine the URL
+        determineUrl(serviceConfig);
+
+        return this;
+    }
+
+    public ServiceInstance withDockerContainer(InspectContainerResponse inspectContainerResponse) {
+        this.setDockerName(inspectContainerResponse.getName());
+        this.status = inspectContainerResponse.getState().isRunning() ? Status.Running : Status.Stopped
+        this.containerStatus = this.status == Status.Running ? DockerUtils.getStatusTime(inspectContainerResponse.getState().getStartedAt()) : DockerUtils.getStatusTime(inspectContainerResponse.getState().getFinishedAt())
+        this.containerId = inspectContainerResponse.getId();
+        this.containerImage = new DockerTag(inspectContainerResponse.getConfig().getImage());
+        this.containerCreatedDate = DockerUtils.convertDockerDate(inspectContainerResponse.getCreated())
+
+        // Get the service configuration
+        ServiceConfiguration serviceConfig = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
+        this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
+
+        // Determine the Port Definitions
+        this.portDefinitions = inspectContainerResponse.getHostConfig().getPortBindings().getBindings().collect { ExposedPort containerPort, Ports.Binding[] bindings ->
+            return new PortDefinition([
+                    portType: serviceConfig?.containerPorts?.find { it.port == containerPort.getPort() }?.type,
+                    hostPort: bindings[0].getHostPort(),
+                    containerPort: containerPort.getPort()
+            ])
+        }
+
+        // Determine URL
+        determineUrl(serviceConfig);
+
+        return this;
+    }
+
+    @CompileStatic
+    private void determineUrl(ServiceConfiguration serviceConfig) {
         if (serviceConfig?.getUrl()) {
             if (this.status == Status.Running) {
                 Map<String, Integer> ports = getPortDefinitions()?.collectEntries { PortDefinition portDefinition ->
@@ -105,13 +144,11 @@ class ServiceInstance {
                 Binding b = new Binding([server: getServerName(), port: ports]);
                 GroovyShell sh = new GroovyShell(b);
                 setUrl(sh.evaluate('"' + serviceConfig.getUrl() + '"').toString());
-            } else if (getStatus() == ServiceInstance.Status.Stopped)
+            } else if (getStatus() == Status.Stopped)
                 setUrl(getServiceDescription() + " is Stopped")
             else
                 setUrl(getServiceDescription() + " is Missing")
         }
-
-        return this;
     }
 
     @Override

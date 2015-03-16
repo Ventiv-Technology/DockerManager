@@ -13,10 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.exception
+package org.ventiv.docker.manager.event
+
+import groovy.util.logging.Slf4j
+import org.ventiv.docker.manager.model.ServiceInstance
 
 /**
  * Created by jcrygier on 3/16/15.
  */
-class JenkinsBuildFailedException extends RuntimeException {
+@Slf4j
+class ContainerStoppedEvent extends AbstractApplicationEvent {
+
+    ContainerStoppedEvent(ServiceInstance serviceInstance) {
+        super(serviceInstance)
+    }
+
 }

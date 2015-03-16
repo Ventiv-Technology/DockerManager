@@ -45,6 +45,29 @@ define(['jquery', 'angular', 'stomp-websocket', 'sockjs-client'], function ($, a
                     if (initialized) {
                         socket.stomp.subscribe("/topic/event/" + eventType, subscriptions[eventType]);
                     }
+                },
+
+                /**
+                 * Will receive any event that extends AbstractApplicationEvent, and call the callback with the
+                 * appropriate application object, found in the list of provided applications.
+                 *
+                 * @param eventType String name of the event type to listen to
+                 * @param applications List of all applications, generally pulled from $scope
+                 * @param callback Function to call with (application, eventObject) on event and found application
+                 */
+                subscribeForApplication: function(eventType, applications, callback) {
+                    this.subscribe(eventType, function(eventObject) {
+                        var foundApplication = _.find(applications, function(application) {
+                            return  application.tierName == eventObject.tierName &&
+                                    application.environmentName == eventObject.environmentName &&
+                                    application.id == eventObject.applicationId
+
+                        });
+
+                        if (foundApplication) {
+                            callback(foundApplication, eventObject);
+                        }
+                    });
                 }
             };
 
