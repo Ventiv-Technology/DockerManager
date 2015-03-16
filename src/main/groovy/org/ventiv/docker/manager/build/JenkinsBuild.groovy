@@ -29,6 +29,7 @@ import org.ventiv.docker.manager.build.jenkins.BuildStartedResponse
 import org.ventiv.docker.manager.build.jenkins.BuildStatus
 import org.ventiv.docker.manager.build.jenkins.JenkinsApi
 import org.ventiv.docker.manager.build.jenkins.JenkinsApiDecoder
+import org.ventiv.docker.manager.exception.JenkinsBuildFailedException
 
 /**
  * Created by jcrygier on 3/11/15.
@@ -37,20 +38,41 @@ import org.ventiv.docker.manager.build.jenkins.JenkinsApiDecoder
 @Component("JenkinsBuild")
 class JenkinsBuild implements AsyncBuildStage {
 
+    // Name of the Jenkins Job to Build
+    public static final String CONFIG_JOB_NAME =                'jobName'
+
+    // Server to contact Jenkins
+    public static final String CONFIG_SERVER =                  'server'
+
+    // Authentication Type - None, CurrentUser, ProvidedUserPassword
+    public static final String CONFIG_AUTHENTICATION =          'authentication'
+
+    // Credentials to call Jenkins - Only useful if authentication = ProvidedUserPassword
+    public static final String CONFIG_USER =                    'user'
+    public static final String CONFIG_PASSWORD =                'password'
+
+    // Groovy string to evaluate the build number.  Groovy Binding is BuildQueueStatus -> queueStatus, BuildStatus -> status.
+    // Defaults to "${status.number}"
+    public static final String CONFIG_BUILD_NUMBER =            'buildNumber'
+
     // Used only for testing
     JenkinsApi mockJenkinsApi;
 
     @Override
-    Promise doBuild(Map<String, String> buildSettings, BuildContext buildContext) {
+    Promise<Object, Exception, String> doBuild(Map<String, String> buildSettings, BuildContext buildContext) {
         Deferred deferred = new DeferredObject();
 
         JenkinsApi api = getJenkinsApi(buildSettings, buildContext)
-        BuildStartedResponse resp = api.startNewBuild(buildSettings['jobName']);
+        BuildStartedResponse resp = api.startNewBuild(buildSettings[CONFIG_JOB_NAME]);
 
         buildContext.getExtraParameters()['buildStartedResponse'] = resp;
 
         Thread.start {
-            pollForCompletion(buildSettings, buildContext, deferred, api);
+            try {
+                pollForCompletion(buildSettings, buildContext, deferred, api);
+            } catch (Exception e) {
+                deferred.reject(e);
+            }
         }
 
         return deferred.promise();
@@ -85,18 +107,29 @@ class JenkinsBuild implements AsyncBuildStage {
         deferred.notify("Jenkins job ${queueStatus.getTask().getName()} #${queueStatus.getExecutable().getNumber()} finished with result: ${buildStatus.getResult()}");
 
         if (buildStatus.getResult() == BuildStatus.BuildResult.FAILURE)
-            deferred.reject("Build Failure");
+            deferred.reject(new JenkinsBuildFailedException());
         else {
-            buildContext.setBuildingVersion(queueStatus.getExecutable().getNumber().toString())
+            buildContext.setBuildingVersion(massageBuildNumber(buildSettings, queueStatus, buildStatus))
             deferred.resolve("Build Success");
         }
+    }
+
+    private String massageBuildNumber(Map<String, String> buildSettings, BuildQueueStatus queueStatus, BuildStatus status) {
+        if (buildSettings.containsKey(CONFIG_BUILD_NUMBER)) {
+            Binding b = new Binding();
+            b.setVariable("queueStatus", queueStatus);
+            b.setVariable("status", status);
+            GroovyShell sh = new GroovyShell(b);
+            return sh.evaluate('return "' + buildSettings[CONFIG_BUILD_NUMBER] + '"')?.toString();
+        } else
+            return status.number.toString()
     }
 
     private JenkinsApi getJenkinsApi(Map<String, String> buildSettings, BuildContext buildContext) {
         if (mockJenkinsApi)
             return mockJenkinsApi;
 
-        AuthenticationType authType = buildSettings['authentication'] ? AuthenticationType.valueOf(buildSettings['authentication']) : AuthenticationType.None;
+        AuthenticationType authType = buildSettings[CONFIG_AUTHENTICATION] ? AuthenticationType.valueOf(buildSettings[CONFIG_AUTHENTICATION]) : AuthenticationType.None;
 
         Feign.Builder feignBuilder = Feign.builder()
                 .decoder(new JenkinsApiDecoder())
@@ -110,11 +143,11 @@ class JenkinsBuild implements AsyncBuildStage {
 
             feignBuilder.requestInterceptor(new HeaderRequestInterceptor([Authorization: "Basic " + authHeader]))
         } else if (authType == AuthenticationType.ProvidedUserPassword) {
-            String authHeader = "${buildSettings['user']}:${buildSettings['password']}".bytes.encodeBase64().toString()
+            String authHeader = "${buildSettings[CONFIG_USER]}:${buildSettings[CONFIG_PASSWORD]}".bytes.encodeBase64().toString()
             feignBuilder.requestInterceptor(new HeaderRequestInterceptor([Authorization: "Basic " + authHeader]))
         }
 
-        return feignBuilder.target(JenkinsApi, buildSettings['server'])
+        return feignBuilder.target(JenkinsApi, buildSettings[CONFIG_SERVER])
     }
 
     public static final enum AuthenticationType {

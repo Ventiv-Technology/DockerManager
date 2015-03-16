@@ -62,7 +62,7 @@ class BuildApplicationInfo {
     }
 
     public void serviceBuildSuccessful(ServiceBuildInfo serviceBuildInfo, BuildContext buildContext) {
-        // Update the template version for when we're done and need to build a deployRequest - TODO: Massage the buildingVersion (e.g. 234 -> b234)
+        // Update the template version for when we're done and need to build a deployRequest
         applicationDetails.getBuildServiceVersionsTemplate().put(serviceBuildInfo.getServiceName(), buildContext.getBuildingVersion());
 
         if (!isBuilding()) {

@@ -30,11 +30,11 @@ class ServiceBuildStage {
     String type;
     Map<String, String> settings;
 
-    public Promise execute(BuildContext buildContext) {
+    public Promise<Object, Exception, String> execute(BuildContext buildContext) {
         def buildStage = DockerManagerApplication.getApplicationContext().getBean(type);
 
         if (buildStage instanceof BuildStage) {
-            DeferredObject deferred = new DeferredObject();
+            DeferredObject<Object, Exception, String> deferred = new DeferredObject();
 
             buildStage.doBuild(settings, buildContext);
             deferred.resolve("finished");

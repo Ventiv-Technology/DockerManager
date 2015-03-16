@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.model
 
+import org.jdeferred.FailCallback
 import org.jdeferred.ProgressCallback
 import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
@@ -50,12 +51,17 @@ class ServiceBuildConfiguration {
                             deferred.notify("Progress for ${idx + 1} of ${getStages().size()}: ${progress}");
                         } as ProgressCallback<String>)
 
+                        buildPromise.fail({ Exception e ->
+                            deferred.reject(e);
+                        } as FailCallback<Exception>)
+
                         // Wait till this stage is done, then move on
                         buildPromise.waitSafely();
 
                         deferred.notify("Finished building ${idx + 1} of ${getStages().size()}")
                     } catch (Exception e) {
-                        deferred.reject(e);
+                        if (deferred.isPending())
+                            deferred.reject(e);
                     }
                 }
             }

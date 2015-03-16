@@ -22,6 +22,6 @@ import org.jdeferred.Promise
  */
 interface AsyncBuildStage {
 
-    public Promise doBuild(Map<String, String> buildSettings, BuildContext buildContext);
+    public Promise<Object, Exception, String> doBuild(Map<String, String> buildSettings, BuildContext buildContext);
 
 }
