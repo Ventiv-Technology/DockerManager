@@ -27,7 +27,7 @@ class PullImageEvent extends AbstractApplicationEvent {
     PullImageEvent(ServiceInstance serviceInstance) {
         super(serviceInstance)
 
-        log.info("Pulling docker image: '${serviceInstance.getContainerImage()}");
+        log.info("Pulling docker image: '${serviceInstance.getContainerImage()}'");
     }
 
 }

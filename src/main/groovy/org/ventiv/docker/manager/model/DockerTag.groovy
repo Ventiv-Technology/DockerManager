@@ -40,7 +40,7 @@ class DockerTag {
             repository = matcher[0][3]
             tag = matcher[0][4]
 
-            if (!registry?.contains('.')) {
+            if (registry && !registry.contains('.')) {
                 namespace = registry;
                 registry = null;
             }

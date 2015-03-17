@@ -371,6 +371,7 @@ class EnvironmentController {
         String imageName = serviceConfiguration.image
         DockerTag toDeploy = new DockerTag(imageName)
         toDeploy.setTag(desiredVersion);
+        instance.setContainerImage(toDeploy);
 
         // Build a host config, just in case we need to resolve the host name
         HostConfig hostConfig = new HostConfig();
