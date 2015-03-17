@@ -109,7 +109,7 @@ class ServiceInstance {
     public ServiceInstance withDockerContainer(InspectContainerResponse inspectContainerResponse) {
         this.setDockerName(inspectContainerResponse.getName());
         this.status = inspectContainerResponse.getState().isRunning() ? Status.Running : Status.Stopped
-        this.containerStatus = this.status == Status.Running ? DockerUtils.getStatusTime(inspectContainerResponse.getState().getStartedAt()) : DockerUtils.getStatusTime(inspectContainerResponse.getState().getFinishedAt())
+        this.containerStatus = this.status == Status.Running ? DockerUtils.getStatusTime(inspectContainerResponse.getState().getStartedAt()) : "Exited (${inspectContainerResponse.getState().getExitCode()}) " + DockerUtils.getStatusTime(inspectContainerResponse.getState().getFinishedAt())
         this.containerId = inspectContainerResponse.getId();
         this.containerImage = new DockerTag(inspectContainerResponse.getConfig().getImage());
         this.containerCreatedDate = DockerUtils.convertDockerDate(inspectContainerResponse.getCreated())

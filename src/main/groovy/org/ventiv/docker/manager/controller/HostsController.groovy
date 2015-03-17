@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.controller
 
+import com.github.dockerjava.api.NotFoundException
 import com.github.dockerjava.api.NotModifiedException
 import com.github.dockerjava.api.command.LogContainerCmd
 import com.github.dockerjava.api.model.Container
@@ -142,14 +143,20 @@ class HostsController {
             stopContainer(hostName, containerId);
         } catch (NotModifiedException ignored) {}       // This happens if the container is already stopped
 
+        // Need to get the service instance BEFORE we destroy it - after it's stopped....so we event with the last known state
+        ServiceInstance serviceInstance = getServiceInstance(hostName, containerId);
+
         dockerService.getDockerClient(hostName).removeContainerCmd(containerId).exec();
 
-        ServiceInstance serviceInstance = getServiceInstance(hostName, containerId);
         eventPublisher.publishEvent(new ContainerRemovedEvent(serviceInstance))
     }
 
     private ServiceInstance getServiceInstance(String hostName, String containerId) {
-        return new ServiceInstance().withDockerContainer(dockerService.getDockerClient(hostName).inspectContainerCmd(containerId).exec());
+        try {
+            return new ServiceInstance().withDockerContainer(dockerService.getDockerClient(hostName).inspectContainerCmd(containerId).exec());
+        } catch (NotFoundException nfe) {
+            return null;
+        }
     }
 
     private List<ServerConfiguration> getAllHosts() {

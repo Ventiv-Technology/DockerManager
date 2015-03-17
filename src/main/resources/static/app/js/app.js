@@ -52,7 +52,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 });
         })
 
-        .controller('MainController', function($scope, $stateParams, Restangular, $http, StatusService) {
+        .controller('MainController', function($scope, $stateParams, Restangular, $http, $modal) {
             $scope.asyncExecutionPromise = Restangular.one('environment').get().then(function(environments) {
                 $scope.tiers = environments.plain();
 
@@ -81,6 +81,22 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     return "active";
                 else
                     return "inactive";
+            };
+
+            $scope.serviceInstanceDetails = function(serviceInstance) {
+                var serviceInstanceDetailsModal = $modal.open({
+                    templateUrl: '/app/partials/serviceInstanceDetails.html',
+                    controller: 'ServiceInstanceDetailsController',
+                    windowClass: 'service-instance-details',
+                    size: 'lg',
+                    resolve: {
+                        serviceInstance: function() { return serviceInstance }
+                    }
+                });
+
+                serviceInstanceDetailsModal.result.then(function () {
+
+                });
             };
         })
 
@@ -111,41 +127,25 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 });
 
                 // Listen to Start / Stop events
-                var serviceInstanceStatusChangeCallback = function(application, eventSource) {
-                    var serviceInstance = _.find(application.serviceInstances, function(serviceInstance) {
-                        return serviceInstance.name == eventSource.serviceInstance.name &&
-                            serviceInstance.instanceNumber == eventSource.serviceInstance.instanceNumber;
-                    });
-
-                    if (serviceInstance) {
-                        serviceInstance.containerStatus = eventSource.serviceInstance.containerStatus;
-                        serviceInstance.status = eventSource.serviceInstance.status;
-                    }
+                var serviceInstanceStatusChangeCallback = function(application, serviceInstance, eventSource) {
+                    serviceInstance.containerStatus = eventSource.serviceInstance.containerStatus;
+                    serviceInstance.status = eventSource.serviceInstance.status;
 
                     $scope.$digest();
                 };
 
-                StatusService.subscribeForApplication("ContainerStoppedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
-                StatusService.subscribeForApplication("ContainerStartedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
+                StatusService.subscribeForServiceInstance("ContainerStoppedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
+                StatusService.subscribeForServiceInstance("ContainerStartedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
+                StatusService.subscribeForServiceInstance("ContainerDestroyedEvent", $scope.environment.applications, function(application, serviceInstance, eventObject) {
+                    _.remove(application.serviceInstances, serviceInstance);
+                    application.missingServiceInstances.push({
+                        availableVersions: null,                                        // TODO: Where to get this information?
+                        serviceDescription: serviceInstance.serviceDescription,
+                        serviceName: serviceInstance.name
+                    });
+                });
 
                 return $scope.asyncExecutionPromise;
-            };
-
-            $scope.serviceInstanceDetails = function(serviceInstance) {
-                var serviceInstanceDetailsModal = $modal.open({
-                    templateUrl: '/app/partials/serviceInstanceDetails.html',
-                    controller: 'ServiceInstanceDetailsController',
-                    windowClass: 'service-instance-details',
-                    size: 'lg',
-                    resolve: {
-                        serviceInstance: function() { return serviceInstance },
-                        environmentInfo: function() { return { tierName: $stateParams.tierName, environmentId: $stateParams.environmentId }}
-                    }
-                });
-
-                serviceInstanceDetailsModal.result.then(function () {
-
-                });
             };
 
             $scope.deployApplication = function(applicationDetails) {
@@ -211,7 +211,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             };
         })
 
-        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, environmentInfo, $window, $http) {
+        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {
             var rootHostsUrl = "/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId;
             $scope.serviceInstance = serviceInstance;
 

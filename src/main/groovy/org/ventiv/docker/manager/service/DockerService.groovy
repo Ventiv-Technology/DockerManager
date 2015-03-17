@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.service
 
 import com.github.dockerjava.api.DockerClient
+import com.github.dockerjava.api.model.Version
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.core.DockerClientConfig
 import org.springframework.stereotype.Service
@@ -26,7 +27,7 @@ import javax.annotation.Resource
  * Gets a DockerClient for a given host.  Will attempt to use default values, but will override with application properties
  * configured via spring boot.
  *
- * - docker.client.<hostName>.apiVersion: Default: 1.17
+ * - docker.client.<hostName>.apiVersion: Default: Call /version to determine
  * - docker.client.<hostName>.uri: Default: https://<hostName>:2376
  * - docker.client.<hostName>.certPath: Default: ./config/certs/<hostName>
  */
@@ -35,11 +36,16 @@ class DockerService {
 
     @Resource PropertyService props;
 
+    private Map<String, String> hostToApiVersionName = [:]
+
     public DockerClient getDockerClient(String hostName) {
-        String apiVersion = props["docker.client.${hostName}.apiVersion"] ?: "1.17"
+        String apiVersion = props["docker.client.${hostName}.apiVersion"]
         String uri = props["docker.client.${hostName}.uri"] ?: "https://${hostName}:2376"
         String certs = props["docker.client.${hostName}.certPath"] ?: "./config/certs/${hostName}"
         certs = certs.replaceAll('~', System.getProperty('user.home'))
+
+        if (!apiVersion)
+            apiVersion = getApiVersion(hostName, uri, certs);
 
         DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
             .withVersion(apiVersion)
@@ -50,4 +56,17 @@ class DockerService {
         return DockerClientBuilder.getInstance(config).build();
     }
 
+    String getApiVersion(String hostName, String uri, String certs) {
+        if (!hostToApiVersionName.containsKey(hostName)) {
+            DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
+                .withUri(uri)
+                .withDockerCertPath(certs)
+                .build()
+
+            Version ver = DockerClientBuilder.getInstance(config).build().versionCmd().exec();
+            hostToApiVersionName.put(hostName, ver.getApiVersion());
+        }
+
+        return hostToApiVersionName[hostName]
+    }
 }
