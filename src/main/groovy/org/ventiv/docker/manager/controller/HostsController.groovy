@@ -157,7 +157,10 @@ class HostsController {
 
     private ServiceInstance getServiceInstance(String hostName, String containerId) {
         try {
-            return new ServiceInstance().withDockerContainer(dockerService.getDockerClient(hostName).inspectContainerCmd(containerId).exec());
+            ServiceInstance answer = new ServiceInstance().withDockerContainer(dockerService.getDockerClient(hostName).inspectContainerCmd(containerId).exec());
+            answer.setServerName(hostName);
+
+            return answer;
         } catch (NotFoundException nfe) {
             return null;
         }
