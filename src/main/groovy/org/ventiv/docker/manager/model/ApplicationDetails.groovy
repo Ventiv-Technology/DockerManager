@@ -34,6 +34,8 @@ class ApplicationDetails {
     List<MissingService> missingServiceInstances;
     Map<String, String> buildServiceVersionsTemplate = [:];
     def buildStatus;
+    boolean buildPossible = false;
+    boolean newBuildPossible = false;
 
     @JsonIgnore
     ApplicationConfiguration applicationConfiguration;

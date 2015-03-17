@@ -153,7 +153,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
 
                 StatusService.subscribeForServiceInstance("ContainerStoppedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
                 StatusService.subscribeForServiceInstance("ContainerStartedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
-                StatusService.subscribeForServiceInstance("ContainerDestroyedEvent", $scope.environment.applications, function(application, serviceInstance, eventObject) {
+                StatusService.subscribeForServiceInstance("ContainerRemovedEvent", $scope.environment.applications, function(application, serviceInstance, eventObject) {
                     _.remove(application.serviceInstances, serviceInstance);
                     application.missingServiceInstances.push({
                         availableVersions: null,                                        // TODO: Where to get this information?

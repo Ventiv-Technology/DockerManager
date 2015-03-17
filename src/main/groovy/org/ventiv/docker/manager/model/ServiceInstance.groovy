@@ -59,6 +59,8 @@ class ServiceInstance {
     DockerTag containerImage;
     Date containerCreatedDate;
     Collection<String> availableVersions;
+    boolean buildPossible = false;
+    boolean newBuildPossible = false;
 
     List<PortDefinition> portDefinitions;
 

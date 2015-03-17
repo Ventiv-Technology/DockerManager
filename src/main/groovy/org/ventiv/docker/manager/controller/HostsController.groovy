@@ -150,7 +150,7 @@ class HostsController {
         // Need to get the service instance BEFORE we destroy it - after it's stopped....so we event with the last known state
         ServiceInstance serviceInstance = getServiceInstance(hostName, containerId);
 
-        dockerService.getDockerClient(hostName).removeContainerCmd(containerId).exec();
+        dockerService.getDockerClient(hostName).removeContainerCmd(containerId).withForce().exec();
 
         eventPublisher.publishEvent(new ContainerRemovedEvent(serviceInstance))
     }

@@ -108,7 +108,23 @@ class ServiceConfiguration {
         }
 
         Integer toTake = Math.min(maxPossibleVersions, answer.size()) - 1;
-        return answer ? answer.sort().reverse()[0..toTake] : [ 'latest' ];
+        return answer ? answer.sort(this.&stringToNumber).reverse()[0..toTake] : [ 'latest' ];
+    }
+
+    public boolean isBuildPossible() {
+        return getBuild()?.getStages()
+    }
+
+    public boolean isNewBuildPossible() {
+        return isBuildPossible() && !getBuild().getVersionSelection();
+    }
+
+    private Long stringToNumber(String versionNumber) {
+        String strippedAlphas = versionNumber.replaceAll('[^\\d]', '');
+        if (strippedAlphas)
+            return Long.parseLong(strippedAlphas);
+        else
+            return Long.MAX_VALUE;
     }
 
 }

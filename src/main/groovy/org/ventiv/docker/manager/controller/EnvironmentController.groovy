@@ -29,14 +29,15 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
-import org.ventiv.docker.manager.event.ContainerDestroyedEvent
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
@@ -192,6 +193,8 @@ class EnvironmentController {
                         serverName: serverConf.getHostname(),
                         instanceNumber: instanceNumber,
                         status: ServiceInstance.Status.Available,
+                        buildPossible: serviceConfiguration.isBuildPossible(),
+                        newBuildPossible: serviceConfiguration.isNewBuildPossible(),
                         portDefinitions: serviceConf.portMappings.collect { portMapping ->
                             return new PortDefinition([
                                     portType: portMapping.type,
@@ -261,6 +264,7 @@ class EnvironmentController {
         return application;
     }
 
+    @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/buildApplication", method = RequestMethod.POST)
     public void buildApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
         String applicationKey = "$tierName.$environmentName.$applicationId";
@@ -328,6 +332,14 @@ class EnvironmentController {
                 applicationDetails.getBuildServiceVersionsTemplate().put(serviceName, availableServiceVersions[serviceName].first());
             else
                 applicationDetails.getBuildServiceVersionsTemplate().put(serviceName, null);
+        }
+
+        // Determine if builds are possible
+        applicationDetails.buildPossible = applicationDetails.getBuildServiceVersionsTemplate().findAll { serviceName, availableVersions -> return availableVersions == null }.every { serviceName, availableVersions ->
+            dockerServiceConfiguration.getServiceConfiguration(serviceName).isBuildPossible()
+        }
+        applicationDetails.newBuildPossible = applicationDetails.getBuildServiceVersionsTemplate().findAll { serviceName, availableVersions -> return availableVersions == null }.every { serviceName, availableVersions ->
+            dockerServiceConfiguration.getServiceConfiguration(serviceName).isNewBuildPossible()
         }
 
         // Filter out any services that only have 1 available version, since we have no control over it anyway
@@ -451,11 +463,7 @@ class EnvironmentController {
     }
 
     private void destroyDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance) {
-        log.info("Destroying docker container: '${instance.toString()}")
-        dockerService.getDockerClient(instance.getServerName()).removeContainerCmd(instance.toString()).withForce().exec();
-
-        // Let everyone know we've destroyed a container
-        eventPublisher.publishEvent(new ContainerDestroyedEvent(instance))
+        hostsController.removeContainer(instance.getServerName(), instance.getContainerId());
 
         // Remove this ServiceInstance from the Application
         applicationDetails.getServiceInstances().remove(instance);
