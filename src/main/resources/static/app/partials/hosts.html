@@ -20,7 +20,7 @@
     <div class="row">
         <div class="col-md-4 host" data-ng-repeat="host in hosts">
             <h2>{{host.description}}</h2>
-            <div class="service-instance" data-ng-click="serviceInstanceDetails(serviceInstance)" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}" data-ng-repeat="serviceInstance in host.serviceInterfaces">
+            <div class="service-instance" data-ng-click="serviceInstanceDetails(serviceInstance)" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}" data-ng-repeat="serviceInstance in host.serviceInstances">
                 <div class="row service-info">
                     <div class="col-md-7 service-description">{{serviceInstance.serviceDescription}}</div>
                     <div class="col-md-5 service-version">{{serviceInstance.containerImage.tag}}</div>

@@ -70,7 +70,11 @@ class HostsController {
                     description: serverConfiguration.getDescription(),
                     hostname: serverConfiguration.getHostname(),
                     status: status,
-                    serviceInterfaces: hostContainers?.collect { new ServiceInstance().withDockerContainer(it) }
+                    serviceInstances: hostContainers?.collect {
+                        ServiceInstance serviceInstance = new ServiceInstance().withDockerContainer(it)
+                        serviceInstance.setServerName(serverConfiguration.getHostname())
+                        return serviceInstance;
+                    }
             ]
         }
     }
