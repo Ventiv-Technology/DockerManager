@@ -26,6 +26,8 @@ import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.utils.DockerUtils
 
+import javax.annotation.Nullable
+
 /**
  * An instantiated instance of a service, that has been assigned to a host / list of ports.  In order to keep track
  * and not have to persist this in a database, we will use the Docker Name in a special format.  This format is as follows:
@@ -61,6 +63,9 @@ class ServiceInstance {
     Collection<String> availableVersions;
     boolean buildPossible = false;
     boolean newBuildPossible = false;
+
+    @Nullable   // Is null if information is received from 'docker ps' (list containers)
+    String containerImageId;
 
     List<PortDefinition> portDefinitions;
 
@@ -115,6 +120,7 @@ class ServiceInstance {
         this.containerId = inspectContainerResponse.getId();
         this.containerImage = new DockerTag(inspectContainerResponse.getConfig().getImage());
         this.containerCreatedDate = DockerUtils.convertDockerDate(inspectContainerResponse.getCreated())
+        this.containerImageId = inspectContainerResponse.getImageId();
 
         // Get the service configuration
         ServiceConfiguration serviceConfig = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)

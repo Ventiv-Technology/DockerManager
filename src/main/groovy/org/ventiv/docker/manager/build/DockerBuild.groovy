@@ -15,10 +15,17 @@
  */
 package org.ventiv.docker.manager.build
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.ObjectReader
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.BuildImageCmd
 import com.github.dockerjava.api.command.PushImageCmd
+import com.github.dockerjava.api.model.EventStreamItem
+import com.github.dockerjava.api.model.PushEventStreamItem
+import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.apache.commons.io.IOUtils
+import org.apache.commons.io.LineIterator
 import org.jdeferred.Deferred
 import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
@@ -31,6 +38,7 @@ import javax.annotation.Resource
 /**
  * Created by jcrygier on 3/18/15.
  */
+@CompileStatic
 @Slf4j
 @Component("DockerBuild")
 class DockerBuild implements AsyncBuildStage {
@@ -56,17 +64,22 @@ class DockerBuild implements AsyncBuildStage {
 
         Thread.start {
             try {
+                deferred.notify("Building docker image from directory: ${buildDirectory.getAbsolutePath()}".toString())
                 log.debug("DockerBuild building from ${buildDirectory.getAbsolutePath()}");
 
                 // Build the Image
                 BuildImageCmd.Response buildResponse = docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).exec();
-                if (log.isDebugEnabled())
-                    buildResponse.getItems().each { log.debug("Build Response: ${it.getStream().trim()}") }
+                deserializeStream(buildResponse, EventStreamItem) { EventStreamItem event ->
+                    deferred.notify(event.getStream().trim());
+                }
+
+                deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
 
                 // Push the Image
                 PushImageCmd.Response pushResponse = docker.pushImageCmd(buildContext.getOutputDockerImage().getName()).withTag(buildContext.getOutputDockerImage().getTag()).exec()
-                if (log.isDebugEnabled())
-                    pushResponse.getItems().each { log.debug("Push Response: ${it.getStatus().trim()}") }
+                deserializeStream(pushResponse, PushEventStreamItem) { PushEventStreamItem event ->
+                    deferred.notify((event.getProgress() ? event.getProgress() + ": " : "") + event.getStatus())
+                }
 
                 buildContext.setBuildingVersion(buildContext.getRequestedBuildVersion());
                 deferred.resolve(buildContext);
@@ -78,4 +91,22 @@ class DockerBuild implements AsyncBuildStage {
         return deferred.promise();
     }
 
+    public <T> void deserializeStream(InputStream inputStream, Class<T> serializedType, Closure<?> callback) {
+        try {
+            LineIterator itr = IOUtils.lineIterator(inputStream, "UTF-8");
+            while (itr.hasNext()) {
+                String line = itr.next();
+
+                ObjectMapper mapper = new ObjectMapper();
+                // we'll be reading instances of MyBean
+                ObjectReader reader = mapper.reader(serializedType);
+                // and then do other configuration, if any, and read:
+                T item = reader.readValue(line);
+
+                callback(item);
+            }
+        } finally {
+            IOUtils.closeQuietly(inputStream);
+        }
+    }
 }

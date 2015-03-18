@@ -31,6 +31,7 @@ import org.ventiv.docker.manager.event.DeploymentFinishedEvent
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.exception.ApplicationException
 import org.ventiv.docker.manager.model.ApplicationDetails
+import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
@@ -48,6 +49,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
     @Resource EnvironmentController environmentController;
     @Resource HostsController hostsController;
     @Resource ApplicationEventPublisher eventPublisher;
+    @Resource DockerRegistryApiService registryApiService;
 
     private Map<String, Promise<ApplicationDetails, ApplicationException, String>> runningDeployments = [:]
 
@@ -88,11 +90,15 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                 // Verify all running serviceInstances to ensure they're the correct version
                 new ArrayList<ServiceInstance>(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
                     if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
+                        DockerTag tag = anInstance.getContainerImage();
                         String expectedVersion = serviceVersions[anInstance.getName()];
-                        String runningVersion = anInstance.getContainerImage().getTag();
+
+                        // Get the image id's for both expected as well as what's running, since images can be tagged with multiple versions (e.g. mysql:5 = mysql:5.2)
+                        String expectedImageId = registryApiService.getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[expectedVersion];
+                        String runningImageId = hostsController.getServiceInstance(anInstance.getServerName(), anInstance.getContainerId()).getContainerImageId()
 
                         // We have a version mismatch...destroy the container and rebuild it
-                        if (expectedVersion != runningVersion) {
+                        if (expectedImageId != runningImageId) {
                             // First, let's destroy the container
                             hostsController.removeContainer(anInstance.getServerName(), anInstance.getContainerId());
                             applicationDetails.getServiceInstances().remove(anInstance);

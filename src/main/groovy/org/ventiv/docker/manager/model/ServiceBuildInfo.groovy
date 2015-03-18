@@ -41,6 +41,9 @@ class ServiceBuildInfo {
     public void setPromise(Promise<BuildContext, Exception, String> promise) {
         this.promise = promise;
 
+        allStatus << "Build started"
+        getBuildApplicationInfo().publishBuildEvent();
+
         // Listen to progress, and keep it in this bean
         promise.progress({ String progress ->
             log.debug("Build Progress for $serviceName: $progress");
