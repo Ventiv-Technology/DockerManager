@@ -17,7 +17,6 @@ package org.ventiv.docker.manager.model
 
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.build.BuildContext
-import org.ventiv.docker.manager.controller.EnvironmentController
 import org.ventiv.docker.manager.event.BuildStatusEvent
 
 /**
@@ -28,6 +27,7 @@ class BuildApplicationInfo {
     ApplicationDetails applicationDetails;
     ApplicationConfiguration applicationConfiguration;
     List<ServiceBuildInfo> serviceBuildInfoList;
+    Closure<ApplicationDetails> successfulBuildCallback;
 
     public BuildApplicationInfo(ApplicationDetails applicationDetails) {
         this.applicationDetails = applicationDetails;
@@ -61,14 +61,18 @@ class BuildApplicationInfo {
         ])
     }
 
+    public void onSuccessfulBuild(Closure<ApplicationDetails> callback) {
+        this.successfulBuildCallback = callback;
+        if (!isBuilding())
+            successfulBuildCallback(applicationDetails);
+    }
+
     public void serviceBuildSuccessful(ServiceBuildInfo serviceBuildInfo, BuildContext buildContext) {
         // Update the template version for when we're done and need to build a deployRequest
         applicationDetails.getBuildServiceVersionsTemplate().put(serviceBuildInfo.getServiceName(), buildContext.getBuildingVersion());
 
-        if (!isBuilding()) {
-            // We're all done with our overall build, time to deploy this bad boy!
-            DeployApplicationRequest deployRequest = new DeployApplicationRequest(name: applicationConfiguration.getId(), serviceVersions: applicationDetails.getBuildServiceVersionsTemplate());
-            DockerManagerApplication.getApplicationContext().getBean(EnvironmentController).deployApplication(applicationDetails.getTierName(), applicationDetails.getEnvironmentName(), deployRequest);
+        if (!isBuilding() && successfulBuildCallback) {
+            successfulBuildCallback(applicationDetails);
         }
     }
 

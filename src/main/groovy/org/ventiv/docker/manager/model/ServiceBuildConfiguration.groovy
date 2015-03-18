@@ -15,17 +15,23 @@
  */
 package org.ventiv.docker.manager.model
 
+import groovy.util.logging.Slf4j
 import org.jdeferred.FailCallback
 import org.jdeferred.ProgressCallback
 import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
 import org.springframework.security.core.context.SecurityContextHolder
+import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.build.BuildContext
+import org.ventiv.docker.manager.service.DockerRegistryApiService
 
 /**
  * Created by jcrygier on 3/4/15.
  */
+@Slf4j
 class ServiceBuildConfiguration {
+
+    public static final String BUILD_NEW_VERSION = "BuildNewVersion"
 
     String vcs;
     String url;
@@ -34,40 +40,55 @@ class ServiceBuildConfiguration {
     List<ServiceBuildStage> stages;
     VersionSelectionConfiguration versionSelection;
 
-    public Promise<BuildContext, Exception, String> execute() {
+    public Promise<BuildContext, Exception, String> execute(ServiceConfiguration serviceConfiguration, String requestedBuildVersion) {
         DeferredObject<BuildContext, Exception, String> deferred = new DeferredObject<>();
         BuildContext buildContext = new BuildContext([
-                userAuthentication: SecurityContextHolder.getContext().getAuthentication()
+                userAuthentication: SecurityContextHolder.getContext().getAuthentication(),
+                requestedBuildVersion: requestedBuildVersion
         ])
 
-        Thread.start {
-            getStages().eachWithIndex { ServiceBuildStage buildStage, Integer idx ->
-                if (deferred.isPending()) {
-                    deferred.notify("Currently building ${idx + 1} of ${getStages().size()}")
-                    try {
-                        Promise buildPromise = buildStage.execute(buildContext);
+        // First, we need to determine if this build exists in the docker registry, if it does, we're not going to bother building
+        String registryImageId = null;
+        if (requestedBuildVersion != BUILD_NEW_VERSION) {
+            DockerTag tag = new DockerTag(serviceConfiguration.getImage());
+            registryImageId = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[requestedBuildVersion];
+        }
 
-                        buildPromise.progress({ String progress ->
-                            deferred.notify("Progress for ${idx + 1} of ${getStages().size()}: ${progress}");
-                        } as ProgressCallback<String>)
+        if (!registryImageId) {
+            Thread.start {
+                getStages().eachWithIndex { ServiceBuildStage buildStage, Integer idx ->
+                    if (deferred.isPending()) {
+                        deferred.notify("Currently building ${idx + 1} of ${getStages().size()}")
+                        try {
+                            Promise buildPromise = buildStage.execute(buildContext);
 
-                        buildPromise.fail({ Exception e ->
-                            deferred.reject(e);
-                        } as FailCallback<Exception>)
+                            buildPromise.progress({ String progress ->
+                                deferred.notify("Progress for ${idx + 1} of ${getStages().size()}: ${progress}");
+                            } as ProgressCallback<String>)
 
-                        // Wait till this stage is done, then move on
-                        buildPromise.waitSafely();
+                            buildPromise.fail({ Exception e ->
+                                deferred.reject(e);
+                            } as FailCallback<Exception>)
 
-                        deferred.notify("Finished building ${idx + 1} of ${getStages().size()}")
-                    } catch (Exception e) {
-                        if (deferred.isPending())
-                            deferred.reject(e);
+                            // Wait till this stage is done, then move on
+                            buildPromise.waitSafely();
+
+                            deferred.notify("Finished building ${idx + 1} of ${getStages().size()}")
+                        } catch (Exception e) {
+                            if (deferred.isPending())
+                                deferred.reject(e);
+                        }
                     }
                 }
-            }
 
-            if (deferred.isPending())
-                deferred.resolve(buildContext);
+                if (deferred.isPending())
+                    deferred.resolve(buildContext);
+            }
+        } else {
+            // We found an image id in the registry, let's use that one.
+            log.debug("Build not needed for ${serviceConfiguration.getName()}.  Image found in registry: ${registryImageId}");
+            buildContext.setBuildingVersion(requestedBuildVersion);
+            deferred.resolve(buildContext);
         }
 
         return deferred.promise();

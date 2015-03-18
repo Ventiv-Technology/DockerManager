@@ -50,21 +50,25 @@ class ServiceBuildConfigurationTest extends Specification {
     def "can perform a jenkins build"() {
         setup:
         def configYaml = """
-            stages:
-                - type: JenkinsBuild
-                  settings:
-                    server: https://fake.jenkins.com/jenkins/
-                    jobName: JohnCTest
-                    authentication: ProvidedUserPassword
-                    user: jcrygier
-                    password: NotMyRealPassword
+            name: mysql
+            description: MySql Sample Service for Testing
+            image: mysql
+            build:
+                stages:
+                    - type: JenkinsBuild
+                      settings:
+                        server: https://fake.jenkins.com/jenkins/
+                        jobName: JohnCTest
+                        authentication: ProvidedUserPassword
+                        user: jcrygier
+                        password: NotMyRealPassword
         """
-        ServiceBuildConfiguration config = new Yaml().loadAs(configYaml, ServiceBuildConfiguration);
+        ServiceConfiguration config = new Yaml().loadAs(configYaml, ServiceConfiguration);
         mockedJenkinsApi.startNewBuild("JohnCTest") >> new BuildStartedResponse([success: true, statusUrl: "https://fake.jenkins.com/jenkins/queue/item/536/", queueId: 536])
         mockedJenkinsApi.getBuildQueueStatus(536) >> new BuildQueueStatus([task: new BuildQueueStatus.TaskInformation([name: "JohnCTest"]), executable: new BuildQueueStatus.ExecutableInformation([number: 56])]);
 
         when:
-        Promise<Map<String, Object>, Exception, String> buildContext = config.execute()
+        Promise<Map<String, Object>, Exception, String> buildContext = config.getBuild().execute(config, ServiceBuildConfiguration.BUILD_NEW_VERSION)
 
         then:
         buildContext

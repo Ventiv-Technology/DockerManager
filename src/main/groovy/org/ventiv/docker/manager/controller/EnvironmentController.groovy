@@ -134,7 +134,10 @@ class EnvironmentController {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
         ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == deployRequest.getName() }
 
-        eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, deployRequest.getServiceVersions()))
+        // First, Build the application
+        buildApplication(applicationDetails, deployRequest.getServiceVersions()).onSuccessfulBuild { ApplicationDetails builtApplication ->
+            eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, applicationDetails.getBuildServiceVersionsTemplate()))
+        }
     }
 
     @CompileStatic
@@ -233,12 +236,9 @@ class EnvironmentController {
         return application;
     }
 
-    @ResponseStatus(HttpStatus.ACCEPTED)
-    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/buildApplication", method = RequestMethod.POST)
-    public void buildApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
-        String applicationKey = "$tierName.$environmentName.$applicationId";
+    public BuildApplicationInfo buildApplication(ApplicationDetails applicationDetails, Map<String, String> versionToBuild) {
+        String applicationKey = "${applicationDetails.tierName}.${applicationDetails.environmentName}.${applicationDetails.id}";
         if (!buildingApplications.containsKey(applicationKey) || !buildingApplications[applicationKey].isBuilding()) {
-            ApplicationDetails applicationDetails = getEnvironmentDetails(tierName, environmentName).find { it.getId() == applicationId}
             BuildApplicationInfo buildApplicationInfo = new BuildApplicationInfo(applicationDetails);
             buildingApplications[applicationKey] = buildApplicationInfo;
 
@@ -248,10 +248,12 @@ class EnvironmentController {
                 // Let's make sure that this service can be built - TODO: Ensure that this service isn't being built from another application
                 if (serviceConfiguration.getBuild()) {
                     log.debug("Scheduling build for service: ${serviceConfiguration.getName()}");
-                    serviceBuildInfo.setPromise(serviceConfiguration.getBuild().execute());
+                    serviceBuildInfo.setPromise(serviceConfiguration.getBuild().execute(serviceConfiguration, versionToBuild[serviceConfiguration.getName()]));
                 }
             }
         }
+
+        return buildingApplications[applicationKey];
     }
 
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {

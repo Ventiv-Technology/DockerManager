@@ -188,7 +188,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             $scope.deployApplication = function(applicationDetails) {
                 var buildRequest = {
                     name: applicationDetails.id,
-                    serviceVersions: applicationDetails.buildServiceVersionsTemplate
+                    serviceVersions: _.clone(applicationDetails.buildServiceVersionsTemplate)
                 };
 
                 _.forIn(buildRequest.serviceVersions, function(value, key) {
@@ -215,14 +215,6 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         throw "Problems " + status + "ing Application...";
                     }
                 );
-            };
-
-            $scope.buildApplication = function(applicationDetails) {
-                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all("buildApplication").post().then(
-                    function success(response) {
-                        // There actually is no response, you have to GET the status
-                    }
-                )
             };
 
             $scope.getRunning = function(application) {

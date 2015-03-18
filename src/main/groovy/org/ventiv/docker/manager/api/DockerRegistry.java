@@ -48,4 +48,6 @@ public interface DockerRegistry {
     @RequestLine("GET /v1/images/{imageId}/json")
     public ImageLayerInformation getImageLayer(@Param("imageId") String imageId);
 
+
+
 }

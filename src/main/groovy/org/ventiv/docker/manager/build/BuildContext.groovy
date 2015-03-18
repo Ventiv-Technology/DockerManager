@@ -24,6 +24,7 @@ class BuildContext {
 
     Authentication userAuthentication;
     String buildingVersion;
+    String requestedBuildVersion;
     Map<String, Object> extraParameters = [:]
 
 }
