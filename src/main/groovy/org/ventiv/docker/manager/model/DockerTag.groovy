@@ -66,4 +66,23 @@ class DockerTag {
 
         return sb.toString();
     }
+
+    /**
+     * Gets the docker name, minus the tag.
+     *
+     * @return
+     */
+    public String getName() {
+        StringBuilder sb = new StringBuilder()
+
+        if (registry)
+            sb.append(registry).append("/")
+
+        if (namespace != "library")
+            sb.append(namespace).append("/")
+
+        sb.append(repository)
+
+        return sb.toString();
+    }
 }

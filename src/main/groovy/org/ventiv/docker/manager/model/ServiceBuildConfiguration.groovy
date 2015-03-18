@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.model
 
+import feign.FeignException
 import groovy.util.logging.Slf4j
 import org.jdeferred.FailCallback
 import org.jdeferred.ProgressCallback
@@ -33,25 +34,28 @@ class ServiceBuildConfiguration {
 
     public static final String BUILD_NEW_VERSION = "BuildNewVersion"
 
-    String vcs;
-    String url;
-    String dockerFile;
-
     List<ServiceBuildStage> stages;
     VersionSelectionConfiguration versionSelection;
 
     public Promise<BuildContext, Exception, String> execute(ServiceConfiguration serviceConfiguration, String requestedBuildVersion) {
         DeferredObject<BuildContext, Exception, String> deferred = new DeferredObject<>();
+
+        // The tag of the desired docker image after the build is done
+        DockerTag tag = new DockerTag(serviceConfiguration.getImage());
+        tag.setTag(requestedBuildVersion);
+
         BuildContext buildContext = new BuildContext([
                 userAuthentication: SecurityContextHolder.getContext().getAuthentication(),
-                requestedBuildVersion: requestedBuildVersion
+                requestedBuildVersion: requestedBuildVersion,
+                outputDockerImage: tag
         ])
 
         // First, we need to determine if this build exists in the docker registry, if it does, we're not going to bother building
         String registryImageId = null;
         if (requestedBuildVersion != BUILD_NEW_VERSION) {
-            DockerTag tag = new DockerTag(serviceConfiguration.getImage());
-            registryImageId = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[requestedBuildVersion];
+            try {
+                registryImageId = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[requestedBuildVersion];
+            } catch (FeignException ignored) {}     // This can happen if the registry has never seen this image type before
         }
 
         if (!registryImageId) {
