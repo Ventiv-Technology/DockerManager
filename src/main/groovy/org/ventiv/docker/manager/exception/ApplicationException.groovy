@@ -13,19 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.event
+package org.ventiv.docker.manager.exception
 
-import groovy.util.logging.Slf4j
-import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.ApplicationDetails
 
 /**
- * Created by jcrygier on 3/16/15.
+ * Created by jcrygier on 3/18/15.
  */
-@Slf4j
-class ContainerStoppedEvent extends AbstractServiceInstanceEvent {
+class ApplicationException extends RuntimeException {
 
-    ContainerStoppedEvent(ServiceInstance serviceInstance) {
-        super(serviceInstance)
+    ApplicationDetails application
+
+    public ApplicationException(ApplicationDetails application) {
+        this.application = application;
     }
 
 }

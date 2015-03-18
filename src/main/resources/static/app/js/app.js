@@ -138,28 +138,48 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 $scope.environment.applications = $scope.asyncExecutionPromise.$object;
 
                 // Listen to Build Status events, and update our copy
-                StatusService.subscribeForApplication("BuildStatusEvent", $scope.environment.applications, function(application, eventSource) {
+                StatusService.subscribeForApplication("BuildStatusEvent", $scope.environment.applications, function(application, eventObject, eventSource) {
                     application.buildStatus = eventSource;
                     $scope.$digest();
                 });
 
                 // Listen to Start / Stop events
-                var serviceInstanceStatusChangeCallback = function(application, serviceInstance, eventSource) {
-                    serviceInstance.containerStatus = eventSource.serviceInstance.containerStatus;
-                    serviceInstance.status = eventSource.serviceInstance.status;
+                var serviceInstanceStatusChangeCallback = function(application, serviceInstance, eventObject, eventSource) {
+                    serviceInstance.containerStatus = eventObject.serviceInstance.containerStatus;
+                    serviceInstance.status = eventObject.serviceInstance.status;
 
                     $scope.$digest();
                 };
 
                 StatusService.subscribeForServiceInstance("ContainerStoppedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
                 StatusService.subscribeForServiceInstance("ContainerStartedEvent", $scope.environment.applications, serviceInstanceStatusChangeCallback);
-                StatusService.subscribeForServiceInstance("ContainerRemovedEvent", $scope.environment.applications, function(application, serviceInstance, eventObject) {
+                StatusService.subscribeForServiceInstance("ContainerRemovedEvent", $scope.environment.applications, function(application, serviceInstance, eventObject, eventSource) {
                     _.remove(application.serviceInstances, serviceInstance);
                     application.missingServiceInstances.push({
                         availableVersions: null,                                        // TODO: Where to get this information?
                         serviceDescription: serviceInstance.serviceDescription,
                         serviceName: serviceInstance.name
                     });
+
+                    $scope.$digest();
+                });
+                StatusService.subscribeForApplication("CreateContainerEvent", $scope.environment.applications, function(application, eventObject) {
+                    var eventServiceInstance = eventObject.serviceInstance;
+                    var idx = _.lastIndexOf(application.missingServiceInstances, function(missingService) { return missingService.serviceName == eventServiceInstance.name });
+                    var removedMissingService = application.missingServiceInstances.splice(idx, 1);
+
+                    application.serviceInstances.push(eventServiceInstance);
+                    $scope.$digest();
+                });
+
+                StatusService.subscribeForApplication("DeploymentStartedEvent", $scope.environment.applications, function(application) {
+                    application.deploymentInProgress = true;
+                    $scope.$digest();
+                });
+
+                StatusService.subscribeForApplication("DeploymentFinishedEvent", $scope.environment.applications, function(application) {
+                    application.deploymentInProgress = false;
+                    $scope.$digest();
                 });
 
                 return $scope.asyncExecutionPromise;
@@ -182,17 +202,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 });
 
                 console.log("Deploying build request:", buildRequest);
-                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).all($stateParams.environmentId).post(buildRequest).then(
-                    function success(response) {
-                        applicationDetails.serviceInstances = response.serviceInstances;
-                        applicationDetails.missingServiceInstances = response.missingServiceInstances;
-                        applicationDetails.version = response.version;
-                        applicationDetails.url = response.url;
-                    },
-                    function error(response) {
-                        alert("Error Building Environment: " + response.data.message);
-                    }
-                );
+                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).all($stateParams.environmentId).post(buildRequest);
             };
 
             $scope.statusChangeApplication = function(applicationDetails, status) {

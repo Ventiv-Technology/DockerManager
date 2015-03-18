@@ -56,8 +56,8 @@ import org.ventiv.docker.manager.model.ServiceBuildInfo
 import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
+import org.ventiv.docker.manager.service.ApplicationDeploymentService
 import org.ventiv.docker.manager.service.DockerService
-import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 import org.yaml.snakeyaml.Yaml
 
 import javax.annotation.Resource
@@ -76,6 +76,7 @@ class EnvironmentController {
     @Resource DockerServiceController dockerServiceController;
     @Resource HostsController hostsController;
     @Resource ApplicationEventPublisher eventPublisher;
+    @Resource ApplicationDeploymentService deploymentService;
 
     Map<String, BuildApplicationInfo> buildingApplications = [:]
 
@@ -116,7 +117,8 @@ class EnvironmentController {
                     url: url,
                     serviceInstances: applicationInstances,
                     missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) },
-                    buildStatus: buildingApplications.get("$tierName.$environmentName.${applicationConfiguration.getId()}")?.getBuildStatus()
+                    buildStatus: buildingApplications.get("$tierName.$environmentName.${applicationConfiguration.getId()}")?.getBuildStatus(),
+                    deploymentInProgress: deploymentService.isRunning(tierName, environmentName, applicationConfiguration.getId())
             ]).withApplicationConfiguration(applicationConfiguration))
         }
     }
@@ -126,46 +128,13 @@ class EnvironmentController {
      * 1.) Any missingServiceInstances (see getEnvironmentDetails) will be built out according to the requested versions
      * 2.) Each serviceInstance (see getEnvironmentDetails) is on the proper version.  If not, it will destroy the container and rebuild.
      */
+    @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(value = "/{tierName}/{environmentName}", method = RequestMethod.POST)
-    public ApplicationDetails deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody DeployApplicationRequest deployRequest) {
+    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody DeployApplicationRequest deployRequest) {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
         ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == deployRequest.getName() }
-        List<ServiceInstance> allServiceInstances = getServiceInstances(tierName, environmentName)
 
-        eventPublisher.publishEvent(new DeploymentStartedEvent(tierName, environmentName, applicationDetails.getId(), deployRequest.getServiceVersions()))
-
-        // First, let's find any missing services
-        applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
-            // Find an 'Available' Service Instance
-            ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), allServiceInstances, applicationDetails);
-            toUse.setApplicationId(deployRequest.getName());
-
-            // Create (and start) the container
-            createDockerContainer(applicationDetails, toUse, deployRequest.getServiceVersions().get(missingService.getServiceName()));
-
-            // Mark this service instance as 'Running' so it won't get used again
-            toUse.setStatus(ServiceInstance.Status.Running);
-        }
-
-        // Verify all running serviceInstances to ensure they're the correct version
-        new ArrayList(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
-            if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
-                String expectedVersion = deployRequest.getServiceVersions()[anInstance.getName()];
-                String runningVersion = anInstance.getContainerImage().getTag();
-
-                // We have a version mismatch...destroy the container and rebuild it
-                if (expectedVersion != runningVersion) {
-                    // First, let's destroy the container
-                    destroyDockerContainer(applicationDetails, anInstance);
-
-                    // Now, create a new one
-                    createDockerContainer(applicationDetails, anInstance, deployRequest.getServiceVersions().get(anInstance.getName()));
-                }
-            }
-        }
-
-        // Re-fetch the latest
-        return getEnvironmentDetails(tierName, environmentName).find { it.getId() == deployRequest.getName() };
+        eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, deployRequest.getServiceVersions()))
     }
 
     @CompileStatic
@@ -374,7 +343,7 @@ class EnvironmentController {
         return applicationDetails
     }
 
-    private String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {
+    public String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {
         ServerConfiguration serverConfiguration = getTiers()[applicationDetails.getTierName()].find { it.getId() == applicationDetails.getEnvironmentName() }.getServers().find { it.getHostname() == instance.getServerName() }
         ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(instance.getName());
         ServiceInstanceConfiguration serviceInstanceConfiguration = applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() };
@@ -430,7 +399,6 @@ class EnvironmentController {
         }
 
         // Create the actual container
-        eventPublisher.publishEvent(new CreateContainerEvent(instance, env));
         CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
@@ -438,6 +406,7 @@ class EnvironmentController {
                 .withExposedPorts(serviceConfiguration.getContainerPorts().collect { new ExposedPort(it.getPort()) } as ExposedPort[])
                 .withHostConfig(hostConfig)
                 .exec();
+        eventPublisher.publishEvent(new CreateContainerEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id), env));
 
         // Now start the container
         log.info("Starting container '${resp.id}' with " +
@@ -453,7 +422,7 @@ class EnvironmentController {
             startCmd.withExtraHosts(hostConfig.getExtraHosts());
 
         startCmd.exec();
-        eventPublisher.publishEvent(new ContainerStartedEvent(instance))
+        eventPublisher.publishEvent(new ContainerStartedEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id)));
 
         // Create a ServiceInstance out of this Container
         Container container = docker.listContainersCmd().withShowAll(true).exec().find { it.getId() == resp.id }
@@ -461,13 +430,5 @@ class EnvironmentController {
 
         return resp.id;
     }
-
-    private void destroyDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance) {
-        hostsController.removeContainer(instance.getServerName(), instance.getContainerId());
-
-        // Remove this ServiceInstance from the Application
-        applicationDetails.getServiceInstances().remove(instance);
-    }
-
 
 }

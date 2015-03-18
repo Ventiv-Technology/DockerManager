@@ -39,7 +39,7 @@ class ApplicationEventMessagingService implements ApplicationListener<Applicatio
         try {
             messagingTemplate.convertAndSend("/topic/event/${event.getClass().getSimpleName()}".toString(), [
                     type     : event.getClass().getName(),
-                    source   : event.getSource(),
+                    event    : event,
                     timestamp: event.getTimestamp()
             ])
         } catch (MessageConversionException ignored) {}

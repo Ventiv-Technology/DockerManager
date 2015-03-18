@@ -36,6 +36,7 @@ class ApplicationDetails {
     def buildStatus;
     boolean buildPossible = false;
     boolean newBuildPossible = false;
+    boolean deploymentInProgress = false;
 
     @JsonIgnore
     ApplicationConfiguration applicationConfiguration;

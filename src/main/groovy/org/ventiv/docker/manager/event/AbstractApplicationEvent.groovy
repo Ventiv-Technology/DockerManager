@@ -16,20 +16,26 @@
 package org.ventiv.docker.manager.event
 
 import org.springframework.context.ApplicationEvent
-import org.ventiv.docker.manager.model.ServiceInstance
 
 /**
  * Created by jcrygier on 3/16/15.
  */
 abstract class AbstractApplicationEvent extends ApplicationEvent {
 
-    AbstractApplicationEvent(ServiceInstance serviceInstance) {
+    String tierName;
+    String environmentName;
+    String applicationId;
+
+    AbstractApplicationEvent(String tierName, String environmentName, String applicationId) {
         super([
-                tierName: serviceInstance.getTierName(),
-                environmentName: serviceInstance.getEnvironmentName(),
-                applicationId: serviceInstance.getApplicationId(),
-                serviceInstance: serviceInstance
+                tierName: tierName,
+                environmentName: environmentName,
+                applicationId: applicationId
         ])
+
+        this.tierName = tierName;
+        this.environmentName = environmentName;
+        this.applicationId = applicationId;
     }
 
 }

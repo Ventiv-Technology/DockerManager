@@ -39,7 +39,7 @@ define(['jquery', 'angular', 'stomp-websocket', 'sockjs-client'], function ($, a
                         var message = JSON.parse(data.body);
                         message.timestamp = new Date(message.timestamp);
 
-                        callback(message.source, message, data);
+                        callback(message.event, message.event.source, message, data);
                     };
 
                     if (initialized) {
@@ -53,19 +53,19 @@ define(['jquery', 'angular', 'stomp-websocket', 'sockjs-client'], function ($, a
                  *
                  * @param eventType String name of the event type to listen to
                  * @param applications List of all applications, generally pulled from $scope
-                 * @param callback Function to call with (application, eventObject) on event and found application
+                 * @param callback Function to call with (application, eventObject, eventSource) on event and found application
                  */
                 subscribeForApplication: function(eventType, applications, callback) {
-                    this.subscribe(eventType, function(eventObject) {
+                    this.subscribe(eventType, function(eventObject, eventSource, message, data) {
                         var foundApplication = _.find(applications, function(application) {
-                            return  application.tierName == eventObject.tierName &&
-                                    application.environmentName == eventObject.environmentName &&
-                                    application.id == eventObject.applicationId
+                            return  application.tierName == eventSource.tierName &&
+                                    application.environmentName == eventSource.environmentName &&
+                                    application.id == eventSource.applicationId
 
                         });
 
                         if (foundApplication) {
-                            callback(foundApplication, eventObject);
+                            callback(foundApplication, eventObject, eventSource);
                         }
                     });
                 },
@@ -76,17 +76,17 @@ define(['jquery', 'angular', 'stomp-websocket', 'sockjs-client'], function ($, a
                  *
                  * @param eventType String name of the event type to listen to
                  * @param applications List of all applications, generally pulled from $scope
-                 * @param callback Function to call with (application, serviceInstance, eventObject) on event and found application
+                 * @param callback Function to call with (application, serviceInstance, eventObject, eventSource) on event and found application
                  */
                 subscribeForServiceInstance: function(eventType, applications, callback) {
-                    this.subscribeForApplication(eventType, applications, function(application, eventObject) {
+                    this.subscribeForApplication(eventType, applications, function(application, eventObject, eventSource) {
                         var serviceInstance = _.find(application.serviceInstances, function(serviceInstance) {
                             return serviceInstance.name == eventObject.serviceInstance.name &&
                                 serviceInstance.instanceNumber == eventObject.serviceInstance.instanceNumber;
                         });
 
                         if (serviceInstance) {
-                            callback(application, serviceInstance, eventObject);
+                            callback(application, serviceInstance, eventObject, eventSource);
                         }
                     });
                 }

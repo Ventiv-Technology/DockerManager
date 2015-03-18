@@ -22,10 +22,14 @@ import org.ventiv.docker.manager.model.ServiceInstance
  * Created by jcrygier on 3/16/15.
  */
 @Slf4j
-class CreateContainerEvent extends AbstractApplicationEvent {
+class CreateContainerEvent extends AbstractServiceInstanceEvent {
+
+    Map<String, String> environmentVariables;
 
     CreateContainerEvent(ServiceInstance serviceInstance, Map<String, String> environmentVariables) {
         super(serviceInstance)
+
+        this.environmentVariables = environmentVariables;
 
         log.info("Creating new Docker Container on Host: '${serviceInstance.getServerName()}' " +
                 "with image: '${serviceInstance.getContainerImage().toString()}', " +

@@ -42,6 +42,7 @@ define([], function() {
         START: "Start",
         RESTART: "Restart",
         BUILD: "Build",
-        BUILDING_IMAGE: "Building Image..."
+        BUILDING_IMAGE: "Building Image...",
+        DEPLOYING: "Deploying..."
     }
 });

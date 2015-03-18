@@ -1,0 +1,139 @@
+/*
+ * Copyright (c) 2014 - 2015 Ventiv Technology
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package org.ventiv.docker.manager.service
+
+import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
+import org.jdeferred.Deferred
+import org.jdeferred.DoneCallback
+import org.jdeferred.FailCallback
+import org.jdeferred.Promise
+import org.jdeferred.impl.DeferredObject
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.ApplicationListener
+import org.springframework.stereotype.Service
+import org.ventiv.docker.manager.controller.EnvironmentController
+import org.ventiv.docker.manager.controller.HostsController
+import org.ventiv.docker.manager.event.DeploymentFinishedEvent
+import org.ventiv.docker.manager.event.DeploymentStartedEvent
+import org.ventiv.docker.manager.exception.ApplicationException
+import org.ventiv.docker.manager.model.ApplicationDetails
+import org.ventiv.docker.manager.model.MissingService
+import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
+
+import javax.annotation.Resource
+
+/**
+ * Service to handle Application Deployments
+ */
+@Slf4j
+@CompileStatic
+@Service
+class ApplicationDeploymentService implements ApplicationListener<DeploymentStartedEvent> {
+
+    @Resource EnvironmentController environmentController;
+    @Resource HostsController hostsController;
+    @Resource ApplicationEventPublisher eventPublisher;
+
+    private Map<String, Promise<ApplicationDetails, ApplicationException, String>> runningDeployments = [:]
+
+    @Override
+    void onApplicationEvent(DeploymentStartedEvent event) {
+        String key = getKey(event.getTierName(), event.getEnvironmentName(), event.getApplicationId());
+        if (isRunning(event.getTierName(), event.getEnvironmentName(), event.getApplicationId())) {
+            event.setStatus(DeploymentStartedEvent.DeploymentStatus.AlreadyRunning);
+        } else {
+            runningDeployments[key] = startDeployment(event.getApplicationDetails(), event.getServiceVersions());
+            event.setStatus(DeploymentStartedEvent.DeploymentStatus.Started);
+
+            runningDeployments[key].done(this.&onDeploymentFinished as DoneCallback<ApplicationDetails>)
+            runningDeployments[key].fail(this.&onDeploymentRejected as FailCallback<ApplicationException>)
+        }
+    }
+
+    Promise<ApplicationDetails, ApplicationException, String> startDeployment(ApplicationDetails applicationDetails, Map<String, String> serviceVersions) {
+        Deferred<ApplicationDetails, ApplicationException, String> deferred = new DeferredObject<>();
+
+        Thread.start {
+            try {
+                List<ServiceInstance> allServiceInstances = environmentController.getServiceInstances(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
+
+                // First, let's find any missing services
+                applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
+                    // Find an 'Available' Service Instance
+                    ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), allServiceInstances, applicationDetails);
+                    toUse.setApplicationId(applicationDetails.getId());
+
+                    // Create (and start) the container
+                    environmentController.createDockerContainer(applicationDetails, toUse, serviceVersions.get(missingService.getServiceName()));
+
+                    // Mark this service instance as 'Running' so it won't get used again
+                    toUse.setStatus(ServiceInstance.Status.Running);
+                }
+
+                // Verify all running serviceInstances to ensure they're the correct version
+                new ArrayList<ServiceInstance>(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
+                    if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
+                        String expectedVersion = serviceVersions[anInstance.getName()];
+                        String runningVersion = anInstance.getContainerImage().getTag();
+
+                        // We have a version mismatch...destroy the container and rebuild it
+                        if (expectedVersion != runningVersion) {
+                            // First, let's destroy the container
+                            hostsController.removeContainer(anInstance.getServerName(), anInstance.getContainerId());
+                            applicationDetails.getServiceInstances().remove(anInstance);
+
+                            // Now, create a new one
+                            environmentController.createDockerContainer(applicationDetails, anInstance, serviceVersions.get(anInstance.getName()));
+                        }
+                    }
+                }
+
+                deferred.resolve(applicationDetails);
+            } catch (Exception e) {
+                ApplicationException wrapped = new ApplicationException(applicationDetails)
+                wrapped.initCause(e);
+
+                deferred.reject(wrapped);
+            }
+        }
+
+        return deferred.promise();
+    }
+
+    private void onDeploymentFinished(ApplicationDetails applicationDetails) {
+        eventPublisher.publishEvent(new DeploymentFinishedEvent(applicationDetails));
+    }
+
+    private void onDeploymentRejected(ApplicationException e) {
+        log.error("Deployment failed for application ${e.getApplication().getId()}: ", e);
+        eventPublisher.publishEvent(new DeploymentFinishedEvent(e.getApplication()));
+    }
+
+    boolean isRunning(String tierName, String environmentName, String applicationId) {
+        String key = getKey(tierName, environmentName, applicationId)
+        if (runningDeployments.containsKey(key))
+            return runningDeployments[key].isPending();
+        else
+            return false;
+    }
+
+    private static String getKey(String tierName, String environmentName, String applicationId) {
+        return "${tierName}.${environmentName}.${applicationId}"
+    }
+
+}

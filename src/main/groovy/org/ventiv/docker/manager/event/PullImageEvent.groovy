@@ -22,7 +22,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
  * Created by jcrygier on 3/16/15.
  */
 @Slf4j
-class PullImageEvent extends AbstractApplicationEvent {
+class PullImageEvent extends AbstractServiceInstanceEvent {
 
     PullImageEvent(ServiceInstance serviceInstance) {
         super(serviceInstance)

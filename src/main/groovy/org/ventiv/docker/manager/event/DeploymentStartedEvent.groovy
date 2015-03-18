@@ -15,24 +15,30 @@
  */
 package org.ventiv.docker.manager.event
 
-import org.springframework.context.ApplicationEvent
+import org.ventiv.docker.manager.model.ApplicationDetails
 
 /**
  * Created by jcrygier on 3/16/15.
  */
-class DeploymentStartedEvent extends ApplicationEvent {
+class DeploymentStartedEvent extends AbstractApplicationEvent {
+
+    ApplicationDetails applicationDetails;
+    Map<String, String> serviceVersions;
+    DeploymentStatus status = DeploymentStatus.None;
 
     /**
      * Create a new ApplicationEvent.
      * @param source the component that published the event (never {@code null})
      */
-    DeploymentStartedEvent(String tierName, String environmentName, String applicationId, Map<String, String> serviceVersions) {
-        super([
-                tierName: tierName,
-                environmentName: environmentName,
-                applicationId: applicationId,
-                serviceVersions: serviceVersions
-        ])
+    DeploymentStartedEvent(ApplicationDetails applicationDetails, Map<String, String> serviceVersions) {
+        super(applicationDetails.getTierName(), applicationDetails.getEnvironmentName(), applicationDetails.getId())
+
+        this.applicationDetails = applicationDetails;
+        this.serviceVersions = serviceVersions;
+    }
+
+    public static enum DeploymentStatus {
+        Started, AlreadyRunning, None
     }
 
 }

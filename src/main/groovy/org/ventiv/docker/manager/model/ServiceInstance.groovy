@@ -121,7 +121,7 @@ class ServiceInstance {
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
         // Determine the Port Definitions
-        this.portDefinitions = inspectContainerResponse.getHostConfig().getPortBindings().getBindings().collect { ExposedPort containerPort, Ports.Binding[] bindings ->
+        this.portDefinitions = inspectContainerResponse.getHostConfig()?.getPortBindings()?.getBindings()?.collect { ExposedPort containerPort, Ports.Binding[] bindings ->
             return new PortDefinition([
                     portType: serviceConfig?.containerPorts?.find { it.port == containerPort.getPort() }?.type,
                     hostPort: bindings[0].getHostPort(),

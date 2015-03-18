@@ -27,6 +27,7 @@
             <accordion-heading>
                 <span id="{{application.id}}-app">{{application.description}}</span>
                 <span data-ng-show="application.buildStatus.building"> - <a href="" translate="BUILDING_IMAGE">Building Image...</a></span>
+                <span data-ng-show="application.deploymentInProgress"> - <a href="" translate="DEPLOYING">Deploying...</a></span>
                 <span class="pull-right">(Running: {{getRunning(application).length}}, Stopped: {{getStopped(application).length}}, Missing: {{application.missingServiceInstances.length}})</span>
             </accordion-heading>
             <div id="{{application.id}}-url">
@@ -49,7 +50,7 @@
                             <option value="{{version}}" data-ng-repeat="version in application.availableVersions">{{version}}</option>
                         </select>
                     </div>
-                    <div class="col-md-1"><button class="btn btn-primary btn-block" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
+                    <div class="col-md-1"><button class="btn btn-primary btn-block" data-ng-show="!application.deploymentInProgress" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'stop')" translate="STOP">Stop</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'start')" translate="START">Start</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'restart')" translate="RESTART">Restart</button></div>

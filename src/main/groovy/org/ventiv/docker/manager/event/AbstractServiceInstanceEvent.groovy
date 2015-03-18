@@ -15,17 +15,22 @@
  */
 package org.ventiv.docker.manager.event
 
-import groovy.util.logging.Slf4j
 import org.ventiv.docker.manager.model.ServiceInstance
 
 /**
- * Created by jcrygier on 3/16/15.
+ * Created by jcrygier on 3/18/15.
  */
-@Slf4j
-class ContainerStoppedEvent extends AbstractServiceInstanceEvent {
+class AbstractServiceInstanceEvent extends AbstractApplicationEvent {
 
-    ContainerStoppedEvent(ServiceInstance serviceInstance) {
-        super(serviceInstance)
+    ServiceInstance serviceInstance;
+
+    /**
+     * Create a new ApplicationEvent.
+     * @param source the component that published the event (never {@code null})
+     */
+    AbstractServiceInstanceEvent(ServiceInstance serviceInstance) {
+        super(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId())
+        this.serviceInstance = serviceInstance;
     }
 
 }

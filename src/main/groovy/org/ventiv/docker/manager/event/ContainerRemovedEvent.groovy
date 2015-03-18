@@ -22,7 +22,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
  * Created by jcrygier on 3/16/15.
  */
 @Slf4j
-class ContainerRemovedEvent extends AbstractApplicationEvent {
+class ContainerRemovedEvent extends AbstractServiceInstanceEvent {
 
     ContainerRemovedEvent(ServiceInstance serviceInstance) {
         super(serviceInstance)

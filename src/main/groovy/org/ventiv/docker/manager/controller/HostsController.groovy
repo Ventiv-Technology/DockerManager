@@ -155,7 +155,7 @@ class HostsController {
         eventPublisher.publishEvent(new ContainerRemovedEvent(serviceInstance))
     }
 
-    private ServiceInstance getServiceInstance(String hostName, String containerId) {
+    public ServiceInstance getServiceInstance(String hostName, String containerId) {
         try {
             ServiceInstance answer = new ServiceInstance().withDockerContainer(dockerService.getDockerClient(hostName).inspectContainerCmd(containerId).exec());
             answer.setServerName(hostName);
