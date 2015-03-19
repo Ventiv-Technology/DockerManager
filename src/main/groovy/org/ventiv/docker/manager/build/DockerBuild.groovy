@@ -24,6 +24,7 @@ import com.github.dockerjava.api.model.EventStreamItem
 import com.github.dockerjava.api.model.PushEventStreamItem
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.apache.commons.io.FileUtils
 import org.apache.commons.io.IOUtils
 import org.apache.commons.io.LineIterator
 import org.jdeferred.Deferred
@@ -32,6 +33,7 @@ import org.jdeferred.impl.DeferredObject
 import org.springframework.stereotype.Component
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.service.DockerService
+import org.ventiv.docker.manager.service.SimpleTemplateService
 
 import javax.annotation.Resource
 
@@ -51,6 +53,7 @@ class DockerBuild implements AsyncBuildStage {
 
     @Resource DockerService dockerService;
     @Resource DockerManagerConfiguration props;
+    @Resource SimpleTemplateService templateService;
 
     @Override
     Promise<Object, Exception, String> doBuild(Map<String, String> buildSettings, BuildContext buildContext) {
@@ -60,7 +63,9 @@ class DockerBuild implements AsyncBuildStage {
         File buildDirectory = new File(buildSettings[CONFIG_BUILD_DIRECTORY]);
         DockerClient docker = dockerService.getDockerClient(buildHostName);
 
-        // TODO: Treat Dockerfile as a groovy template
+        // Treat the Dockerfile as a template, and replace variables
+        File dockerFile = new File(buildDirectory, "Dockerfile");
+        templateService.fillTemplate(dockerFile, [buildContext: buildContext, buildSettings: buildSettings], ".orig");
 
         Thread.start {
             try {
@@ -85,6 +90,11 @@ class DockerBuild implements AsyncBuildStage {
                 deferred.resolve(buildContext);
             } catch (Exception e) {
                 deferred.reject(e);
+            } finally {
+                File backupOriginalFile = new File(dockerFile.getAbsolutePath() + ".orig")
+                dockerFile.delete();
+                FileUtils.copyFile(backupOriginalFile, dockerFile);
+                backupOriginalFile.delete();
             }
         }
 

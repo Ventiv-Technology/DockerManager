@@ -27,6 +27,7 @@ class DockerManagerConfiguration {
     LdapConfiguration ldap;
     SecurityConfiguration auth;
     ConfigurationConfig config = new ConfigurationConfig();
+    TemplateConfig template = new TemplateConfig();
 
     @ConfigurationProperties
     public static class LdapConfiguration {
@@ -85,6 +86,15 @@ class DockerManagerConfiguration {
             String branch = "master";
             Long refreshPeriod = 0L;            // 0 means do not refresh
         }
+
+    }
+
+    @ConfigurationProperties
+    public static class TemplateConfig {
+
+        String startToken = "#{"
+        String endToken = "}";
+        boolean ignoreMissingProperties = true;
 
     }
 
