@@ -58,6 +58,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.ApplicationDeploymentService
 import org.ventiv.docker.manager.service.DockerService
+import org.ventiv.docker.manager.service.PluginService
 import org.yaml.snakeyaml.Yaml
 
 import javax.annotation.Resource
@@ -77,6 +78,7 @@ class EnvironmentController {
     @Resource HostsController hostsController;
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource ApplicationDeploymentService deploymentService;
+    @Resource PluginService pluginService;
 
     Map<String, BuildApplicationInfo> buildingApplications = [:]
 
@@ -373,6 +375,7 @@ class EnvironmentController {
         // Resolve them
         def resolutionVariables = [
                 application: applicationDetails,
+                instance: instance,
                 serviceInstances: applicationDetails.getServiceInstances().collectEntries { ServiceInstance serviceInstance ->
                     return [serviceInstance.getName(), [
                             server: serviceInstance.getServerName(),
@@ -399,6 +402,9 @@ class EnvironmentController {
         pullIn.eachLine {
             log.debug(it);
         }
+
+        // Plugin Hook!
+        pluginService.getCreateContainerPlugins()?.each { it.doWithServiceInstance(instance) }
 
         // Create the actual container
         CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())

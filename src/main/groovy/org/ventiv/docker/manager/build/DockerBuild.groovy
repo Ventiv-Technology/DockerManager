@@ -75,7 +75,8 @@ class DockerBuild implements AsyncBuildStage {
                 // Build the Image
                 BuildImageCmd.Response buildResponse = docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).exec();
                 deserializeStream(buildResponse, EventStreamItem) { EventStreamItem event ->
-                    deferred.notify(event.getStream().trim());
+                    if (event?.getStream()?.trim())
+                        deferred.notify(event?.getStream()?.trim());
                 }
 
                 deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
@@ -83,7 +84,8 @@ class DockerBuild implements AsyncBuildStage {
                 // Push the Image
                 PushImageCmd.Response pushResponse = docker.pushImageCmd(buildContext.getOutputDockerImage().getName()).withTag(buildContext.getOutputDockerImage().getTag()).exec()
                 deserializeStream(pushResponse, PushEventStreamItem) { PushEventStreamItem event ->
-                    deferred.notify((event.getProgress() ? event.getProgress() + ": " : "") + event.getStatus())
+                    if (event?.getStatus())
+                        deferred.notify((event?.getProgress() ? event?.getProgress() + ": " : "") + event?.getStatus())
                 }
 
                 buildContext.setBuildingVersion(buildContext.getRequestedBuildVersion());

@@ -11,3 +11,6 @@ spring.thymeleaf.mode: LEGACYHTML5
 
 # Set the session timeout to 1 day
 server.session-timeout: 86400
+
+plugins:
+  - org.ventiv.docker.manager.plugin.DynatracePlugin

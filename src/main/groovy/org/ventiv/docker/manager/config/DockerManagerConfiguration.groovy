@@ -28,6 +28,7 @@ class DockerManagerConfiguration {
     SecurityConfiguration auth;
     ConfigurationConfig config = new ConfigurationConfig();
     TemplateConfig template = new TemplateConfig();
+    List<Class> plugins;
 
     @ConfigurationProperties
     public static class LdapConfiguration {
