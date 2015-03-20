@@ -15,7 +15,6 @@
  */
 package org.ventiv.docker.manager.model
 
-import feign.FeignException
 import groovy.util.logging.Slf4j
 import org.jdeferred.FailCallback
 import org.jdeferred.ProgressCallback
@@ -55,7 +54,7 @@ class ServiceBuildConfiguration {
         if (requestedBuildVersion != BUILD_NEW_VERSION) {
             try {
                 registryImageId = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[requestedBuildVersion];
-            } catch (FeignException ignored) {}     // This can happen if the registry has never seen this image type before
+            } catch (Exception ignored) {}     // This can happen if the registry has never seen this image type before
         }
 
         if (!registryImageId) {

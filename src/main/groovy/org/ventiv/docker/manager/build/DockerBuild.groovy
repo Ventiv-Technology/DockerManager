@@ -51,6 +51,9 @@ class DockerBuild implements AsyncBuildStage {
     // Hostname that has a docker daemon running to perform this build.  If this setting is not present, it will grab from properties (config.buildHost)
     public static final String CONFIG_BUILD_HOSTNAME =                 'buildHostName'
 
+    // Should we skip pushing (i.e. just for testing locally)
+    public static final String CONFIG_SKIP_PUSH =                      'skipPush'
+
     @Resource DockerService dockerService;
     @Resource DockerManagerConfiguration props;
     @Resource SimpleTemplateService templateService;
@@ -62,6 +65,7 @@ class DockerBuild implements AsyncBuildStage {
         String buildHostName = buildSettings[CONFIG_BUILD_HOSTNAME] ?: props.getConfig().getBuildHost();
         File buildDirectory = new File(buildSettings[CONFIG_BUILD_DIRECTORY]);
         DockerClient docker = dockerService.getDockerClient(buildHostName);
+        boolean skipPush = buildSettings[CONFIG_SKIP_PUSH] ? Boolean.parseBoolean(buildSettings[CONFIG_SKIP_PUSH]) : false;
 
         // Treat the Dockerfile as a template, and replace variables
         File dockerFile = new File(buildDirectory, "Dockerfile");
@@ -79,13 +83,15 @@ class DockerBuild implements AsyncBuildStage {
                         deferred.notify(event?.getStream()?.trim());
                 }
 
-                deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
+                if (!skipPush) {
+                    deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
 
-                // Push the Image
-                PushImageCmd.Response pushResponse = docker.pushImageCmd(buildContext.getOutputDockerImage().getName()).withTag(buildContext.getOutputDockerImage().getTag()).exec()
-                deserializeStream(pushResponse, PushEventStreamItem) { PushEventStreamItem event ->
-                    if (event?.getStatus())
-                        deferred.notify((event?.getProgress() ? event?.getProgress() + ": " : "") + event?.getStatus())
+                    // Push the Image
+                    PushImageCmd.Response pushResponse = docker.pushImageCmd(buildContext.getOutputDockerImage().getName()).withTag(buildContext.getOutputDockerImage().getTag()).exec()
+                    deserializeStream(pushResponse, PushEventStreamItem) { PushEventStreamItem event ->
+                        if (event?.getStatus())
+                            deferred.notify((event?.getProgress() ? event?.getProgress() + ": " : "") + event?.getStatus())
+                    }
                 }
 
                 buildContext.setBuildingVersion(buildContext.getRequestedBuildVersion());

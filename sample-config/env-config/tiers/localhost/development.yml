@@ -1,0 +1,46 @@
+description: Devlopment
+servers:
+  - id: boot2docker
+    description: Boot2Docker Host
+    hostname: boot2docker
+    resolveHostname: true
+    eligibleServices:
+      - type: rabbit
+        portMappings:
+          - type: http
+            port: 15672
+          - type: amqp
+            port: 5672
+      - type: mysql
+        portMappings:
+          - type: mysql
+            port: 3306
+      - type: activiti
+        portMappings:
+          - type: http
+            port: 8080
+
+applications:
+  - id: activiti
+    description: Activiti
+    serviceInstanceUrl: activiti
+    serviceInstances:
+      - type: activiti
+        count: 1
+        environment:
+          DB_TYPE: mysql
+          DB_HOST: ${serviceInstances.mysql.server}
+          DB_PORT: ${serviceInstances.mysql.port.mysql}
+          DB_NAME: activiti
+          DB_USER: activiti
+          DB_PASS: act1vit1
+      - type: mysql
+        count: 1
+        environment:
+          MYSQL_ROOT_PASSWORD: supers3cr3tpassword
+          MYSQL_USER: activiti
+          MYSQL_PASSWORD: act1vit1
+          MYSQL_DATABASE: activiti
+        volumeMappings:
+          - type: data
+            path: /home/docker/activiti-mysql

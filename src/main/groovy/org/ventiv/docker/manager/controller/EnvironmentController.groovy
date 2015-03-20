@@ -85,7 +85,7 @@ class EnvironmentController {
     @RequestMapping
     public Map<String, List<EnvironmentConfiguration>> getTiers() {
         List<String> activeTiers = props.activeTiers;
-        getAllEnvironments().findAll { k, v -> activeTiers.contains(k) };
+        getAllEnvironments().findAll { k, v -> activeTiers == null || activeTiers.size() == 0 || activeTiers.contains(k) };
     }
 
     @RequestMapping("/{tierName}")

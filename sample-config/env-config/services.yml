@@ -1,0 +1,57 @@
+services:
+  - name: rabbit
+    description: RabbitMQ
+    image: rabbitmq:3.4.4-management
+    url: http://${server}:${port.http}
+    containerPorts:
+      - type: http
+        port: 15672
+      - type: amqp
+        port: 5672
+    environment:
+      RABBITMQ_NODENAME: rabbit1
+
+  - name: couch
+    description: Couch DB
+    image: tutum/couchdb:latest
+    url: http://${server}:${port.http}/_utils/
+    containerPorts:
+      - type: http
+        port: 5984
+    environment:
+      COUCHDB_PASS: admin
+
+  - name: mysql
+    description: MySQL Database
+    image: mysql:5
+    containerPorts:
+      - type: mysql
+        port: 3306
+    containerVolumes:
+      - type: data
+        path: /var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: mysecretpassword
+
+  - name: docker_manager
+    description: Docker Manager
+    image: ventivtech/docker_manager
+    url: http://${server}:${port.http}/
+    containerPorts:
+      - type: http
+        port: 8080
+
+  - name: activiti
+    description: Activiti
+    image: activiti
+    url: http://${server}:${port.http}/activiti-explorer
+    build:
+      stages:
+        - type: DockerBuild
+          settings:
+            buildHostName: boot2docker
+            buildDirectory: ./config/dockerfiles/activiti
+            skipPush: true
+    containerPorts:
+      - type: http
+        port: 8080
