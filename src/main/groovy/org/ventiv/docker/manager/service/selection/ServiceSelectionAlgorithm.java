@@ -30,9 +30,13 @@ public interface ServiceSelectionAlgorithm {
 
     public static class Util {
 
+        private static ServiceSelectionAlgorithm defaultImplementation = new DistributedServerServiceSelectionAlgorithm();
+
         public static ServiceInstance getAvailableServiceInstance(String serviceName, List<ServiceInstance> allServiceInstances, ApplicationDetails applicationDetails) {
-            ServiceSelectionAlgorithm instance = new NextAvailableServiceSelectionAlgorithm();
-            if (applicationDetails.getApplicationConfiguration().getServiceSelectionAlgorithm() != null) {
+            ServiceSelectionAlgorithm instance = defaultImplementation;
+
+            // Check if we have defined a custom selection algorithm, and it's different
+            if (applicationDetails.getApplicationConfiguration().getServiceSelectionAlgorithm() != null && applicationDetails.getApplicationConfiguration().getServiceSelectionAlgorithm() != defaultImplementation.getClass()) {
                 try {
                     instance = applicationDetails.getApplicationConfiguration().getServiceSelectionAlgorithm().newInstance();
                 } catch (Exception ex) {

@@ -104,7 +104,7 @@ class EnvironmentController {
 
             // Now make ServiceInstance objects for each one defined
             List<String> requiredServices = (List<String>) applicationConfiguration.getServiceInstances().collect { [it.getType()] * it.getCount() }.flatten()
-            List<String> missingServices = new ArrayList<String>(requiredServices)
+            List<String> missingServices = new ArrayList<String>(requiredServices).reverse()        // Reverse is so we will deploy in 'bottom-up' fashion
             applicationInstances.each { missingServices.remove(it.getName())  }  // Remove any that actually exist
 
             // Derive the URL
@@ -138,6 +138,7 @@ class EnvironmentController {
 
         // First, Build the application
         buildApplication(applicationDetails, deployRequest.getServiceVersions()).onSuccessfulBuild { ApplicationDetails builtApplication ->
+            // The following does 2 things: 1.) Sends a message to the UI that a deployment is now going, and 2.) Gets Picked up by ApplicationDeploymentService to do the actual deployment
             eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, applicationDetails.getBuildServiceVersionsTemplate()))
         }
     }
