@@ -32,7 +32,7 @@ import org.ventiv.docker.manager.build.jenkins.JenkinsApiDecoder
 import org.ventiv.docker.manager.exception.JenkinsBuildFailedException
 
 /**
- * Created by jcrygier on 3/11/15.
+ * Kicks off a Jenkins Build via the Jenkins REST Api.
  */
 @Slf4j
 @Component("JenkinsBuild")

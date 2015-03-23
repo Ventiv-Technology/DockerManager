@@ -51,8 +51,8 @@ configuration only deals with one host (boot2docker) so it can be a runnable sam
 
 As stated above, this file describes Docker Images so Docker Manager knows how to work with a given image.  It is also where
 you can state additional information, like how to build a Docker Image, should one not exist yet.  Each service in this file
-is mapped to the Groovy Bean 'org.ventiv.docker.manager.model.ServiceConfiguration'.  Please look there for further documentation.
-Here is a sample of a simple configuration:
+is mapped to the Groovy Bean 'org.ventiv.docker.manager.model.ServiceConfiguration'.  Please look there for further documentation,
+or in the sample-config/env-config/services.yml file for examples. Here is a sample of a simple configuration:
 
     services:
       - name: rabbit
@@ -79,7 +79,7 @@ This example describes TWO services, one named 'rabbit', that is pinned to a par
 It also describes the ports that will be exposed later, and pins a type to them.  This type is important, since it's how
 Docker Manager will do the port mapping later.  That being said, you should never have two ports with the same type here.  The
 nice thing here is you can use these types later to fill in variables in URL's and Environment Variables...thus easily tying
-services together.
+services together, and avoiding linking containers together across servers.
 
 The other service described here is for this Application, Docker Manager.  This is here to illustrate that the image is NOT
 pinned to a particular version, and will then query the DockerHub registry for all available versions.
@@ -102,3 +102,26 @@ Service, the following are valid ways to determine which versions are allowed:
     - If there is no `versionSelection` clause, the registry will be queried for available images, and the UI will present
       a new option to the user 'New Build'.  This will give the option of deploying a build that has already been created,
       or kick off a new one.  Helpful if you are not using CI, but still have a build server.
+
+#### Build
+
+Docker Manager will allow you to build a new image, should it not exist already.  A good example of this has been included in
+the sample-config location.  Please pay attention to the Activiti service, and how it builds.  First, it utilizes the `versionSelection`
+clause as stated above.  This has been configured to query the GitHub API and pull out the tags.  Next, it is configured
+with a build stage of 'DockerBuild'.  This simply kicks off a build in the org.ventiv.docker.manager.build.DockerBuild class,
+and detailed information can be seen there.  Very simply, it treats the specified Dockerfile as a template so you can
+inject configuration from DockerManager.  For example, if you open up sample-config/dockerfiles/activiti/Dockerfile you can
+see that it uses `#{buildContext.requestedBuildVersion}` to set into an Environment Variable.  This environment variable
+is then used in the curl statement to download the ZIP release that has been specified from the dropdown in the UI.
+
+You can have as many build stages as needed, but typically a single Dockerfile can do it all.  Each build stage is designed to
+allow for variables to be placed in the `buildContext` for use in all subsequent stages.  Also, there are certain variables that
+are always allowed:
+
+- userAuthentication - Authentication Object from Spring
+- buildingVersion - Resolved building version, after it's been determined. Example, Jenkins build number, after the build has started
+- requestedBuildVersion - User specified version requested to be built, from the UI.
+- outputDockerImage - Name of the image that has been output from the job
+- extraParameters - This is a Map of variables specific to a Build Stage
+
+For more details on specific build stages, see the Markdown files in docs/build.

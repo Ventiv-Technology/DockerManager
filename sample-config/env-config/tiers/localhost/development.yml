@@ -1,14 +1,14 @@
-description: Devlopment
-servers:
-  - id: boot2docker
-    description: Boot2Docker Host
-    hostname: boot2docker
-    resolveHostname: true
-    eligibleServices:
-      - type: rabbit
-        portMappings:
-          - type: http
-            port: 15672
+description: Devlopment                                                 # Description of this environment for UI purposes.  The 'name' will be the name of the file (minus .yml)
+servers:                                                                # List of servers for this environment
+  - id: boot2docker                                                     # Id to be used in other places
+    description: Boot2Docker Host                                       # Description of this server for UI purposes
+    hostname: boot2docker                                               # Actual resolvable hostname for this host
+    resolveHostname: true                                               # Should this hostname be added to 'ExtraHosts' when creating the container?  This is helpful if hostname only exists in /etc/hosts and isn't actually resolvable via DNS
+    eligibleServices:                                                   # Which services are allowed to run on this host
+      - type: rabbit                                                    # Service type. Aligns with a Service name in services.yml
+        portMappings:                                                   # Ports to map onto this host
+          - type: http                                                  # Type of port.  Aligns with port.type in services.yml
+            port: 15672                                                 # Port to expose on this host
           - type: amqp
             port: 5672
       - type: mysql
@@ -20,14 +20,14 @@ servers:
           - type: http
             port: 8080
 
-applications:
-  - id: activiti
-    description: Activiti
-    serviceInstanceUrl: activiti
-    serviceInstances:
-      - type: activiti
-        count: 1
-        environment:
+applications:                                                           # Which applications run in this environment
+  - id: activiti                                                        # Id to be used by RESTful API
+    description: Activiti                                               # Description of this application for UI Purposes
+    serviceInstanceUrl: activiti                                        # Which Service Instance's URL should be bubbled up to the application level
+    serviceInstances:                                                   # Which services are part of this application
+      - type: activiti                                                  # Service type.  Aligns with a Service Name in services.yml
+        count: 1                                                        # How many instances of this service are required for this application
+        environment:                                                    # Environment variables specific to this application.  Will combine with service environment variable when container is created
           DB_TYPE: mysql
           DB_HOST: ${serviceInstances.mysql.server}
           DB_PORT: ${serviceInstances.mysql.port.mysql}
@@ -37,10 +37,9 @@ applications:
       - type: mysql
         count: 1
         environment:
-          MYSQL_ROOT_PASSWORD: supers3cr3tpassword
           MYSQL_USER: activiti
           MYSQL_PASSWORD: act1vit1
           MYSQL_DATABASE: activiti
-        volumeMappings:
-          - type: data
-            path: /home/docker/activiti-mysql
+        volumeMappings:                                                 # Volume mappings for this service.
+          - type: data                                                  # Volume type.  Used to align with volume mappings in services.yml
+            path: /home/docker/activiti-mysql                           # Volume to mount on host machine
