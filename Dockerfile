@@ -2,6 +2,7 @@ FROM java:7-jdk
 MAINTAINER John Crygier <john.crygier@ventivtech.com>
 
 ADD . /opt/DockerManagerBuild
+ADD sample-config /opt/DockerManager/sample-config
 
 WORKDIR /opt/DockerManagerBuild
 

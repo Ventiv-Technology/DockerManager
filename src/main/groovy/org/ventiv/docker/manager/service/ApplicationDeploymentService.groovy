@@ -93,18 +93,22 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                         DockerTag tag = anInstance.getContainerImage();
                         String expectedVersion = serviceVersions[anInstance.getName()];
 
-                        // Get the image id's for both expected as well as what's running, since images can be tagged with multiple versions (e.g. mysql:5 = mysql:5.2)
-                        String expectedImageId = registryApiService.getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[expectedVersion];
-                        String runningImageId = hostsController.getServiceInstance(anInstance.getServerName(), anInstance.getContainerId()).getContainerImageId()
+                        try {
+                            // Get the image id's for both expected as well as what's running, since images can be tagged with multiple versions (e.g. mysql:5 = mysql:5.2)
+                            String expectedImageId = registryApiService.getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[expectedVersion];
+                            String runningImageId = hostsController.getServiceInstance(anInstance.getServerName(), anInstance.getContainerId()).getContainerImageId()
 
-                        // We have a version mismatch...destroy the container and rebuild it
-                        if (expectedImageId != runningImageId) {
-                            // First, let's destroy the container
-                            hostsController.removeContainer(anInstance.getServerName(), anInstance.getContainerId());
-                            applicationDetails.getServiceInstances().remove(anInstance);
+                            // We have a version mismatch...destroy the container and rebuild it
+                            if (expectedImageId != runningImageId) {
+                                // First, let's destroy the container
+                                hostsController.removeContainer(anInstance.getServerName(), anInstance.getContainerId());
+                                applicationDetails.getServiceInstances().remove(anInstance);
 
-                            // Now, create a new one
-                            environmentController.createDockerContainer(applicationDetails, anInstance, serviceVersions.get(anInstance.getName()));
+                                // Now, create a new one
+                                environmentController.createDockerContainer(applicationDetails, anInstance, serviceVersions.get(anInstance.getName()));
+                            }
+                        } catch (Exception ignored) {
+                            // This is okay, likely means that this image only exists locally
                         }
                     }
                 }

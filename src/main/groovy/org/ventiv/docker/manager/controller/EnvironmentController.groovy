@@ -352,6 +352,7 @@ class EnvironmentController {
         ServerConfiguration serverConfiguration = getTiers()[applicationDetails.getTierName()].find { it.getId() == applicationDetails.getEnvironmentName() }.getServers().find { it.getHostname() == instance.getServerName() }
         ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(instance.getName());
         ServiceInstanceConfiguration serviceInstanceConfiguration = applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() };
+        DockerClient docker = dockerService.getDockerClient(instance.getServerName())
 
         // Get the image name, so we can build out a DockerTag with the proper version
         String imageName = serviceConfiguration.image
@@ -396,12 +397,15 @@ class EnvironmentController {
 
         instance.setResolvedEnvironmentVariables(env);
 
-        // Do a docker pull, just to ensure we have the image locally
-        DockerClient docker = dockerService.getDockerClient(instance.getServerName())
-        eventPublisher.publishEvent(new PullImageEvent(instance));
-        InputStream pullIn = docker.pullImageCmd(toDeploy.toString()).exec();
-        pullIn.eachLine {
-            log.debug(it);
+        try {
+            // Do a docker pull, just to ensure we have the image locally
+            eventPublisher.publishEvent(new PullImageEvent(instance));
+            InputStream pullIn = docker.pullImageCmd(toDeploy.toString()).exec();
+            pullIn.eachLine {
+                log.debug(it);
+            }
+        } catch (Exception ignored) {
+            log.warn("Pull of image $toDeploy was unsuccessful, is this pointing to a real registry?");
         }
 
         // Plugin Hook!
