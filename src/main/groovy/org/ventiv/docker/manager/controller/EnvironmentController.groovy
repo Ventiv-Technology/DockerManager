@@ -28,7 +28,6 @@ import com.github.dockerjava.api.model.Volume
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
@@ -58,8 +57,8 @@ import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.ApplicationDeploymentService
 import org.ventiv.docker.manager.service.DockerService
+import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.PluginService
-import org.yaml.snakeyaml.Yaml
 
 import javax.annotation.Resource
 
@@ -79,6 +78,7 @@ class EnvironmentController {
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource ApplicationDeploymentService deploymentService;
     @Resource PluginService pluginService;
+    @Resource EnvironmentConfigurationService envirionmentConfigurationService;
 
     Map<String, BuildApplicationInfo> buildingApplications = [:]
 
@@ -260,20 +260,7 @@ class EnvironmentController {
     }
 
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
-        // Search for all YAML files under /data/env-config/tiers
-        PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
-        def allEnvironments = resolver.getResources(props.config.location + "/tiers/**/*.yml")
-
-        // Group by Directory, then Massage the ClassPathResource elements into the filename minus .yml
-        return allEnvironments.groupBy { new File(it.path).getParentFile().getName() }.collectEntries { String tierName, List<org.springframework.core.io.Resource> resources ->
-            [tierName, resources.collect { org.springframework.core.io.Resource yamlConfig ->
-                String environmentId = yamlConfig.getFilename().replaceAll("\\.yml", "")
-                EnvironmentConfiguration environmentConfiguration = new Yaml().loadAs(yamlConfig.getInputStream(), EnvironmentConfiguration)
-                environmentConfiguration?.setId(environmentId);
-
-                return environmentConfiguration;
-            }]
-        }
+        return envirionmentConfigurationService.getAllEnvironments().groupBy { it.getTierName() }
     }
 
     /**

@@ -77,6 +77,7 @@ class DockerManagerConfiguration {
         String location = "file:./config/env-config";
         GitConfig git;
         String buildHost = "boot2docker";
+        Long refreshPeriod = 5000L;
 
         @ConfigurationProperties
         public static class GitConfig {

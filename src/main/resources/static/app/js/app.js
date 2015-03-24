@@ -59,7 +59,6 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 $scope.environments = [];
                 _.forOwn($scope.tiers, function(environmentList, tierName) {
                     _.each(environmentList, function(environment) {
-                        environment.tierName = tierName;
                         $scope.environments.push(environment);
                     });
                 });

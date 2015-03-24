@@ -18,7 +18,6 @@ package org.ventiv.docker.manager.service
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.eclipse.jgit.api.Git
-import org.eclipse.jgit.api.MergeResult
 import org.eclipse.jgit.api.PullResult
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
@@ -91,12 +90,7 @@ class GitService implements Runnable {
             log.debug("Pulling latest configuration from Git: " + git.getRepository().getDirectory().getAbsolutePath());
 
             try {
-
                 PullResult pullResult = git.pull().setCredentialsProvider(credentialsProvider).call();
-
-                if (pullResult?.getMergeResult()?.getMergeStatus() == MergeResult.MergeStatus.FAST_FORWARD) {
-                    dockerServiceConfiguration.readConfiguration();
-                }
 
                 pullErrorCount = 0;
             } catch (Exception e) {

@@ -20,6 +20,7 @@ package org.ventiv.docker.manager.model
  */
 class EnvironmentConfiguration {
 
+    String tierName;
     String id;
     String description;
     List<ServerConfiguration> servers;

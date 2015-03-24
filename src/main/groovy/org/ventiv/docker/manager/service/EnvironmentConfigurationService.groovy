@@ -13,64 +13,60 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.config
+package org.ventiv.docker.manager.service
 
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.core.io.Resource
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
-import org.ventiv.docker.manager.model.ServiceConfiguration
-import org.ventiv.docker.manager.service.ResourceWatcherService
+import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.yaml.snakeyaml.Yaml
 
 import javax.annotation.PostConstruct
 
 /**
- * Created by jcrygier on 2/25/15.
+ * Service to read and keep track of the environment configurations
  */
+@CompileStatic
 @Slf4j
 @Service
-@CompileStatic
-class DockerServiceConfiguration {
+class EnvironmentConfigurationService {
+
+    List<EnvironmentConfiguration> allEnvironments = []
 
     @javax.annotation.Resource DockerManagerConfiguration props;
     @javax.annotation.Resource ResourceWatcherService resourceWatcherService;
 
-    private List<ServiceConfiguration> config;
-
     @PostConstruct
     public void loadConfigurationFromFile() {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
-        Resource resource = resolver.getResource(props.config.location + "/services.yml")
-
-        resourceWatcherService.watchResource(resource, this.&readConfiguration)
+        resolver.getResources(props.config.location + "/tiers/**/*.yml").each { Resource environmentConfigurationResource ->
+            resourceWatcherService.watchResource(environmentConfigurationResource, this.&readConfiguration)
+        }
     }
 
     public void readConfiguration(Resource resource) {
         Yaml yaml = new Yaml()
 
         if (log.isDebugEnabled()) {
-            log.debug("Loading service definition from YAML: " + resource);
+            log.debug("Loading environment definition from YAML: " + resource);
         }
 
-        config = yaml.loadAs(resource.getInputStream(), ServiceConfigurationFile).getServices();
+        String tierName = resource.getFile().getParentFile().getName();
+        String environmentId = resource.getFilename().replaceAll("\\.yml", "")
+
+        EnvironmentConfiguration environmentConfiguration = yaml.loadAs(resource.getInputStream(), EnvironmentConfiguration)
+        environmentConfiguration.setTierName(tierName);
+        environmentConfiguration.setId(environmentId);
+
+        allEnvironments.remove(getEnvironment(tierName, environmentId));
+        allEnvironments << environmentConfiguration
     }
 
-    public List<String> getServiceNames() {
-        return getConfiguration()*.getName();
-    }
-
-    public ServiceConfiguration getServiceConfiguration(String serviceName) {
-        return getConfiguration().find { it.name == serviceName }
-    }
-
-    public List<ServiceConfiguration> getConfiguration() {
-        return config;
-    }
-
-    public static final class ServiceConfigurationFile {
-        List<ServiceConfiguration> services;
+    public EnvironmentConfiguration getEnvironment(String tierName, String environmentName) {
+        return allEnvironments.find { it.getTierName() == tierName && it.getId() == environmentName }
     }
 
 }
