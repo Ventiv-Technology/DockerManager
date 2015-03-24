@@ -75,7 +75,7 @@ class ServiceConfiguration {
      * of the ServiceInstance, and not the ServiceConfiguration.
      */
     @Nullable
-    Collection<PortMapptingConfiguration> containerPorts;
+    Collection<PortMappingConfiguration> containerPorts;
 
     /**
      * Environment variables to set when constructing a ServiceInstance.  These variables can be thought of as generic,

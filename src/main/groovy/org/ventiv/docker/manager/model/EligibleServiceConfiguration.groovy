@@ -21,6 +21,6 @@ package org.ventiv.docker.manager.model
 class EligibleServiceConfiguration {
 
     String type;
-    List<PortMapptingConfiguration> portMappings;
+    List<PortMappingConfiguration> portMappings;
 
 }

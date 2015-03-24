@@ -14,7 +14,7 @@ servers:                                                                # List o
       - type: mysql
         portMappings:
           - type: mysql
-            port: 3306
+            ports: 3306-3310,3315                                       # Pluralized port(s) allows you to create many eligable services (6 here: 3306, 3307, 3308, 3309, 3310, 3315)
       - type: activiti
         portMappings:
           - type: http

@@ -18,7 +18,7 @@ package org.ventiv.docker.manager.exception
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
-import org.ventiv.docker.manager.model.PortMapptingConfiguration
+import org.ventiv.docker.manager.model.PortMappingConfiguration
 import org.ventiv.docker.manager.model.ServiceConfiguration
 
 /**
@@ -34,7 +34,7 @@ class NoAvailableServiceException extends RuntimeException {
         ServiceConfiguration serviceConfiguration = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(serviceName);
 
         StringBuilder sb = new StringBuilder();
-        serviceConfiguration.getContainerPorts().each { PortMapptingConfiguration portMap ->
+        serviceConfiguration.getContainerPorts().each { PortMappingConfiguration portMap ->
             sb.append("    - type: ").append(portMap.getType()).append("\n")
             sb.append("      port: <Available Port on Host For ").append(portMap.getPort()).append(">").append("\n")
         }
