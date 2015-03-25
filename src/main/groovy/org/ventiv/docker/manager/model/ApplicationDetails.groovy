@@ -29,10 +29,10 @@ class ApplicationDetails {
     String tierName;
     String environmentName;
     String version;
-    Collection<String> availableVersions;
+    Collection<String> availableVersions;                           // TODO: Remove From here, it's innefficient
     Collection<ServiceInstance> serviceInstances;
     List<MissingService> missingServiceInstances;
-    Map<String, String> buildServiceVersionsTemplate = [:];
+    Map<String, String> buildServiceVersionsTemplate = [:];         // TODO: Remove From here, it's innefficient
     def buildStatus;
     boolean buildPossible = false;
     boolean newBuildPossible = false;

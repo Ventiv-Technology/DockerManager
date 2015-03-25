@@ -16,10 +16,14 @@
 package org.ventiv.docker.manager.model
 
 import com.jayway.jsonpath.JsonPath
+import groovy.transform.CompileStatic
+import groovy.util.logging.Slf4j
 
 /**
  * Created by jcrygier on 3/4/15.
  */
+@CompileStatic
+@Slf4j
 class VersionSelectionConfiguration {
 
     String uri;
@@ -29,8 +33,10 @@ class VersionSelectionConfiguration {
     public List<String> getPossibleVersions() {
         List<String> versions = [];
 
-        if (getUri() && getJsonPath())
-            versions = JsonPath.read(new URL(getUri()), getJsonPath())
+        if (getUri() && getJsonPath()) {
+            log.debug("Reading Versions from ${getUri()}");
+            versions = (List<String>) JsonPath.read(new URL(getUri()), getJsonPath())
+        }
 
         if (getFilters()) {
             getFilters().each { VersionSelectionFilterConfiguration filterConfiguration ->

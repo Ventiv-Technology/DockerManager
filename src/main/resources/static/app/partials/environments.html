@@ -45,10 +45,7 @@
 
                 <div class="row">
                     <div class="col-md-2 col-md-offset-1">
-                        <select class="form-control" data-ng-model="application.selectedVersion">
-                            <option value="BuildNewVersion" data-ng-if="application.newBuildPossible">New Build</option>
-                            <option value="{{version}}" data-ng-repeat="version in application.availableVersions">{{version}}</option>
-                        </select>
+                        <select class="version-selection form-control" data-application="application"></select>
                     </div>
                     <div class="col-md-1"><button class="btn btn-primary btn-block" data-ng-show="!application.deploymentInProgress && !application.buildStatus.building" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-click="statusChangeApplication(application, 'stop')" translate="STOP">Stop</button></div>

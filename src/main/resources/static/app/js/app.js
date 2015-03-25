@@ -15,7 +15,7 @@
  */
 'use strict';
 
-define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService'], function ($, angular, translations) {
+define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService', 'select2'], function ($, angular, translations) {
 
     // Declare app level module which depends on filters, and services
 
@@ -185,23 +185,8 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             };
 
             $scope.deployApplication = function(applicationDetails) {
-                var buildRequest = {
-                    name: applicationDetails.id,
-                    serviceVersions: _.clone(applicationDetails.buildServiceVersionsTemplate)
-                };
-
-                _.forIn(buildRequest.serviceVersions, function(value, key) {
-                    if (!value) {
-                        if (!applicationDetails.selectedVersion) {
-                            alert("Please Select a Version from the Dropdown before Deploying");
-                            throw "Please Select a Version from the Dropdown before Deploying";
-                        }
-                        buildRequest.serviceVersions[key] = applicationDetails.selectedVersion;
-                    }
-                });
-
-                console.log("Deploying build request:", buildRequest);
-                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).all($stateParams.environmentId).post(buildRequest);
+                console.log("Deploying build:", applicationDetails.selectedVersion);
+                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all(applicationDetails.selectedVersion).post()
             };
 
             $scope.statusChangeApplication = function(applicationDetails, status) {
@@ -261,6 +246,35 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         throw "Problems performing " + operation + " operation on container...";
                     }
                 );
+            };
+        })
+
+        .directive('versionSelection', function() {
+            return {
+                restrict: 'C',
+                link: function (scope, element, attrs, controller) {
+                    var application = scope[attrs.application];
+                    var url = "/api/environment/" + application.tierName + "/" + application.environmentName + "/app/" + application.id + "/versions";
+                    var el = $(element);
+
+                    el.select2({
+                        ajax: {
+                            url: url,
+                            dataType: 'json',
+                            delay: 250,
+                            processResults: function (data, page) {
+                                return {
+                                    results: data
+                                };
+                            },
+                            cache: true
+                        }
+                    });
+
+                    el.on('select2:select', function(e) {
+                        application.selectedVersion = e.params.data.id;
+                    });
+                }
             };
         })
 });

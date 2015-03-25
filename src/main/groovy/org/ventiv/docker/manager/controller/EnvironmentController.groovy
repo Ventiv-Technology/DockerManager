@@ -113,16 +113,45 @@ class EnvironmentController {
                 url = applicationInstances.find { it.getName() == applicationConfiguration.getServiceInstanceUrl() }?.getUrl()
             }
 
-            return populateVersions(new ApplicationDetails([
+            // Version derivation
+            Collection<ServiceInstance> nonPinnedVersions = applicationInstances.findAll { ServiceInstance serviceInstance ->
+                ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName());
+                return serviceConfiguration.getPinnedVersion() == null;
+            }
+            Collection<String> versionsDeployed = nonPinnedVersions*.getContainerImage()*.getTag().unique();
+
+            return new ApplicationDetails([
                     tierName: tierName,
                     environmentName: environmentName,
                     url: url,
                     serviceInstances: applicationInstances,
                     missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) },
                     buildStatus: buildingApplications.get("$tierName.$environmentName.${applicationConfiguration.getId()}")?.getBuildStatus(),
-                    deploymentInProgress: deploymentService.isRunning(tierName, environmentName, applicationConfiguration.getId())
-            ]).withApplicationConfiguration(applicationConfiguration))
+                    deploymentInProgress: deploymentService.isRunning(tierName, environmentName, applicationConfiguration.getId()),
+                    version: versionsDeployed.join(", ")
+            ]).withApplicationConfiguration(applicationConfiguration)
         }
+    }
+
+    @RequestMapping("/{tierName}/{environmentName}/app/{applicationId}/versions")
+    public Collection<Map<String, String>> getApplicationVersions(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId) {
+        EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
+        ApplicationConfiguration appConfiguration = envConfiguration.getApplications().find { it.getId() == applicationId };
+        Collection<ServiceConfiguration> allServiceConfigurations = appConfiguration.getServiceInstances()*.getType().unique().collect { dockerServiceConfiguration.getServiceConfiguration(it); }
+        Collection<ServiceConfiguration> nonPinnedServices = allServiceConfigurations.findAll { it.getPinnedVersion() == null };
+
+        Collection<List<String>> versions = nonPinnedServices.collect { it.getPossibleVersions() }.unique()
+
+        // Create an option for the new build - if applicable
+        Map<String, String> newBuildOption = nonPinnedServices.any { it.isNewBuildPossible() } ? [id: "BuildNewVersion", text: "New Build"] : [:]
+
+        if (versions.size() == 1) {
+            return [newBuildOption] + versions[0].collect {
+                return [id: it, text: it]
+            }
+        }
+
+        return [ newBuildOption ];
     }
 
     /**
@@ -141,6 +170,28 @@ class EnvironmentController {
             // The following does 2 things: 1.) Sends a message to the UI that a deployment is now going, and 2.) Gets Picked up by ApplicationDeploymentService to do the actual deployment
             eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, applicationDetails.getBuildServiceVersionsTemplate()))
         }
+    }
+
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/{version}", method = RequestMethod.POST)
+    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("version") String version) {
+        EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
+        ApplicationConfiguration appConfiguration = envConfiguration.getApplications().find { it.getId() == applicationId };
+        Collection<ServiceConfiguration> allServiceConfigurations = appConfiguration.getServiceInstances()*.getType().unique().collect { dockerServiceConfiguration.getServiceConfiguration(it); }
+
+        // Create the template with the pinned versions
+        Map<String, String> serviceVersions = allServiceConfigurations.findAll { it.getPinnedVersion() != null }.collectEntries { [it.getName(), it.getPinnedVersion()] };
+
+        // Fill in the rest with the passed in version
+        allServiceConfigurations.findAll { it.getPinnedVersion() == null }.each {
+            if (version == null)
+                throw new IllegalArgumentException("Version is required when there are unpinned services");
+
+            serviceVersions.put(it.getName(), version);
+        }
+
+        // Finally, call the deploy
+        deployApplication(tierName, environmentName, new DeployApplicationRequest(name: applicationId, serviceVersions: serviceVersions));
     }
 
     @CompileStatic
@@ -261,78 +312,6 @@ class EnvironmentController {
 
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
         return environmentConfigurationService.getAllEnvironments().groupBy { it.getTierName() }
-    }
-
-    /**
-     * Aggregate the versions of a given ApplicationDetail's ServiceInstance's into one version, if possible.
-     *
-     * @param applicationDetails
-     * @return
-     */
-    private ApplicationDetails populateVersions(ApplicationDetails applicationDetails) {
-        // Get all the services that are part of this application, and find the available versions for those services
-        Collection<String> allServices = applicationDetails.getApplicationConfiguration().getServiceInstances()*.getType();
-        Map<String, List<String>> availableServiceVersions = allServices.collectEntries { String serviceName ->
-            List<String> availableVersions = dockerServiceController.getAvailableVersions(serviceName)
-            return [(serviceName): availableVersions]
-        }
-
-        // Populate the available versions for each Service Instance
-        applicationDetails.getServiceInstances().each { ServiceInstance serviceInstance ->
-            serviceInstance.setAvailableVersions(availableServiceVersions[serviceInstance.getName()]);
-        }
-
-        // Populate the available versions for each missing Service
-        applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
-            missingService.setAvailableVersions(availableServiceVersions[missingService.getServiceName()]);
-        }
-
-        // Build out buildServiceVersionsTemplate for services with one option
-        allServices.each { String serviceName ->
-            if (availableServiceVersions[serviceName].size() == 1)
-                applicationDetails.getBuildServiceVersionsTemplate().put(serviceName, availableServiceVersions[serviceName].first());
-            else
-                applicationDetails.getBuildServiceVersionsTemplate().put(serviceName, null);
-        }
-
-        // Determine if builds are possible
-        applicationDetails.buildPossible = applicationDetails.getBuildServiceVersionsTemplate().findAll { serviceName, availableVersions -> return availableVersions == null }.every { serviceName, availableVersions ->
-            dockerServiceConfiguration.getServiceConfiguration(serviceName).isBuildPossible()
-        }
-        applicationDetails.newBuildPossible = applicationDetails.getBuildServiceVersionsTemplate().findAll { serviceName, availableVersions -> return availableVersions == null }.every { serviceName, availableVersions ->
-            dockerServiceConfiguration.getServiceConfiguration(serviceName).isNewBuildPossible()
-        }
-
-        // Filter out any services that only have 1 available version, since we have no control over it anyway
-        availableServiceVersions = availableServiceVersions.findAll { serviceName, availableVersions ->
-            return availableVersions.size() > 1;
-        }
-
-        // Determine the Available Aggregated Versions - check all unique service's version list, use it if there's just one
-        List<String> availableAggregatedVersions = null;
-        if (availableServiceVersions.size() == 0)
-            availableAggregatedVersions = [];
-        else if (availableServiceVersions.values().unique(false).size() == 1)
-            availableAggregatedVersions = availableServiceVersions.values().unique(false).first()
-
-        String deployedVersion = "Multiple"
-        if (!applicationDetails.getServiceInstances())                                      // We have nothing running!
-            deployedVersion = "Nothing Deployed"
-        else if (applicationDetails.getServiceInstances().size() == 1)                      // There's only 1 thing running!
-            deployedVersion = applicationDetails.getServiceInstances().first().getContainerImage().getTag();
-        else {                                                                              // Well Crap...we have multiple things running....do the aggregation logic
-            // Find only service instances that are in the filtered availableServiceVersions
-            Collection<ServiceInstance> uniqueServiceInstances = applicationDetails.getServiceInstances().findAll { availableServiceVersions.containsKey(it.getName()) }
-            if (uniqueServiceInstances.size() == 1)
-                deployedVersion = uniqueServiceInstances.first().getContainerImage().getTag();
-            else if (uniqueServiceInstances*.getContainerImage()*.getTag().flatten().unique().size() == 1)
-                deployedVersion = uniqueServiceInstances*.getContainerImage()*.getTag().flatten().unique();
-        }
-
-        applicationDetails.setVersion(deployedVersion)
-        applicationDetails.setAvailableVersions(availableAggregatedVersions);
-
-        return applicationDetails
     }
 
     public String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {

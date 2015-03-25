@@ -14,3 +14,6 @@ server.session-timeout: 86400
 
 plugins:
   - org.ventiv.docker.manager.plugin.DynatracePlugin
+
+
+webjars.requirejs.paths.select2: dist/js/select2

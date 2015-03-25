@@ -119,6 +119,20 @@ class ServiceConfiguration {
         return isBuildPossible() && !getBuild().getVersionSelection();
     }
 
+    /**
+     * Returns the pinned version, if this Service is configured to be pinned to a particular version.  Null otherwise.
+     * @return
+     */
+    public String getPinnedVersion() {
+        if (getImage()) {
+            DockerTag tag = new DockerTag(getImage());
+            if (tag.getTag())
+                return tag.getTag()
+        }
+
+        return null;
+    }
+
     private Long stringToNumber(String versionNumber) {
         String strippedAlphas = versionNumber.replaceAll('[^\\d]', '');
         if (strippedAlphas)
