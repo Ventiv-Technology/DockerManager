@@ -78,7 +78,7 @@ class EnvironmentController {
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource ApplicationDeploymentService deploymentService;
     @Resource PluginService pluginService;
-    @Resource EnvironmentConfigurationService envirionmentConfigurationService;
+    @Resource EnvironmentConfigurationService environmentConfigurationService;
 
     Map<String, BuildApplicationInfo> buildingApplications = [:]
 
@@ -96,7 +96,7 @@ class EnvironmentController {
     @CompileStatic
     @RequestMapping("/{tierName}/{environmentName}")
     public List<ApplicationDetails> getEnvironmentDetails(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
-        EnvironmentConfiguration envConfiguration = getTiers()[tierName].find { it.getId() == environmentName }
+        EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
         List<ServiceInstance> serviceInstances = getServiceInstances(tierName, environmentName);
 
         return envConfiguration.getApplications().collect { ApplicationConfiguration applicationConfiguration ->
@@ -146,7 +146,7 @@ class EnvironmentController {
     @CompileStatic
     @RequestMapping("/{tierName}/{environmentName}/serviceInstances")
     public List<ServiceInstance> getServiceInstances(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
-        EnvironmentConfiguration envConfiguration = getTiers()[tierName].find { it.getId() == environmentName }
+        EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
 
         List<ServiceInstance> definedServiceInstances = [];
         envConfiguration.getServers().each { ServerConfiguration serverConf ->
@@ -260,7 +260,7 @@ class EnvironmentController {
     }
 
     public Map<String, List<EnvironmentConfiguration>> getAllEnvironments() {
-        return envirionmentConfigurationService.getAllEnvironments().groupBy { it.getTierName() }
+        return environmentConfigurationService.getAllEnvironments().groupBy { it.getTierName() }
     }
 
     /**
@@ -336,7 +336,8 @@ class EnvironmentController {
     }
 
     public String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {
-        ServerConfiguration serverConfiguration = getTiers()[applicationDetails.getTierName()].find { it.getId() == applicationDetails.getEnvironmentName() }.getServers().find { it.getHostname() == instance.getServerName() }
+        EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
+        ServerConfiguration serverConfiguration = environmentConfiguration.getServers().find { it.getHostname() == instance.getServerName() }
         ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(instance.getName());
         ServiceInstanceConfiguration serviceInstanceConfiguration = applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() };
         DockerClient docker = dockerService.getDockerClient(instance.getServerName())

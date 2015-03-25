@@ -19,6 +19,7 @@ import com.github.dockerjava.api.NotFoundException
 import com.github.dockerjava.api.NotModifiedException
 import com.github.dockerjava.api.command.LogContainerCmd
 import com.github.dockerjava.api.model.Container
+import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.apache.commons.io.IOUtils
@@ -31,10 +32,10 @@ import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.event.ContainerRemovedEvent
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.ContainerStoppedEvent
-import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.DockerService
+import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
@@ -51,6 +52,7 @@ class HostsController {
     @Resource EnvironmentController environmentController;
     @Resource DockerService dockerService;
     @Resource ApplicationEventPublisher eventPublisher;
+    @Resource EnvironmentConfigurationService environmentConfigurationService;
 
     @RequestMapping
     public def getHostDetails() {
@@ -166,15 +168,9 @@ class HostsController {
         }
     }
 
+    @CompileDynamic
     private List<ServerConfiguration> getAllHosts() {
-        List<ServerConfiguration> answer = [];
-        environmentController.getTiers().each { String tierId, List<EnvironmentConfiguration> envConfigurations ->
-            envConfigurations.each {
-                if (it && it.getServers()) answer.addAll(it.getServers());
-            }
-        }
-
-        return answer;
+        return (List<ServerConfiguration>) environmentConfigurationService.getAllEnvironments()*.getServers().flatten().findAll { it }.unique { it.getHostname() }
     }
 
 }
