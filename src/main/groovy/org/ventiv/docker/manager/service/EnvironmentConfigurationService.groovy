@@ -22,6 +22,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.model.EnvironmentConfiguration
+import org.ventiv.docker.manager.model.ServerConfiguration
 import org.yaml.snakeyaml.Yaml
 
 import javax.annotation.PostConstruct
@@ -38,6 +39,7 @@ class EnvironmentConfigurationService {
 
     @javax.annotation.Resource DockerManagerConfiguration props;
     @javax.annotation.Resource ResourceWatcherService resourceWatcherService;
+    @javax.annotation.Resource DockerService dockerService;
 
     @PostConstruct
     public void loadConfigurationFromFile() {
@@ -63,6 +65,18 @@ class EnvironmentConfigurationService {
 
         allEnvironments.remove(getEnvironment(tierName, environmentId));
         allEnvironments << environmentConfiguration
+
+        // Call over to DockerService so we can ensure that we've cached things as necessary
+        environmentConfiguration.getServers()*.getHostname().unique().each { String hostName ->
+            try {
+                dockerService.getDockerClient(hostName);
+            } catch (Exception ignored) {
+                log.warn("Unable to connect to host $hostName, removing it from the Environment Configuration")
+                environmentConfiguration.getServers().removeAll { ServerConfiguration serverConfiguration ->
+                    serverConfiguration.getHostname() == hostName
+                }
+            }
+        }
     }
 
     public EnvironmentConfiguration getEnvironment(String tierName, String environmentName) {
