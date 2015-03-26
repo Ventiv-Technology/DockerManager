@@ -20,6 +20,7 @@ import com.github.dockerjava.api.model.Version
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.core.DockerClientConfig
 import org.springframework.stereotype.Service
+import org.ventiv.docker.manager.utils.TimingUtils
 
 import javax.annotation.Resource
 
@@ -39,21 +40,23 @@ class DockerService {
     private Map<String, String> hostToApiVersionName = [:]
 
     public DockerClient getDockerClient(String hostName) {
-        String apiVersion = props["docker.client.${hostName}.apiVersion"]
-        String uri = props["docker.client.${hostName}.uri"] ?: "https://${hostName}:2376"
-        String certs = props["docker.client.${hostName}.certPath"] ?: "./config/certs/${hostName}"
-        certs = certs.replaceAll('~', System.getProperty('user.home'))
+        TimingUtils.time("getDockerClient") {
+            String apiVersion = props["docker.client.${hostName}.apiVersion"]
+            String uri = props["docker.client.${hostName}.uri"] ?: "https://${hostName}:2376"
+            String certs = props["docker.client.${hostName}.certPath"] ?: "./config/certs/${hostName}"
+            certs = certs.replaceAll('~', System.getProperty('user.home'))
 
-        if (!apiVersion)
-            apiVersion = getApiVersion(hostName, uri, certs);
+            if (!apiVersion)
+                apiVersion = getApiVersion(hostName, uri, certs);
 
-        DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
-            .withVersion(apiVersion)
-            .withUri(uri)
-            .withDockerCertPath(certs)
-            .build();
+            DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
+                    .withVersion(apiVersion)
+                    .withUri(uri)
+                    .withDockerCertPath(certs)
+                    .build();
 
-        return DockerClientBuilder.getInstance(config).build();
+            return DockerClientBuilder.getInstance(config).build();
+        }
     }
 
     String getApiVersion(String hostName, String uri, String certs) {

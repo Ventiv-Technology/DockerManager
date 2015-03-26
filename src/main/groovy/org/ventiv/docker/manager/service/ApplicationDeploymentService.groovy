@@ -35,6 +35,7 @@ import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
+import org.ventiv.docker.manager.utils.TimingUtils
 
 import javax.annotation.Resource
 
@@ -71,54 +72,56 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
         Deferred<ApplicationDetails, ApplicationException, String> deferred = new DeferredObject<>();
 
         Thread.start {
-            try {
-                List<ServiceInstance> allServiceInstances = environmentController.getServiceInstances(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
+            TimingUtils.time("Deploy Application ${applicationDetails.getId()}") {
+                try {
+                    List<ServiceInstance> allServiceInstances = environmentController.getServiceInstances(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
 
-                // First, let's find any missing services
-                applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
-                    // Find an 'Available' Service Instance
-                    ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), allServiceInstances, applicationDetails);
-                    toUse.setApplicationId(applicationDetails.getId());
+                    // First, let's find any missing services
+                    applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
+                        // Find an 'Available' Service Instance
+                        ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), allServiceInstances, applicationDetails);
+                        toUse.setApplicationId(applicationDetails.getId());
 
-                    // Create (and start) the container
-                    environmentController.createDockerContainer(applicationDetails, toUse, serviceVersions.get(missingService.getServiceName()));
+                        // Create (and start) the container
+                        environmentController.createDockerContainer(applicationDetails, toUse, serviceVersions.get(missingService.getServiceName()));
 
-                    // Mark this service instance as 'Running' so it won't get used again
-                    toUse.setStatus(ServiceInstance.Status.Running);
-                }
+                        // Mark this service instance as 'Running' so it won't get used again
+                        toUse.setStatus(ServiceInstance.Status.Running);
+                    }
 
-                // Verify all running serviceInstances to ensure they're the correct version
-                new ArrayList<ServiceInstance>(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
-                    if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
-                        DockerTag tag = anInstance.getContainerImage();
-                        String expectedVersion = serviceVersions[anInstance.getName()];
+                    // Verify all running serviceInstances to ensure they're the correct version
+                    new ArrayList<ServiceInstance>(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
+                        if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
+                            DockerTag tag = anInstance.getContainerImage();
+                            String expectedVersion = serviceVersions[anInstance.getName()];
 
-                        try {
-                            // Get the image id's for both expected as well as what's running, since images can be tagged with multiple versions (e.g. mysql:5 = mysql:5.2)
-                            String expectedImageId = registryApiService.getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[expectedVersion];
-                            String runningImageId = hostsController.getServiceInstance(anInstance.getServerName(), anInstance.getContainerId()).getContainerImageId()
+                            try {
+                                // Get the image id's for both expected as well as what's running, since images can be tagged with multiple versions (e.g. mysql:5 = mysql:5.2)
+                                String expectedImageId = registryApiService.getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[expectedVersion];
+                                String runningImageId = hostsController.getServiceInstance(anInstance.getServerName(), anInstance.getContainerId()).getContainerImageId()
 
-                            // We have a version mismatch...destroy the container and rebuild it
-                            if (expectedImageId != runningImageId) {
-                                // First, let's destroy the container
-                                hostsController.removeContainer(anInstance.getServerName(), anInstance.getContainerId());
-                                applicationDetails.getServiceInstances().remove(anInstance);
+                                // We have a version mismatch...destroy the container and rebuild it
+                                if (expectedImageId != runningImageId) {
+                                    // First, let's destroy the container
+                                    hostsController.removeContainer(anInstance.getServerName(), anInstance.getContainerId());
+                                    applicationDetails.getServiceInstances().remove(anInstance);
 
-                                // Now, create a new one
-                                environmentController.createDockerContainer(applicationDetails, anInstance, serviceVersions.get(anInstance.getName()));
+                                    // Now, create a new one
+                                    environmentController.createDockerContainer(applicationDetails, anInstance, serviceVersions.get(anInstance.getName()));
+                                }
+                            } catch (Exception ignored) {
+                                // This is okay, likely means that this image only exists locally
                             }
-                        } catch (Exception ignored) {
-                            // This is okay, likely means that this image only exists locally
                         }
                     }
+
+                    deferred.resolve(applicationDetails);
+                } catch (Exception e) {
+                    ApplicationException wrapped = new ApplicationException(applicationDetails)
+                    wrapped.initCause(e);
+
+                    deferred.reject(wrapped);
                 }
-
-                deferred.resolve(applicationDetails);
-            } catch (Exception e) {
-                ApplicationException wrapped = new ApplicationException(applicationDetails)
-                wrapped.initCause(e);
-
-                deferred.reject(wrapped);
             }
         }
 
