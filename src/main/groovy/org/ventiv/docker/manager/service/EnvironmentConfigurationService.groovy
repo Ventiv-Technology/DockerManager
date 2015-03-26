@@ -21,6 +21,7 @@ import org.springframework.core.io.Resource
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
 import org.yaml.snakeyaml.Yaml
@@ -81,6 +82,10 @@ class EnvironmentConfigurationService {
 
     public EnvironmentConfiguration getEnvironment(String tierName, String environmentName) {
         return allEnvironments.find { it.getTierName() == tierName && it.getId() == environmentName }
+    }
+
+    public ApplicationConfiguration getApplication(String tierName, String environmentName, String applicationId) {
+        return getEnvironment(tierName, environmentName).getApplications().find { it.getId() == applicationId};
     }
 
 }

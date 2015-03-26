@@ -15,7 +15,6 @@
  */
 package org.ventiv.docker.manager.model
 
-import com.fasterxml.jackson.annotation.JsonIgnore
 import com.github.dockerjava.api.command.InspectContainerResponse
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
@@ -24,6 +23,7 @@ import groovy.transform.CompileStatic
 import groovy.transform.ToString
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.utils.DockerUtils
 
 import javax.annotation.Nullable
@@ -39,13 +39,11 @@ class ServiceInstance {
 
     public static final def DOCKER_NAME_PATTERN = /([a-zA-Z0-9][a-zA-Z0-9_-]*).([a-zA-Z0-9][a-zA-Z0-9_-]*).([a-zA-Z0-9][a-zA-Z0-9_-]*).([a-zA-Z0-9][a-zA-Z0-9_-]*).([0-9])/
 
-    @JsonIgnore
     String tierName;
-
-    @JsonIgnore
     String environmentName;
-
+    String environmentDescription;
     String applicationId;
+    String applicationDescription;
     String name;
     String serviceDescription;
     String serverName;
@@ -79,6 +77,13 @@ class ServiceInstance {
             applicationId = matcher[0][3];
             name = matcher[0][4];
             instanceNumber = Integer.parseInt(matcher[0][5]);
+
+            // Populate the Application Description
+            EnvironmentConfiguration environmentConfiguration = DockerManagerApplication.getApplicationContext().getBean(EnvironmentConfigurationService).getEnvironment(tierName, environmentName);
+            ApplicationConfiguration applicationConfiguration = environmentConfiguration?.getApplications()?.find { it.getId() == applicationId }
+
+            environmentDescription = environmentConfiguration?.getDescription();
+            applicationDescription = applicationConfiguration?.getDescription();
         } else {
             name = dockerName.substring(1);
         }

@@ -74,6 +74,7 @@ dependencies {
     compile 'org.webjars:sockjs-client:0.3.4-1'
     compile 'org.webjars:stomp-websocket:2.3.1-1'
     compile 'org.webjars:select2:4.0.0-rc.2'
+    compile 'org.webjars:angular-chart.js:0.5.3'
 
     runtime("com.h2database:h2")
 
