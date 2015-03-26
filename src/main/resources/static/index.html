@@ -52,8 +52,6 @@
         </div>
         <div class="navbar-collapse collapse">
             <ul class="nav navbar-nav">
-                <li ui-sref-active="active"><a href ui-sref="hosts" translate="HOSTS">Hosts</a></li>
-
                 <!-- Tier Dropdowns (If Multiple tiers) -->
                 <li class="dropdown" data-ng-class="getTierClass(tierName)" data-ng-show="isMultipleTiers()" data-ng-repeat="(tierName, environmentList) in tiers">
                     <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false"><span translate="TIER">Tier</span>: {{tierName}} <span class="caret"></span></a>

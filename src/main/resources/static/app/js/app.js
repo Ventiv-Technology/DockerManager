@@ -41,11 +41,6 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     templateUrl: '/app/partials/landing.html',
                     controller: 'LandingController'
                 })
-                .state('hosts', {
-                    url: '/hosts',
-                    templateUrl: '/app/partials/hosts.html',
-                    controller: 'HostsController'
-                })
                 .state('environment', {
                     url: '/env/{tierName}/{environmentId}',
                     templateUrl: '/app/partials/environments.html',
@@ -98,28 +93,6 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
 
                 });
             };
-        })
-
-        .controller('HostsController', function($scope, Restangular, StatusService) {
-            var hostsInterface = Restangular.all('hosts');
-            $scope.hosts = hostsInterface.getList().$object;
-
-            // Listen to Start / Stop events
-            var serviceInstanceStatusChangeCallback = function(eventObject) {
-                var eventServiceInstance = eventObject.serviceInstance;
-                var allExistingServiceInstances = _.compact(_.flatten(_.pluck($scope.hosts, 'serviceInstances')));
-                var existingServiceInstance = _.find(allExistingServiceInstances, function(si) { return si.containerId == eventServiceInstance.containerId });
-
-                if (existingServiceInstance) {
-                    eventServiceInstance.containerImage = existingServiceInstance.containerImage;
-                    angular.extend(existingServiceInstance, eventServiceInstance);
-                }
-
-                $scope.$digest();
-            };
-
-            StatusService.subscribe("ContainerStoppedEvent", serviceInstanceStatusChangeCallback);
-            StatusService.subscribe("ContainerStartedEvent", serviceInstanceStatusChangeCallback);
         })
 
         .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular, $http, StatusService) {
