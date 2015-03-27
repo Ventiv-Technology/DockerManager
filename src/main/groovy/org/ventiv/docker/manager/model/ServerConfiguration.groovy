@@ -15,6 +15,9 @@
  */
 package org.ventiv.docker.manager.model
 
+import org.ventiv.docker.manager.DockerManagerApplication
+import org.ventiv.docker.manager.config.DockerServiceConfiguration
+
 import javax.annotation.Nullable
 import javax.validation.constraints.NotNull
 
@@ -106,6 +109,11 @@ class ServerConfiguration {
         // Calculate the Service Instance Numbers
         this.eligibleServices.groupBy { it.getType() }.each { String type, List<EligibleServiceConfiguration> services ->
             services.eachWithIndex { EligibleServiceConfiguration entry, int i -> entry.setInstanceNumber(i+1) }
+        }
+
+        // Populate the Service Name Description
+        this.eligibleServices.each {
+            it.setServiceNameDescription(DockerManagerApplication.getApplicationContext()?.getBean(DockerServiceConfiguration)?.getServiceConfiguration(it.getType())?.getDescription());
         }
     }
 

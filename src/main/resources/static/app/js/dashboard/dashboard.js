@@ -101,6 +101,11 @@ define(['angular', 'vendor/angular-dashboard-framework/0.7.0/angular-dashboard-f
 
                         cachedPromise.then(function(data) {
                             retrievedData = data.data;
+
+                            // Default all hosts to be selected, just in case we don't have the "Connected Hosts" Dashboard up.
+                            _.forEach(retrievedData.hostDetails, function(host) {
+                                host.selected = true;
+                            });
                         })
                     }
 

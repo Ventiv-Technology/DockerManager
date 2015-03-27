@@ -36,9 +36,5 @@ define(['angular'], function () {
 
         .controller('ConnectedHostsController', function ($scope, config, hostData) {
             $scope.hostData = hostData.data;
-
-            _.forEach($scope.hostData.hostDetails, function(host) {
-                host.selected = true;
-            });
         });
 });

@@ -22,6 +22,7 @@ class EligibleServiceConfiguration {
 
     Integer instanceNumber;
     String type;
+    String serviceNameDescription;
     List<PortMappingConfiguration> portMappings;
 
 }

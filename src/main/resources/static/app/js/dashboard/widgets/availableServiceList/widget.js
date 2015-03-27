@@ -17,54 +17,42 @@
 
 define(['angular'], function () {
 
-    angular.module('myApp.dashbaord.widget.serviceInstanceList', ['adf.provider'])
+    angular.module('myApp.dashbaord.widget.availableServiceList', ['adf.provider'])
 
         .config(function (dashboardProvider) {
             dashboardProvider
-                .widget('serviceInstanceList', {
-                    title: 'Service Instance List',
-                    description: 'Displays list of service instances running on a host',
-                    controller: 'ServiceInstanceListController',
-                    templateUrl: 'app/js/dashboard/widgets/serviceInstanceList/widget.html',
+                .widget('availableServiceList', {
+                    title: 'Available Service List',
+                    description: 'Shows list of services on a host that are not occupied',
+                    controller: 'AvailableServiceListController',
+                    templateUrl: 'app/js/dashboard/widgets/availableServiceList/widget.html',
                     resolve: {
                         hostData: function(HostsService, config) {
                             return HostsService.get();
                         }
                     },
                     edit: {
-                        templateUrl: 'app/js/dashboard/widgets/serviceInstanceList/edit.html',
+                        templateUrl: 'app/js/dashboard/widgets/availableServiceList/edit.html',
                         reload: false,
-                        controller: 'ServiceInstanceListEditController'
+                        controller: 'AvailableServiceListEditController'
                     }
                 });
         })
 
-        .controller('ServiceInstanceListController', function ($scope, $modal, config, hostData) {
+        .controller('AvailableServiceListController', function ($scope, $modal, config, hostData) {
             $scope.hostData = hostData.data;
             config.hostOptions = _.map($scope.hostData.hostDetails, function(host) { return { id: host.id, description: host.description} });
 
             var selectHost = function(hostId) {
                 $scope.host = _.find($scope.hostData.hostDetails, function(host) { return host.id == hostId });
                 if ($scope.host)
-                    $scope.model.title = $scope.host.description + " (" + $scope.host.hostname + ") - Service Instances";
+                    $scope.model.title = $scope.host.description + " (" + $scope.host.hostname + ") - Available Services";
             };
 
             $scope.$watch('config.hostId', selectHost);
-
-            $scope.serviceInstanceDetails = function(serviceInstance) {
-                var serviceInstanceDetailsModal = $modal.open({
-                    templateUrl: '/app/partials/serviceInstanceDetails.html',
-                    controller: 'ServiceInstanceDetailsController',
-                    windowClass: 'service-instance-details',
-                    size: 'lg',
-                    resolve: {
-                        serviceInstance: function() { return serviceInstance }
-                    }
-                });
-            };
         })
 
-        .controller('ServiceInstanceListEditController', function($scope) {
+        .controller('AvailableServiceListEditController', function($scope) {
             $scope.$watch('host', function(newValue) {
                 if (newValue)
                     $scope.config.hostId = newValue.id;
