@@ -75,6 +75,8 @@ dependencies {
     compile 'org.webjars:stomp-websocket:2.3.1-1'
     compile 'org.webjars:select2:4.0.0-rc.2'
     compile 'org.webjars:angular-chart.js:0.5.3'
+    compile 'org.webjars:angular-ui-sortable:0.13.0'        // TODO: migrate to 0.13.0-1 when pushed to maven.  Update dependencies in angular-dashboard-framework.js
+    compile 'org.webjars:jquery-ui:1.11.4'
 
     runtime("com.h2database:h2")
 
@@ -100,6 +102,7 @@ task wrapper(type: Wrapper) {
 license {
     header rootProject.file('LICENSE')
     strictCheck true
+    skipExistingHeaders true
     ext.year = Calendar.getInstance().get(Calendar.YEAR)
     ext.name = 'Ventiv Technology'
 }

@@ -15,11 +15,11 @@
  */
 'use strict';
 
-define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService', 'select2', 'LandingController'], function ($, angular, translations) {
+define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService', 'select2', 'dashboard/dashboard'], function ($, angular, translations) {
 
     // Declare app level module which depends on filters, and services
 
-    return angular.module('myApp', ['ui.bootstrap', 'restangular', 'pascalprecht.translate', 'ui.router', 'cgBusy', 'myApp.statusService', "myApp.landingController"])
+    return angular.module('myApp', ['ui.bootstrap', 'restangular', 'pascalprecht.translate', 'ui.router', 'cgBusy', 'myApp.statusService', 'myApp.dashbaord'])
         .config(function (RestangularProvider, $translateProvider, $stateProvider, $urlRouterProvider) {
             // Configure RESTAngular
             RestangularProvider.setBaseUrl("/api");
@@ -38,8 +38,8 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             $stateProvider
                 .state('landing', {
                     url: '/',
-                    templateUrl: '/app/partials/landing.html',
-                    controller: 'LandingController'
+                    templateUrl: '/app/js/dashboard/dashboard.html',
+                    controller: 'DashboardController'
                 })
                 .state('environment', {
                     url: '/env/{tierName}/{environmentId}',
