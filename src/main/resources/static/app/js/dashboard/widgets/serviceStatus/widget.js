@@ -17,15 +17,15 @@
 
 define(['angular-chart'], function () {
 
-    angular.module('myApp.dashbaord.widget.serviceInstanceStatus', ['adf.provider', "chart.js"])
+    angular.module('myApp.dashbaord.widget.serviceStatus', ['adf.provider', "chart.js"])
 
         .config(function (dashboardProvider) {
             dashboardProvider
-                .widget('serviceInstanceStatus', {
-                    title: 'Service Instance Status',
-                    description: 'Displays Service Instances Running / Stopped',
-                    controller: 'ServiceInstanceStatusController',
-                    templateUrl: 'app/js/dashboard/widgets/serviceInstanceStatus/widget.html',
+                .widget('serviceStatus', {
+                    title: 'Service Status',
+                    description: 'Shows services missing / available chart',
+                    controller: 'ServiceStatusController',
+                    templateUrl: 'app/js/dashboard/widgets/serviceStatus/widget.html',
                     resolve: {
                         hostData: function(HostsService, config) {
                             return HostsService.get();
@@ -34,26 +34,21 @@ define(['angular-chart'], function () {
                 });
         })
 
-        .controller('ServiceInstanceStatusController', function ($scope, config, hostData) {
+        .controller('ServiceStatusController', function ($scope, config, hostData) {
             $scope.hostData = hostData.data;
 
-            $scope.serviceInstanceChartConfig = {
-                data: [0,0],
-                labels: ["Running", "Stopped"],
-                colors: ['#5BB75B', '#C7604C']
+            $scope.serviceChartConfig = {
+                data: [0, $scope.hostData.missingServices.length],
+                labels: ["Available", "Missing"],
+                colors: ['#5BB75B', '#F0AD4E']
             };
 
             $scope.updateChart = function() {
-                $scope.serviceInstanceChartConfig.data = [0, 0];
+                $scope.serviceChartConfig.data = [0, $scope.hostData.missingServices.length];
 
                 _.forEach($scope.hostData.hostDetails, function(host) {
                     if (host.selected) {
-                        _.forEach(host.serviceInstances, function (serviceInstance) {
-                            if (serviceInstance.status === "Running")
-                                $scope.serviceInstanceChartConfig.data[0] = $scope.serviceInstanceChartConfig.data[0] + 1;
-                            else
-                                $scope.serviceInstanceChartConfig.data[1] = $scope.serviceInstanceChartConfig.data[1] + 1;
-                        });
+                        $scope.serviceChartConfig.data[0] += host.availableServices.length;
                     }
                 });
             };

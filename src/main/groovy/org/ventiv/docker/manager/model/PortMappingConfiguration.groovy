@@ -15,6 +15,8 @@
  */
 package org.ventiv.docker.manager.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+
 /**
  * Created by jcrygier on 3/3/15.
  */
@@ -22,6 +24,8 @@ class PortMappingConfiguration {
 
     String type;
     Integer port;
+
+    @JsonIgnore
     String ports;
 
 }

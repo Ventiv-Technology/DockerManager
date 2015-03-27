@@ -20,7 +20,8 @@ define([
     "dashboard/widgets/connectedhosts/widget",
     "dashboard/widgets/serviceInstanceStatus/widget",
     "dashboard/widgets/containersCreated/widget",
-    "dashboard/widgets/serviceInstanceList/widget"
+    "dashboard/widgets/serviceInstanceList/widget",
+    "dashboard/widgets/serviceStatus/widget"
 ], function () {
 
     angular.module('myApp.dashbaord.widgets', [
@@ -28,7 +29,8 @@ define([
         'myApp.dashbaord.widget.connectedhosts',
         'myApp.dashbaord.widget.serviceInstanceStatus',
         'myApp.dashbaord.widget.containersCreated',
-        'myApp.dashbaord.widget.serviceInstanceList'
+        'myApp.dashbaord.widget.serviceInstanceList',
+        'myApp.dashbaord.widget.serviceStatus'
     ])
 
 });

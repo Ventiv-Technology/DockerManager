@@ -102,6 +102,11 @@ class ServerConfiguration {
         // Do the adding / removing
         eligibleServices.addAll(toAdd);
         eligibleServices.removeAll(toRemove);
+
+        // Calculate the Service Instance Numbers
+        this.eligibleServices.groupBy { it.getType() }.each { String type, List<EligibleServiceConfiguration> services ->
+            services.eachWithIndex { EligibleServiceConfiguration entry, int i -> entry.setInstanceNumber(i+1) }
+        }
     }
 
 }

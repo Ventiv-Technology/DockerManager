@@ -34,6 +34,7 @@ import org.ventiv.docker.manager.event.ContainerRemovedEvent
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.model.ApplicationConfiguration
+import org.ventiv.docker.manager.model.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
@@ -76,12 +77,21 @@ class HostsController {
                 return new ServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it);
             }
 
+            // Get all eligible services
+            List<EligibleServiceConfiguration> availableServices = new ArrayList(serverConfiguration.getEligibleServices());
+            allCreatedInstances.each { ServiceInstance createdInstance ->
+                availableServices.remove(availableServices.find { EligibleServiceConfiguration eligibleServiceConfiguration ->
+                    eligibleServiceConfiguration.getType() == createdInstance.getName() && eligibleServiceConfiguration.getInstanceNumber() == createdInstance.getInstanceNumber()
+                });
+            }
+
             return [
                     id: serverConfiguration.getId(),
                     description: serverConfiguration.getDescription(),
                     hostname: serverConfiguration.getHostname(),
                     status: status,
-                    serviceInstances: allCreatedInstances
+                    serviceInstances: allCreatedInstances,
+                    availableServices: availableServices
             ]
         }
 
