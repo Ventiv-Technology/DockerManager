@@ -23,17 +23,18 @@ define(['angular-chart'], function () {
         .controller('LandingController', function($scope, Restangular, StatusService) {
             $scope.serviceInstanceChartConfig = {
                 data: [0,0],
-                labels: ["Running", "Stopped"],
-                colors: ['#5BB75B', '#C7604C']
+                labels: ["Running", "Stopped", "Missing"],
+                colors: ['#5BB75B', '#C7604C', '#F0AD4E']
             };
 
-            var hostsInterface = Restangular.all('hosts');
-            $scope.asyncExecutionPromise = hostsInterface.getList().then(
+            var hostsInterface = Restangular.one('hosts');
+            $scope.asyncExecutionPromise = hostsInterface.get().then(
                 function(data) {
-                    $scope.hosts = data;
+                    $scope.hosts = data.hostDetails;
+                    $scope.missingServices = data.missingServices;
 
                     // Mark each of them selected by default
-                    _.forEach(data, function(host) {
+                    _.forEach($scope.hosts, function(host) {
                         host.selected = true;
                     });
 
@@ -43,7 +44,7 @@ define(['angular-chart'], function () {
             );
 
             $scope.updateCharts = function() {
-                $scope.serviceInstanceChartConfig.data = [0,0];
+                $scope.serviceInstanceChartConfig.data = [0,0,$scope.missingServices.length];
                 $scope.containersCreated = {
                     data: [ [] ],
                     labels: []

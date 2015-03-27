@@ -29,11 +29,14 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.event.ContainerRemovedEvent
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.ContainerStoppedEvent
+import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 
@@ -49,6 +52,7 @@ import javax.servlet.http.HttpServletResponse
 @CompileStatic
 class HostsController {
 
+    @Resource DockerManagerConfiguration props;
     @Resource EnvironmentController environmentController;
     @Resource DockerService dockerService;
     @Resource ApplicationEventPublisher eventPublisher;
@@ -56,7 +60,7 @@ class HostsController {
 
     @RequestMapping
     public def getHostDetails() {
-        return getAllHosts().collect { ServerConfiguration serverConfiguration ->
+        List<LinkedHashMap<String, Object>> hostDetails = getAllHosts().collect { ServerConfiguration serverConfiguration ->
             List<Container> hostContainers = null;
             String status = "Online";
 
@@ -67,16 +71,34 @@ class HostsController {
                 status = "Disconnected"
             }
 
+            // Get the Service Instances
+            List<ServiceInstance> allCreatedInstances = hostContainers?.collect {
+                return new ServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it);
+            }
+
             return [
                     id: serverConfiguration.getId(),
                     description: serverConfiguration.getDescription(),
                     hostname: serverConfiguration.getHostname(),
                     status: status,
-                    serviceInstances: hostContainers?.collect {
-                        return new ServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it);
-                    }
+                    serviceInstances: allCreatedInstances
             ]
         }
+
+        // Determine the missing services
+        List<ApplicationConfiguration> allApplications = (List<ApplicationConfiguration>) environmentConfigurationService.getActiveEnvironments()*.getApplications().flatten();
+        List<ServiceInstanceConfiguration> allServiceInstances = (List<ServiceInstanceConfiguration>) allApplications*.getServiceInstances().flatten().findAll { it != null };
+        List<String> allRequiredServices = (List<String>) allServiceInstances.collect { [it?.getType()] * it?.getCount() }?.flatten()
+        List<String> missingServices = new ArrayList(allRequiredServices)
+        List<ServiceInstance> createdInstances = hostDetails*.get('serviceInstances').flatten() as List<ServiceInstance>
+        createdInstances.each {
+            missingServices.remove(it.getName())
+        }
+
+        return [
+                hostDetails: hostDetails,
+                missingServices: missingServices
+        ];
     }
 
     @RequestMapping("/{hostName}/{containerId}/stdout")

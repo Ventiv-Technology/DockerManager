@@ -80,6 +80,10 @@ class EnvironmentConfigurationService {
         }
     }
 
+    public Collection<EnvironmentConfiguration> getActiveEnvironments() {
+        return allEnvironments.findAll { props.getActiveTiers() == null || props.getActiveTiers().contains(it.getTierName()) }
+    }
+
     public EnvironmentConfiguration getEnvironment(String tierName, String environmentName) {
         return allEnvironments.find { it.getTierName() == tierName && it.getId() == environmentName }
     }
