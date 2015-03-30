@@ -162,6 +162,8 @@ class ServiceInstance {
             else
                 setUrl(getServiceDescription() + " is Missing")
         }
+
+        // TODO: If Running and no URL specified, look for a port of type 'http' or 'https'
     }
 
     @Override

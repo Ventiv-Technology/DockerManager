@@ -1,4 +1,4 @@
-description: Devlopment                                                 # Description of this environment for UI purposes.  The 'name' will be the name of the file (minus .yml)
+description: Devlopment Testing                                         # Description of this environment for UI purposes.  The 'name' will be the name of the file (minus .yml)
 servers:                                                                # List of servers for this environment
   - id: boot2docker                                                     # Id to be used in other places
     description: Boot2Docker Host                                       # Description of this server for UI purposes

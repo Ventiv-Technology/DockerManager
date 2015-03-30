@@ -16,6 +16,7 @@ following:
 3. Prepare your configuration, generally in the 'config' directory.  There is a sample config located in sample-config.
 4. When running DockerManagerApplication.groovy, be sure to add your authentication from a spring profile.  This will auto-load
    any properties from config/application-<profileName>.yml.  E.g. `--spring.profiles.active=ldap` will load config/application-ldap.yml
+   Please Note, Default security is to accept ANY user / password.
 
 ## Docker Configuration Model
 
@@ -30,10 +31,21 @@ Docker Manager is configured to adhere to a 4 step hierarchy to organize your En
 3. Application - A grouping of services that is intended to run together to form a single application.  This will generally have
    one single URL endpoint, and there are features supporting as such.  An application definition simply defines what services,
    and how many of those services should be running.  DockerManger figures out the rest.
-4. Service Instance - The lowest level of configuration, representing a single running service.  This is equivalent to
+4. Service / Service Instance - The lowest level of configuration, representing a single running service.  This is equivalent to
    a docker container running on some server.
 
-// TODO: Show the hierarchy that is set up in sample-config
+For illustration / testing purposes, a sample configuration has been included.  This sample only contains one server (boot2docker)
+so it is not what a typical production instance would look like, but it's good enough for documentation purposes.  The structure
+is as follows:
+
+- Tier: localhost
+    - Environment: development (Development Testing)
+        - Application: activiti (Activiti)
+            - Service: activiti (Activiti)
+            - Service: mysql (MySQL Database)
+            
+For the best in example and documentation, these Yaml files have been carefully constructed to illustrate certain features.  These
+files also have many of the lines commented so you can tell what they are for.
 
 ## Configuring
 
@@ -125,3 +137,38 @@ are always allowed:
 - extraParameters - This is a Map of variables specific to a Build Stage
 
 For more details on specific build stages, see the Markdown files in docs/build.
+
+#### Container Ports
+
+This is the section where you will describe what ports a particular container may expose.  Often, these are described by
+EXPOSE statements in the Dockerfile, but this is not descriptive enough for Docker Manager.  We also must attach a type to
+the port here, so that we can pair it up later, as well as use it in variables.  These variables are very helpful
+if you need to set container Environment Variables that are resolved with information from another container's
+ports.  It is also important to note that the ports listed here DO NOT have to be described in the Dockerfile,
+as you can still expose any ports.
+
+TODO: In the near future, the URL may auto-derive based on a port of type 'http' or 'https'.
+
+#### Container Volumes
+
+This is the section where you describe what volumes a particular container may expose.  Often, these are described by
+VOLUME statements in the Docker file, but this allows us to give it a type so we may tie that in at container creation time.
+This is very similar to how ports are done, but there is no automatic behavior based on special types.  Also, like above,
+you can expose any volume in a container, it does not have to be described in the Dockerfile.
+
+#### Environment Variables
+
+Here, you can describe any environment variables that should be set when the container is created.  Since this is the
+service definition file, you should only put environment variables here that will be used for services in ALL containers.
+You will see later that these environment variables may be overridden at an Application level.  Examples in the example config
+include setting the root password of Couch / MySql, as here we want the same one no matter where the instance is created.
+
+These environment variables have certain runtime variables exposed to them when the container is created, like ports / servers
+from other services in the application they get created from.  The variables that are exposed are as follows:
+
+- application: Instance of the org.ventiv.docker.manager.model.ApplicationDetails object.  Example: ${application.tierName}
+- instance: Instance of the org.ventiv.docker.manager.model.ServiceInstance object.  Example: ${instance.serviceDescription}
+- serviceInstances: All other service instance objects for this application.  A map, by service name.  NOTE: If there is more
+  than one service of a given type, the last one will survive in this map.
+    - server: Server name for that this instance is running under.  Example: ${serviceInstances.mysql.server}
+    - port: Ports mapped by type.  Example: ${serviceInstances.mysql.port.mysql} or ${serviceInstances.couch.port.http}
