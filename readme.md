@@ -172,3 +172,71 @@ from other services in the application they get created from.  The variables tha
   than one service of a given type, the last one will survive in this map.
     - server: Server name for that this instance is running under.  Example: ${serviceInstances.mysql.server}
     - port: Ports mapped by type.  Example: ${serviceInstances.mysql.port.mysql} or ${serviceInstances.couch.port.http}
+
+### Environment Description File
+
+In a directory structure described above (under tiers) is a file for each individual environment.  This is where we describe
+the environment's servers and applications.  Furthermore, you will see an application's service requirements, and further
+configuration of them (like environment variables).
+
+#### Server Configuration
+
+The first section of an environment configuration file is describing the servers (or hosts) that may be part of it.  These
+must include fully qualified host names, and these hosts MUST be running the Docker daemon, otherwise they will be
+discarded on application startup.  For full documentation, see comments in org.ventiv.docker.manager.model.ServerConfiguration.
+The most important section in here is the eligibleServices portion, which describes what services are allowed to run on this
+host.
+
+Each eligible service will have it's ports described.  It's important when you're describing the ports to use either
+the 'port' or 'ports' section, but not both.  The rule of thumb is that if you want to expose multiple services, use the ports...and
+if you want to expose one service, use port.  For example, if I want to allow 'Docker Manager' to run just once on this server,
+I would do something like this:
+
+    - type: docker_manager
+      portMappings:
+      - type: http
+        port: 8080
+        
+However, if I want to allow 'Docker Manager' to run 5 times on this server (on ports 8080, 8081, 8082, 8083, 9000), I might do the following:
+
+    - type: docker_manager
+      portMappings:
+      - type: http
+        port: 8080-8083,9000
+        
+NOTE: The port listed here are the ports that will be exposed on the physical host, and tied back to a port in the container.
+This mapping is done by using the port type.
+
+#### Application Configuration
+
+The last remaining part of configuration is for the application, where you describe the application and all of it's running
+services.  For full documentation, please see: org.ventiv.docker.manager.model.ApplicationConfiguration.  At the top level there
+are things like description and name, which are solely used for UI and API purposes.  Also there is a section here to describe
+the URL of this application.  You have the opportunity to specify it manually (via the 'url' attribute), or to use one
+of the service's url (via the 'serviceInstanceUrl' attribute).
+
+Most importantly, you configure the serviceInstance's that will be part of this application, and how many of them you need.
+For instance, you may say the following if you wanted 5 of a given service to be running:
+
+    - type: awesome-server
+      count: 5
+      
+Docker manager will then attempt to find 5 'slots' for the 'awesome-server' instance that can run on hosts configured in
+the section above.  By default, it will attempt to spread these 5 across physical hosts first, then back down to running
+on whatever is provided an available.  If you want to change this algorithm, do so via the serviceSelectionAlgorithm
+attribute.  The following algorithms are available:
+
+    - org.ventiv.docker.manager.service.selection.DistributedServerServiceSelectionAlgorithm: Algorithm to spread across physical
+      hosts as much as possible
+    - org.ventiv.docker.manager.service.selection.NextAvailableServiceSelectionAlgorithm: Simple algorithm to pick the next
+      instance that has not yet been allocated.
+      
+Also in this section is the volume mapping.  Similar to the port mapping, you will specify the type here, and this is how
+the system ties back to the services configuration file.  Again, as with the port mapping, the volumes listed here are the
+ones that will exist on the docker host, and be tied back to the container via the type.  This is a very handy way to 
+ensure the data from a given container sticks around between deployments.
+      
+Finally, underneath the service instance configuration section, you have the opportunity to specify environment variables.
+This is the exact same as documented above, but will allow you to specify environment variables that are specific to
+a given application.  This is the perfect place to tie servers together (e.g. Activiti -> MySql) or to specify what environment
+this application is running in (e.g. Development).
