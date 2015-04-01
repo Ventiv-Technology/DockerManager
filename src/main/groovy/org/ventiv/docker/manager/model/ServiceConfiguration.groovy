@@ -133,6 +133,19 @@ class ServiceConfiguration {
         return null;
     }
 
+    public String getUrl() {
+        // Attempt to auto-derive the URL if an HTTP or HTTPS are provided
+        if (!url) {
+            PortMappingConfiguration port = getContainerPorts()?.find { it.getType() == 'http' }
+            if (!port) port = getContainerPorts()?.find { it.getType() == 'https' }
+
+            if (port)
+                url = "${port.getType()}://\${server}:\${port.http}"
+        }
+
+        return url;
+    }
+
     private Long stringToNumber(String versionNumber) {
         String strippedAlphas = versionNumber.replaceAll('[^\\d]', '');
         if (strippedAlphas)

@@ -147,7 +147,8 @@ if you need to set container Environment Variables that are resolved with inform
 ports.  It is also important to note that the ports listed here DO NOT have to be described in the Dockerfile,
 as you can still expose any ports.
 
-TODO: In the near future, the URL may auto-derive based on a port of type 'http' or 'https'.
+Based on the container port type, if there is no URL specified for this particular service, it will be auto derived to be:
+${port.getType()}://${server}:${port.http}
 
 #### Container Volumes
 

@@ -15,3 +15,7 @@ This is a scratchpad for some ideas that have popped into heads, but haven't bee
         - JMX Numbers
     - RESTful endpoints
     - Other platforms?
+    
+## Better Jenkins Integration
+
+- While a build is running, supply a link to the build console
