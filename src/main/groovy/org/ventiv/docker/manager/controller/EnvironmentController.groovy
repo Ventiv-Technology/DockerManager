@@ -168,7 +168,7 @@ class EnvironmentController {
         // First, Build the application
         buildApplication(applicationDetails, deployRequest.getServiceVersions()).onSuccessfulBuild { ApplicationDetails builtApplication ->
             // The following does 2 things: 1.) Sends a message to the UI that a deployment is now going, and 2.) Gets Picked up by ApplicationDeploymentService to do the actual deployment
-            eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, deployRequest.getServiceVersions()))
+            eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, builtApplication.getBuildServiceVersionsTemplate()));
         }
     }
 
