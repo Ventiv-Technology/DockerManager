@@ -164,6 +164,7 @@ class EnvironmentController {
     public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody DeployApplicationRequest deployRequest) {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
         ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == deployRequest.getName() }
+        applicationDetails.setBuildServiceVersionsTemplate(deployRequest.getServiceVersions());
 
         // First, Build the application
         buildApplication(applicationDetails, deployRequest.getServiceVersions()).onSuccessfulBuild { ApplicationDetails builtApplication ->
