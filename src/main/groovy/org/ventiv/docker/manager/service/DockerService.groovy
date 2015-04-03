@@ -49,13 +49,16 @@ class DockerService {
             if (!apiVersion)
                 apiVersion = getApiVersion(hostName, uri, certs);
 
-            DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
+            DockerClientConfig.DockerClientConfigBuilder builder = DockerClientConfig.createDefaultConfigBuilder()
                     .withVersion(apiVersion)
-                    .withUri(uri)
-                    .withDockerCertPath(certs)
-                    .build();
+                    .withUri(uri);
 
-            return DockerClientBuilder.getInstance(config).build();
+            if (new File(certs).exists())
+                builder.withDockerCertPath(certs)
+            else
+                builder.withSSLConfig(null);
+
+            return DockerClientBuilder.getInstance(builder.build()).build();
         }
     }
 

@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.service
 
 import org.springframework.security.authentication.AuthenticationProvider
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
 
@@ -26,7 +27,7 @@ class AllowAnyoneAuthenticationProvider implements AuthenticationProvider {
 
     @Override
     Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        return authentication;
+        return new UsernamePasswordAuthenticationToken(authentication.getPrincipal(), authentication.getCredentials(), authentication.getAuthorities());
     }
 
     @Override

@@ -19,3 +19,10 @@ This is a scratchpad for some ideas that have popped into heads, but haven't bee
 ## Better Jenkins Integration
 
 - While a build is running, supply a link to the build console
+
+## Better Feedback to User
+
+- Errors in Build / Deploy need to be presented to user and what they can do to fix the issue
+- Deployment needs feedback similar to build
+    - Pull status
+    - How many steps there are to go
