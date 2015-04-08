@@ -16,17 +16,23 @@
 package org.ventiv.docker.manager.controller
 
 import feign.FeignException
+import org.apache.commons.io.IOUtils
+import org.springframework.core.io.DefaultResourceLoader
+import org.springframework.core.io.ResourceLoader
+import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.api.DockerRegistry
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.model.AdditionalMetricsConfiguration
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.ImageLayerInformation
 import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.ventiv.docker.manager.service.DockerRegistryApiService
 
 import javax.annotation.Resource
+import javax.servlet.http.HttpServletResponse
 
 /**
  * Docker Service Controller, this will control anything to do with a docker 'service'.  A Service is a defined docker image
@@ -38,6 +44,8 @@ class DockerServiceController {
 
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource DockerRegistryApiService dockerRegistryApiService;
+
+    private ResourceLoader resourceLoader = new DefaultResourceLoader();
 
     @RequestMapping()
     public List<String> getServiceNames() {
@@ -90,6 +98,21 @@ class DockerServiceController {
                 imageInformation: imageInformation,
                 tag: tag
         ]
+    }
+
+    @RequestMapping("/{serviceName}/metrics/{metricName}/button")
+    public void getAdditionalMetricsButtonPartial(@PathVariable("serviceName") String serviceName, @PathVariable("metricName") String metricName, HttpServletResponse response) {
+        ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceName);
+        AdditionalMetricsConfiguration metricsConfiguration = serviceConfiguration?.getAdditionalMetrics()?.find { it.getName() == metricName }
+        if (metricsConfiguration) {
+            response.setContentType(MediaType.TEXT_HTML_VALUE);
+
+            if (metricsConfiguration.getUi().getButtonPartial()) {
+                org.springframework.core.io.Resource resource = resourceLoader.getResource(metricsConfiguration.getUi().getButtonPartial());
+                IOUtils.copy(resource.getInputStream(), response.getOutputStream());
+            } else if (metricsConfiguration.getUi().getButtonTemplate())
+                response.getOutputStream() << metricsConfiguration.getUi().getButtonTemplate()
+        }
     }
 
 }

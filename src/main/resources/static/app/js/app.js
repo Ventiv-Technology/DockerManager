@@ -186,6 +186,17 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     return serviceInstance.status == 'Stopped';
                 });
             };
+
+            $scope.serviceInstanceButtonSizeClass = function(application) {
+                // Get number of metrics for each instance, then get the max
+                var metricsSize = _.max(_.map(application.serviceInstances, function(instance) { return _.keys(instance.additionalMetrics).length; }));
+                return "col-md-" + (12 - (metricsSize * 2));
+            };
+
+            $scope.serviceInstanceButtonSizeClassByInstance = function(serviceInstance) {
+                var metricsSize = _.keys(serviceInstance.additionalMetrics).length;
+                return "col-md-" + (12 - (metricsSize * 2));
+            };
         })
 
         .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {

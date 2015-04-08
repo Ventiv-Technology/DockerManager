@@ -64,18 +64,25 @@
 
                 <hr>
 
-                <div class="row env-service-instance" data-ng-repeat="serviceInstance in application.serviceInstances">
-                    <div class="btn col-md-12" data-ng-click="serviceInstanceDetails(serviceInstance)" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}">
-                        <span>{{serviceInstance.serviceDescription}} on</span>
-                        <span>{{serviceInstance.serverName}}</span>
-                        <span>[{{serviceInstance.containerImage.tag}} - deployed @ {{serviceInstance.containerCreatedDate | date:'short'}} - {{serviceInstance.containerStatus}}]</span>
+                <div class="env-service-instance" data-ng-repeat="serviceInstance in application.serviceInstances">
+                    <div data-ng-class="[serviceInstanceButtonSizeClass(application)]">
+                        <div class="btn btn-block" data-ng-click="serviceInstanceDetails(serviceInstance)" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}">
+                            <span>{{serviceInstance.serviceDescription}} on</span>
+                            <span>{{serviceInstance.serverName}}</span>
+                            <span>[{{serviceInstance.containerImage.tag}} - deployed @ {{serviceInstance.containerCreatedDate | date:'short'}} - {{serviceInstance.containerStatus}}]</span>
+                        </div>
+                    </div>
+                    <div data-ng-repeat="(metricName, metricValue) in serviceInstance.additionalMetrics" data-ng-if="serviceInstance.additionalMetrics && serviceInstance.status == 'Running'" class="col-md-2">
+                        <div class="btn btn-info btn-block"  data-ng-include="'/api/service/' + serviceInstance.name + '/metrics/' + metricName + '/button'"></div>
                     </div>
                 </div>
 
                 <hr>
 
-                <div class="row env-missing-service-instance" data-ng-repeat="missingService in application.missingServiceInstances track by $index">
-                    <div class="btn col-md-12 btn-warning">{{missingService.serviceDescription}} Missing</div>
+                <div class="env-missing-service-instance" data-ng-repeat="missingService in application.missingServiceInstances track by $index">
+                    <div data-ng-class="[serviceInstanceButtonSizeClass(application)]">
+                        <div class="btn btn-warning btn-block">{{missingService.serviceDescription}} Missing</div>
+                    </div>
                 </div>
 
             </div>
