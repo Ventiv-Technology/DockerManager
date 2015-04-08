@@ -21,15 +21,14 @@ import groovy.util.logging.Slf4j
 import org.jdeferred.Deferred
 import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
-import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Component
-import org.ventiv.docker.manager.api.HeaderRequestInterceptor
 import org.ventiv.docker.manager.build.jenkins.BuildQueueStatus
 import org.ventiv.docker.manager.build.jenkins.BuildStartedResponse
 import org.ventiv.docker.manager.build.jenkins.BuildStatus
 import org.ventiv.docker.manager.build.jenkins.JenkinsApi
 import org.ventiv.docker.manager.build.jenkins.JenkinsApiDecoder
 import org.ventiv.docker.manager.exception.JenkinsBuildFailedException
+import org.ventiv.docker.manager.utils.AuthenticationRequestInterceptor
 
 /**
  * Kicks off a Jenkins Build via the Jenkins REST Api.
@@ -44,16 +43,11 @@ class JenkinsBuild implements AsyncBuildStage {
     // Server to contact Jenkins
     public static final String CONFIG_SERVER =                  'server'
 
-    // Authentication Type - None, CurrentUser, ProvidedUserPassword
-    public static final String CONFIG_AUTHENTICATION =          'authentication'
-
-    // Credentials to call Jenkins - Only useful if authentication = ProvidedUserPassword
-    public static final String CONFIG_USER =                    'user'
-    public static final String CONFIG_PASSWORD =                'password'
-
     // Groovy string to evaluate the build number.  Groovy Binding is BuildQueueStatus -> queueStatus, BuildStatus -> status.
     // Defaults to "${status.number}"
     public static final String CONFIG_BUILD_NUMBER =            'buildNumber'
+
+    // See other settings in AuthenticationRequestInterceptor
 
     // Used only for testing
     JenkinsApi mockJenkinsApi;
@@ -129,28 +123,11 @@ class JenkinsBuild implements AsyncBuildStage {
         if (mockJenkinsApi)
             return mockJenkinsApi;
 
-        AuthenticationType authType = buildSettings[CONFIG_AUTHENTICATION] ? AuthenticationType.valueOf(buildSettings[CONFIG_AUTHENTICATION]) : AuthenticationType.None;
-
         Feign.Builder feignBuilder = Feign.builder()
                 .decoder(new JenkinsApiDecoder())
                 .encoder(new JacksonEncoder())
-
-        if (authType == AuthenticationType.CurrentUser) {
-            Authentication auth = (Authentication) buildContext.userAuthentication;
-
-            String userName = auth.getPrincipal() instanceof String ? auth.getPrincipal() : auth.getPrincipal().username;
-            String authHeader = "${userName}:${auth.getCredentials()}".bytes.encodeBase64().toString()
-
-            feignBuilder.requestInterceptor(new HeaderRequestInterceptor([Authorization: "Basic " + authHeader]))
-        } else if (authType == AuthenticationType.ProvidedUserPassword) {
-            String authHeader = "${buildSettings[CONFIG_USER]}:${buildSettings[CONFIG_PASSWORD]}".bytes.encodeBase64().toString()
-            feignBuilder.requestInterceptor(new HeaderRequestInterceptor([Authorization: "Basic " + authHeader]))
-        }
+                .requestInterceptor(new AuthenticationRequestInterceptor(buildSettings, buildContext.getUserAuthentication()));
 
         return feignBuilder.target(JenkinsApi, buildSettings[CONFIG_SERVER])
-    }
-
-    public static final enum AuthenticationType {
-        None, CurrentUser, ProvidedUserPassword
     }
 }

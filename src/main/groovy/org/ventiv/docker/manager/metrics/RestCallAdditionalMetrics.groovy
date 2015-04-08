@@ -15,12 +15,16 @@
  */
 package org.ventiv.docker.manager.metrics
 
-import groovy.json.JsonSlurper
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.springframework.http.client.ClientHttpRequestInterceptor
+import org.springframework.security.core.Authentication
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
+import org.springframework.web.client.RestTemplate
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.SimpleTemplateService
+import org.ventiv.docker.manager.utils.AuthenticationRequestInterceptor
 
 import javax.annotation.Resource
 
@@ -35,8 +39,10 @@ class RestCallAdditionalMetrics implements AdditionalMetrics {
     // Url to hit for the rest call - may have template parameters using the template service
     public static final String CONFIG_URL =                     'url'
 
+    // See other settings in AuthenticationRequestInterceptor
+
     @Resource SimpleTemplateService templateService;
-    JsonSlurper jsonSlurper = new JsonSlurper();
+    RestTemplate restTemplate = new RestTemplate();
 
     @Override
     Object getAdditionalMetrics(ServiceInstance serviceInstance, Map<String, String> settings) {
@@ -48,8 +54,10 @@ class RestCallAdditionalMetrics implements AdditionalMetrics {
             log.info("Getting addtional metrics for ${serviceInstance.name} at ${url}");
 
             try {
-                // TODO: Pull in a real restclient, we need authentication
-                return jsonSlurper.parse(new URL(url));
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                restTemplate.setInterceptors(Arrays.asList((ClientHttpRequestInterceptor) new AuthenticationRequestInterceptor(settings, auth)));
+
+                return restTemplate.getForObject(url, Object, bindings);
             } catch (Exception e) {
                 log.error("Unable to retrieve additional metrics: ${e.getMessage()}");
             }
