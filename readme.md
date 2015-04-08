@@ -173,6 +173,32 @@ from other services in the application they get created from.  The variables tha
   than one service of a given type, the last one will survive in this map.
     - server: Server name for that this instance is running under.  Example: ${serviceInstances.mysql.server}
     - port: Ports mapped by type.  Example: ${serviceInstances.mysql.port.mysql} or ${serviceInstances.couch.port.http}
+    
+#### Additional Metrics
+
+Sometimes the built in statistics for a given service are not enough.  This is where additional metrics comes into play.
+In the example configuration, the Rabbit service has been configured with additional metrics.  The metrics simply hit
+the REST endpoint /api/overview of the server, and pass that information back to the UI.  The UI will then ask for the
+HTML template as it's configured in the ui section.
+
+The UI is divided up into two sections: Button and Details.  The button will display inline in the Environment view,
+next to the button you would click on for service instance details.  This button can be configured to show any data you want,
+such as "Number of Messages Queued" in Rabbit.  If you've sepecified a 'Template', then the html may be inline in the YAML configuration.  
+This is generally helpful for the button, since the HTML is minimal.  However, for the details, the HTML is typically much larger
+so you would want to specify it in a 'Partial'.  
+
+The HTML here is integrated fully into AngularJS and the controllers of the full application.  This allows you to access several variables
+from within your html.
+
+- Button
+    - environment: Environment Details Object
+    - application: Application Details Object
+    - serviceInstance: Service Instance Object
+    - metricName: Text Name of the metric, specified in the configuration
+    - metricValue: Value of the metric retrieved by it's component.  Example for Rabbit would be the response from /api/overview
+- Details
+    - serviceInstance: Service Instance Object
+    - data: Value of the metric retrieved by it's component.  Example for Rabbit would be the response from /api/overview
 
 ### Environment Description File
 

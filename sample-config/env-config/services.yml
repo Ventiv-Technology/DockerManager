@@ -37,6 +37,17 @@ services:
         port: 15672
       - type: amqp
         port: 5672
+    additionalMetrics:                                                                          # Additional Metrics for this service
+      - type: RestCall                                                                          # Type of additional metrics RestCall, JmxMetrics, etc...
+        name: overview                                                                          # Name this additional metric
+        ui:                                                                                     # UI Configuration: Button + Details.  Each can have a template (HTML inline here) or partial (HTML served from filessytem)
+          buttonTemplate: <span>{{metricValue.queue_totals.messages}} Message(s) Queued</span>  # Template for the button in the UI
+          detailsPartial: ./sample-config/partials/rabbit/overview.html                         # Template on filesystem for the Details in the UI
+        settings:                                                                               # Settings to feed into the Additional Metrics Module
+          url: http://#{server}:#{port.http}/api/overview
+          authentication: ProvidedUserPassword
+          user: guest
+          password: guest
     environment:
       RABBITMQ_NODENAME: rabbit1
 

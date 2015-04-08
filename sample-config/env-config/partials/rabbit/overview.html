@@ -1,0 +1,27 @@
+<div class="modal-header">
+    <h3>Rabbit Overview Statistics</h3>
+</div>
+
+<div class="modal-body">
+    <h4>Queue Statistics</h4>
+    <canvas id="queue-stats"
+            class="chart chart-bar"
+            data="[[data.queue_totals.messages, data.queue_totals.messages_ready, data.queue_totals.messages_unacknowledged], [data.queue_totals.messages_details.rate, data.queue_totals.messages_ready_details.rate, data.queue_totals.messages_unacknowledged_details.rate]]"
+            labels="['Messages', 'Ready', 'Unacknowledged']"
+            series="['Number', 'Rate']"
+            legend="true">
+    </canvas>
+
+    <h4>Message Statistics</h4>
+    <canvas id="message-stats"
+            class="chart chart-bar"
+            data="[[data.message_stats.publish, data.message_stats.ack, data.message_stats.deliver, data.message_stats.deliver_get], [data.message_stats.publish_details.rate, data.message_stats.ack_details.rate, data.message_stats.deliver_details.rate, data.message_stats.deliver_get_details.rate]]"
+            labels="['Publish', 'Ack', 'Deliver', 'Deliver Get']"
+            series="['Message Statistics', 'Message Rates']"
+            legend="true">
+    </canvas>
+</div>
+
+<div class="modal-footer">
+    <button class="btn btn-inverse" data-ng-click="dismiss('cancel')">Close</button>
+</div>
