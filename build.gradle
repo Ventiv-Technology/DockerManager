@@ -59,7 +59,7 @@ dependencies {
 
     // Web Loading
     compile 'org.webjars:webjars-locator:0.21'
-    compile 'org.ventiv:spring-boot-webjars-requirejs:1.0.2'
+    compile 'org.ventiv:spring-boot-webjars-requirejs:1.1.2'
 
     // Web Jars
     compile 'org.webjars:angularjs:1.3.0'

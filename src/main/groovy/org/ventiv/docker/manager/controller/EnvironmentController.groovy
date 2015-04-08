@@ -35,12 +35,15 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
+import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.event.PullImageEvent
+import org.ventiv.docker.manager.metrics.AdditionalMetrics
+import org.ventiv.docker.manager.model.AdditionalMetricsConfiguration
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationInfo
@@ -234,6 +237,7 @@ class EnvironmentController {
                 // Now, if the docker container exists, overwrite all the info with the real info
                 if (dockerContainer) {
                     serviceInstance.withDockerContainer(dockerContainer);
+                    getServiceInstanceAdditionalMetrics(serviceInstance);
                 }
 
                 definedServiceInstances << serviceInstance;
@@ -289,6 +293,18 @@ class EnvironmentController {
         }
 
         return application;
+    }
+
+    public Map<String, Object> getServiceInstanceAdditionalMetrics(ServiceInstance serviceInstance) {
+        // TODO: Caching?
+        ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName());
+        Map<String, Object> additionalMetrics = serviceConfiguration.getAdditionalMetrics()?.collectEntries { AdditionalMetricsConfiguration metricsConfiguration ->
+            AdditionalMetrics additionalMetrics = DockerManagerApplication.getApplicationContext().getBean(metricsConfiguration.getType(), AdditionalMetrics)
+            return [metricsConfiguration.getName(), additionalMetrics.getAdditionalMetrics(serviceInstance, metricsConfiguration.getSettings())];
+        }
+
+        serviceInstance.setAdditionalMetrics(additionalMetrics);
+        return additionalMetrics;
     }
 
     public BuildApplicationInfo buildApplication(ApplicationDetails applicationDetails, Map<String, String> versionToBuild) {
@@ -347,12 +363,7 @@ class EnvironmentController {
                 application: applicationDetails,
                 instance: instance,
                 serviceInstances: applicationDetails.getServiceInstances().collectEntries { ServiceInstance serviceInstance ->
-                    return [serviceInstance.getName(), [
-                            server: serviceInstance.getServerName(),
-                            port: serviceInstance.getPortDefinitions().collectEntries {
-                                return [it.getPortType(), it.getHostPort()]
-                            }
-                    ]]
+                    return [serviceInstance.getName(), serviceInstance.getTemplateBindings()]
                 }
         ]
 

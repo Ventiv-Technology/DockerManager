@@ -93,6 +93,13 @@ class ServiceConfiguration {
     @Nullable
     List<VolumeMapping> containerVolumes;
 
+    /**
+     * Additional Metrics for this service.  This is a way to get additional information about a running service, and possibly
+     * display it on the UI.
+     */
+    @Nullable
+    List<AdditionalMetricsConfiguration> additionalMetrics;
+
     public List<String> getPossibleVersions() {
         List<String> answer = [];
 

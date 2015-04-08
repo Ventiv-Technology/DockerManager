@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.github.dockerjava.api.command.InspectContainerResponse
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
@@ -68,6 +69,8 @@ class ServiceInstance {
     List<PortDefinition> portDefinitions;
 
     Map<String, String> resolvedEnvironmentVariables;
+
+    Map<String, Object> additionalMetrics;
 
     public ServiceInstance setDockerName(String dockerName) {
         def matcher = dockerName =~ DOCKER_NAME_PATTERN;
@@ -162,13 +165,22 @@ class ServiceInstance {
             else
                 setUrl(getServiceDescription() + " is Missing")
         }
-
-        // TODO: If Running and no URL specified, look for a port of type 'http' or 'https'
     }
 
     @Override
     public String toString() {
         return "${tierName}.${environmentName}.${applicationId}.${name}.${instanceNumber}"
+    }
+
+    @JsonIgnore
+    public Map<String, Object> getTemplateBindings() {
+        return [
+                instance: this,
+                server: getServerName(),
+                port: getPortDefinitions().collectEntries {
+                    return [it.getPortType(), it.getHostPort()]
+                }
+        ]
     }
 
 

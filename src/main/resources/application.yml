@@ -16,4 +16,5 @@ plugins:
   - org.ventiv.docker.manager.plugin.DynatracePlugin
 
 
+webjars.requirejs.newModules:
 webjars.requirejs.paths.select2: dist/js/select2.min

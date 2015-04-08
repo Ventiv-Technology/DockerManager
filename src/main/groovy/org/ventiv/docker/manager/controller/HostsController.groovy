@@ -200,7 +200,7 @@ class HostsController {
 
     @CompileDynamic
     private List<ServerConfiguration> getAllHosts() {
-        return (List<ServerConfiguration>) environmentConfigurationService.getAllEnvironments()*.getServers().flatten().findAll { it }.unique { it.getHostname() }
+        return (List<ServerConfiguration>) environmentConfigurationService.getActiveEnvironments()*.getServers().flatten().findAll { it }.unique { it.getHostname() }
     }
 
 }
