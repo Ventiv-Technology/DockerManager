@@ -29,6 +29,7 @@ class DockerManagerConfiguration {
     ConfigurationConfig config = new ConfigurationConfig();
     TemplateConfig template = new TemplateConfig();
     List<Class> plugins;
+    Long additionalMetricsRefreshDelay = 5000L;
 
     @ConfigurationProperties
     public static class LdapConfiguration {

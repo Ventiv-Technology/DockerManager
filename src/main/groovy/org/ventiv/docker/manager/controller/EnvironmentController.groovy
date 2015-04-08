@@ -35,15 +35,13 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.event.PullImageEvent
-import org.ventiv.docker.manager.metrics.AdditionalMetrics
-import org.ventiv.docker.manager.model.AdditionalMetricsConfiguration
+import org.ventiv.docker.manager.metrics.store.AbstractAdditionalMetricsStore
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationInfo
@@ -82,6 +80,7 @@ class EnvironmentController {
     @Resource ApplicationDeploymentService deploymentService;
     @Resource PluginService pluginService;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
+    @Resource AbstractAdditionalMetricsStore additionalMetricsStore;
 
     Map<String, BuildApplicationInfo> buildingApplications = [:]
 
@@ -296,14 +295,9 @@ class EnvironmentController {
     }
 
     public Map<String, Object> getServiceInstanceAdditionalMetrics(ServiceInstance serviceInstance) {
-        // TODO: Caching?
-        ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName());
-        Map<String, Object> additionalMetrics = serviceConfiguration.getAdditionalMetrics()?.collectEntries { AdditionalMetricsConfiguration metricsConfiguration ->
-            AdditionalMetrics additionalMetrics = DockerManagerApplication.getApplicationContext().getBean(metricsConfiguration.getType(), AdditionalMetrics)
-            return [metricsConfiguration.getName(), additionalMetrics.getAdditionalMetrics(serviceInstance, metricsConfiguration.getSettings())];
-        }
-
+        Map<String, Object> additionalMetrics = additionalMetricsStore.getLatestAdditionalMetrics(serviceInstance);
         serviceInstance.setAdditionalMetrics(additionalMetrics);
+
         return additionalMetrics;
     }
 

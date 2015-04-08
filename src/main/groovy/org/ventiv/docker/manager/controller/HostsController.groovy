@@ -111,6 +111,18 @@ class HostsController {
         ];
     }
 
+    @CompileDynamic
+    public List<ServiceInstance> getAllActiveServiceInstances() {
+        return getAllHosts().collect { ServerConfiguration serverConfiguration ->
+            try {
+                List<Container> hostContainers = dockerService.getDockerClient(serverConfiguration.getHostname()).listContainersCmd().withShowAll(true).exec()
+                return hostContainers?.collect {
+                    return new ServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it);
+                }
+            } catch (Exception ignored) {}
+        }.flatten().findAll { it }
+    }
+
     @RequestMapping("/{hostName}/{containerId}/stdout")
     public void getStdOutLog(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
         LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdOut()

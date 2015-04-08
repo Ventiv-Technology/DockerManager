@@ -51,7 +51,7 @@ class RestCallAdditionalMetrics implements AdditionalMetrics {
             bindings.put("settings", settings);
 
             String url = templateService.fillTemplate(settings[CONFIG_URL], bindings);
-            log.info("Getting addtional metrics for ${serviceInstance.name} at ${url}");
+            log.debug("Getting addtional metrics for ${serviceInstance.name} at ${url}");
 
             try {
                 Authentication auth = SecurityContextHolder.getContext().getAuthentication();
