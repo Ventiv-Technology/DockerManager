@@ -17,8 +17,7 @@ package org.ventiv.docker.manager.controller
 
 import feign.FeignException
 import org.apache.commons.io.IOUtils
-import org.springframework.core.io.DefaultResourceLoader
-import org.springframework.core.io.ResourceLoader
+import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
@@ -44,8 +43,6 @@ class DockerServiceController {
 
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource DockerRegistryApiService dockerRegistryApiService;
-
-    private ResourceLoader resourceLoader = new DefaultResourceLoader();
 
     @RequestMapping()
     public List<String> getServiceNames() {
@@ -108,10 +105,25 @@ class DockerServiceController {
             response.setContentType(MediaType.TEXT_HTML_VALUE);
 
             if (metricsConfiguration.getUi().getButtonPartial()) {
-                org.springframework.core.io.Resource resource = resourceLoader.getResource(metricsConfiguration.getUi().getButtonPartial());
+                org.springframework.core.io.Resource resource = new FileSystemResource(metricsConfiguration.getUi().getButtonPartial())
                 IOUtils.copy(resource.getInputStream(), response.getOutputStream());
             } else if (metricsConfiguration.getUi().getButtonTemplate())
                 response.getOutputStream() << metricsConfiguration.getUi().getButtonTemplate()
+        }
+    }
+
+    @RequestMapping("/{serviceName}/metrics/{metricName}/details")
+    public void getAdditionalMetricsDetailsPartial(@PathVariable("serviceName") String serviceName, @PathVariable("metricName") String metricName, HttpServletResponse response) {
+        ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceName);
+        AdditionalMetricsConfiguration metricsConfiguration = serviceConfiguration?.getAdditionalMetrics()?.find { it.getName() == metricName }
+        if (metricsConfiguration) {
+            response.setContentType(MediaType.TEXT_HTML_VALUE);
+
+            if (metricsConfiguration.getUi().getDetailsPartial()) {
+                org.springframework.core.io.Resource resource = new FileSystemResource(metricsConfiguration.getUi().getDetailsPartial())
+                IOUtils.copy(resource.getInputStream(), response.getOutputStream());
+            } else if (metricsConfiguration.getUi().getDetailsTemplate())
+                response.getOutputStream() << metricsConfiguration.getUi().getDetailsTemplate()
         }
     }
 

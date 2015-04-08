@@ -73,7 +73,7 @@
                         </div>
                     </div>
                     <div data-ng-repeat="(metricName, metricValue) in serviceInstance.additionalMetrics" data-ng-if="serviceInstance.additionalMetrics && serviceInstance.status == 'Running'" class="col-md-2">
-                        <div class="btn btn-info btn-block"  data-ng-include="'/api/service/' + serviceInstance.name + '/metrics/' + metricName + '/button'"></div>
+                        <div class="btn btn-info btn-block" data-ng-click="additionalMetricsDetails(serviceInstance, metricName, metricValue)" data-ng-include="'/api/service/' + serviceInstance.name + '/metrics/' + metricName + '/button'"></div>
                     </div>
                 </div>
 

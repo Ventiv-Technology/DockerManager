@@ -93,6 +93,23 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
 
                 });
             };
+
+            $scope.additionalMetricsDetails = function(serviceInstance, metricName, metricValue) {
+                var additionalMetricsDetailsModal = $modal.open({
+                    templateUrl: '/api/service/' + serviceInstance.name + '/metrics/' + metricName + '/details',
+                    controller: 'AdditionalMetricsDetailsController',
+                    windowClass: 'additional-metrics-details',
+                    size: 'lg',
+                    resolve: {
+                        serviceInstance: function() { return serviceInstance },
+                        data: function() { return metricValue }
+                    }
+                });
+
+                additionalMetricsDetailsModal.result.then(function () {
+
+                });
+            };
         })
 
         .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular, $http, StatusService) {
@@ -231,6 +248,15 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         throw "Problems performing " + operation + " operation on container...";
                     }
                 );
+            };
+        })
+
+        .controller('AdditionalMetricsDetailsController', function($scope, $modalInstance, serviceInstance, data) {
+            $scope.serviceInstance = serviceInstance;
+            $scope.data = data;
+
+            $scope.dismiss = function(dismissObj) {
+                $modalInstance.dismiss(dismissObj);
             };
         })
 
