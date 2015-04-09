@@ -6,7 +6,7 @@ ADD sample-config /opt/DockerManager/sample-config
 
 WORKDIR /opt/DockerManagerBuild
 
-RUN ./gradlew clean build &&\
+RUN ./gradlew clean build -x test &&\
     mkdir -p /opt/DockerManager &&\
     cp /opt/DockerManagerBuild/build/libs/dockermanager-*.jar /opt/DockerManager/dockermanager.jar &&\
     rm -rf /root/.gradle/caches/modules* &&\
