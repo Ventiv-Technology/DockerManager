@@ -58,6 +58,7 @@ import org.ventiv.docker.manager.service.ApplicationDeploymentService
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.PluginService
+import org.ventiv.docker.manager.service.ServiceInstanceService
 
 import javax.annotation.Resource
 
@@ -79,6 +80,7 @@ class EnvironmentController {
     @Resource PluginService pluginService;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
     @Resource AbstractAdditionalMetricsStore additionalMetricsStore;
+    @Resource ServiceInstanceService serviceInstanceService;
 
     Map<String, BuildApplicationInfo> buildingApplications = [:]
 
@@ -97,7 +99,7 @@ class EnvironmentController {
     @RequestMapping("/{tierName}/{environmentName}")
     public List<ApplicationDetails> getEnvironmentDetails(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
-        List<ServiceInstance> serviceInstances = getServiceInstances(tierName, environmentName);
+        Collection<ServiceInstance> serviceInstances = getServiceInstances(tierName, environmentName);
 
         return envConfiguration.getApplications().collect { ApplicationConfiguration applicationConfiguration ->
             Collection<ServiceInstance> applicationInstances = serviceInstances.findAll { it.getApplicationId() == applicationConfiguration.getId() };
@@ -195,34 +197,36 @@ class EnvironmentController {
         deployApplication(tierName, environmentName, new DeployApplicationRequest(name: applicationId, serviceVersions: serviceVersions));
     }
 
+    /**
+     * Retreives all service instances, running, stopped, or available.
+     * @param tierName
+     * @param environmentName
+     * @return
+     */
     @CompileStatic
     @RequestMapping("/{tierName}/{environmentName}/serviceInstances")
-    public List<ServiceInstance> getServiceInstances(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
+    public Collection<ServiceInstance> getServiceInstances(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
+        // Get the created instances
+        Collection<ServiceInstance> allInstances = getServiceInstanceService().getServiceInstances().findAll { ServiceInstance serviceInstance ->
+            serviceInstance.getTierName() == tierName && serviceInstance.getEnvironmentName() == environmentName
+        }
+
+        // Now get the available ones
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
+        envConfiguration.getServers().each { ServerConfiguration serverConfiguration ->
+            serviceInstanceService.getAvailableServiceInstances(serverConfiguration).each { EligibleServiceConfiguration eligibleServiceConfiguration ->
+                ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(eligibleServiceConfiguration.getType());
 
-        List<ServiceInstance> definedServiceInstances = [];
-        envConfiguration.getServers().each { ServerConfiguration serverConf ->
-            List<Container> containers = dockerService.getDockerClient(serverConf.getHostname()).listContainersCmd().withShowAll(true).exec();
-
-            Map<String, Integer> instanceNumbers = [:]
-            serverConf.getEligibleServices().each { EligibleServiceConfiguration serviceConf ->
-                String serviceName = serviceConf.getType();
-                ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceName);
-                instanceNumbers.put(serviceName, (instanceNumbers[serviceName] ?: 0) + 1);      // Increment/populate the service instance number
-                Integer instanceNumber = instanceNumbers[serviceName];
-                Container dockerContainer = containers.find { it.getNames()[0].startsWith("/${tierName}.${environmentName}.") && it.getNames()[0].endsWith(".${serviceName}.${instanceNumber}") }
-
-                // Create a shell of an instance, just in case there is no docker container to get the info from.
-                ServiceInstance serviceInstance = new ServiceInstance([
+                allInstances << new ServiceInstance([
                         tierName: tierName,
                         environmentName: environmentName,
-                        name: serviceName,
-                        serverName: serverConf.getHostname(),
-                        instanceNumber: instanceNumber,
+                        name: eligibleServiceConfiguration.getType(),
+                        serverName: serverConfiguration.getHostname(),
+                        instanceNumber: eligibleServiceConfiguration.getInstanceNumber(),
                         status: ServiceInstance.Status.Available,
                         buildPossible: serviceConfiguration.isBuildPossible(),
                         newBuildPossible: serviceConfiguration.isNewBuildPossible(),
-                        portDefinitions: serviceConf.portMappings.collect { portMapping ->
+                        portDefinitions: eligibleServiceConfiguration.portMappings.collect { portMapping ->
                             return new PortDefinition([
                                     portType: portMapping.type,
                                     hostPort: portMapping.port,
@@ -230,18 +234,10 @@ class EnvironmentController {
                             ])
                         }
                 ])
-
-                // Now, if the docker container exists, overwrite all the info with the real info
-                if (dockerContainer) {
-                    serviceInstance.withDockerContainer(dockerContainer);
-                    getServiceInstanceAdditionalMetrics(serviceInstance);
-                }
-
-                definedServiceInstances << serviceInstance;
             }
         }
 
-        return definedServiceInstances;
+        return allInstances
     }
 
     @CompileStatic

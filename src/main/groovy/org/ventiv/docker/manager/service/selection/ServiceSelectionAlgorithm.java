@@ -19,20 +19,20 @@ import org.ventiv.docker.manager.exception.NoAvailableServiceException;
 import org.ventiv.docker.manager.model.ApplicationDetails;
 import org.ventiv.docker.manager.model.ServiceInstance;
 
-import java.util.List;
+import java.util.Collection;
 
 /**
  * Created by jcrygier on 2/28/15.
  */
 public interface ServiceSelectionAlgorithm {
 
-    public ServiceInstance getAvailableServiceInstance(String serviceName, List<ServiceInstance> allServiceInstances, String applicationId);
+    public ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, String applicationId);
 
     public static class Util {
 
         private static ServiceSelectionAlgorithm defaultImplementation = new DistributedServerServiceSelectionAlgorithm();
 
-        public static ServiceInstance getAvailableServiceInstance(String serviceName, List<ServiceInstance> allServiceInstances, ApplicationDetails applicationDetails) {
+        public static ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, ApplicationDetails applicationDetails) {
             ServiceSelectionAlgorithm instance = defaultImplementation;
 
             // Check if we have defined a custom selection algorithm, and it's different

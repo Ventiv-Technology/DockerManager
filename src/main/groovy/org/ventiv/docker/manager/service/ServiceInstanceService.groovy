@@ -31,6 +31,7 @@ import org.ventiv.docker.manager.event.ContainerRemovedEvent
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
+import org.ventiv.docker.manager.model.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 
@@ -83,6 +84,17 @@ class ServiceInstanceService implements Runnable {
         return allServiceInstances.values().flatten();
     }
 
+    public Collection<EligibleServiceConfiguration> getAvailableServiceInstances(ServerConfiguration serverConfiguration) {
+        Collection<EligibleServiceConfiguration> availableServices = new ArrayList(serverConfiguration.getEligibleServices());
+        getServiceInstances(serverConfiguration).each { ServiceInstance createdInstance ->
+            availableServices.remove(availableServices.find { EligibleServiceConfiguration eligibleServiceConfiguration ->
+                eligibleServiceConfiguration.getType() == createdInstance.getName() && eligibleServiceConfiguration.getInstanceNumber() == createdInstance.getInstanceNumber()
+            });
+        }
+
+        return availableServices;
+    }
+
     public void initializeServerConfiguration(ServerConfiguration serverConfiguration) {
         String serverConfigurationKey = getServerConfigurationKey(serverConfiguration);
 
@@ -131,8 +143,10 @@ class ServiceInstanceService implements Runnable {
 
         @Override
         void onEvent(Event event) {
+            log.debug("Received Docker Event: $event");
+
             // We don't care about Image Events
-            if (["untag", "delete"].contains(event.getStatus()))
+            if (["untag", "delete", "pull"].contains(event.getStatus()))
                 return;
 
             // And we don't care about the following Container events
@@ -168,8 +182,6 @@ class ServiceInstanceService implements Runnable {
 
             if (eventToPublish)
                 serviceInstanceService.eventPublisher.publishEvent(eventToPublish);
-
-            log.debug("Received Docker Event: $event");
         }
 
         @Override

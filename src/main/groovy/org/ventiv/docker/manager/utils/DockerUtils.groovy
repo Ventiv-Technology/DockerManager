@@ -29,7 +29,7 @@ class DockerUtils {
 
     public static final Pattern UP_PATTERN = ~/Up (\d*) (\w*)/
     public static final Pattern EXITED_PATTERN = ~/Exited \((-?\d*)\) (\d*) (\w*) ago/
-    public static final Pattern APPROX_PATTERN = ~/Up About an? (\w*)/
+    public static final Pattern APPROX_PATTERN = ~/About an? (\w*)/
 
     public static Date convertDockerDate(String dte) {
         return new DateTime(dte).toDate();
@@ -44,6 +44,9 @@ class DockerUtils {
     }
 
     public static Date convertPsStatusToDate(String psStatus, Date now = new Date()) {
+        if (psStatus.contains("than a second"))
+            return now;
+
         Matcher upMatcher = UP_PATTERN.matcher(psStatus)
         Matcher exitedMatcher = EXITED_PATTERN.matcher(psStatus)
         Matcher approxMatcher = APPROX_PATTERN.matcher(psStatus)
@@ -62,6 +65,9 @@ class DockerUtils {
             scalar = 1;
             periodType = approxMatcher[0][1].toLowerCase() + 's';
         }
+
+        if (periodType == null)
+            throw new IllegalArgumentException("DockerUtils doesn't know how to translate ps status of '${psStatus}' to a date.  Please add to DockerUtilsTest.\"can convert 'docker ps' status to status date\".")
 
         return dateTime.minus(Period."$periodType"(scalar)).toDate();
     }

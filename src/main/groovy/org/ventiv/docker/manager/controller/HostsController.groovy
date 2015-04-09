@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.model.ApplicationConfiguration
-import org.ventiv.docker.manager.model.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
@@ -59,23 +58,12 @@ class HostsController {
     @RequestMapping
     public def getHostDetails() {
         List<LinkedHashMap<String, Object>> hostDetails = serviceInstanceService.getAllHosts().collect { ServerConfiguration serverConfiguration ->
-            // Get the Service Instances
-            List<ServiceInstance> allCreatedInstances = serviceInstanceService.getServiceInstances(serverConfiguration)
-
-            // Get all eligible services
-            List<EligibleServiceConfiguration> availableServices = new ArrayList(serverConfiguration.getEligibleServices());
-            allCreatedInstances.each { ServiceInstance createdInstance ->
-                availableServices.remove(availableServices.find { EligibleServiceConfiguration eligibleServiceConfiguration ->
-                    eligibleServiceConfiguration.getType() == createdInstance.getName() && eligibleServiceConfiguration.getInstanceNumber() == createdInstance.getInstanceNumber()
-                });
-            }
-
             return [
                     id: serverConfiguration.getId(),
                     description: serverConfiguration.getDescription(),
                     hostname: serverConfiguration.getHostname(),
-                    serviceInstances: allCreatedInstances,
-                    availableServices: availableServices
+                    serviceInstances: serviceInstanceService.getServiceInstances(serverConfiguration).sort { it.getContainerStatusTime() }.reverse(),
+                    availableServices: serviceInstanceService.getAvailableServiceInstances(serverConfiguration)
             ]
         }
 

@@ -69,6 +69,8 @@ class DockerUtilsTest extends Specification {
         "Up 2 months"                       | "2015-01-17T00:32:00.03291945Z"
         "Exited (-1) 2 weeks ago"           | "2015-03-03T00:32:00.03291945Z"
         "Up About an hour"                  | "2015-03-16T22:32:00.03291945Z"
+        "Exited (1) About a minute ago"     | "2015-03-16T23:31:00.03291945Z"
+        "Up Less than a second"             | "2015-03-16T23:32:00.03291945Z"
     }
 
 }

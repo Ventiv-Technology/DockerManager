@@ -51,6 +51,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
     @Resource HostsController hostsController;
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource DockerRegistryApiService registryApiService;
+    @Resource ServiceInstanceService serviceInstanceService;
 
     private Map<String, Promise<ApplicationDetails, ApplicationException, String>> runningDeployments = [:]
 
@@ -74,12 +75,12 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
         Thread.start {
             TimingUtils.time("Deploy Application ${applicationDetails.getId()}") {
                 try {
-                    List<ServiceInstance> allServiceInstances = environmentController.getServiceInstances(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
+                    Collection<ServiceInstance> createdServiceInstances = environmentController.getServiceInstances(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
 
                     // First, let's find any missing services
                     applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
                         // Find an 'Available' Service Instance
-                        ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), allServiceInstances, applicationDetails);
+                        ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), createdServiceInstances, applicationDetails);
                         toUse.setApplicationId(applicationDetails.getId());
 
                         // Create (and start) the container
