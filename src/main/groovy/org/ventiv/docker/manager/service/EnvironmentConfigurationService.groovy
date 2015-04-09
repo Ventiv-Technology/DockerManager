@@ -68,20 +68,23 @@ class EnvironmentConfigurationService {
         allEnvironments.remove(getEnvironment(tierName, environmentId));
         allEnvironments << environmentConfiguration
 
-        // Call over to DockerService so we can ensure that we've cached things as necessary
-        environmentConfiguration.getServers()*.getHostname().unique().each { String hostName ->
-            try {
-                dockerService.getDockerClient(hostName);
-            } catch (Exception ignored) {
-                log.warn("Unable to connect to host $hostName, removing it from the Environment Configuration")
-                environmentConfiguration.getServers().removeAll { ServerConfiguration serverConfiguration ->
-                    serverConfiguration.getHostname() == hostName
+        // If this is an active environment, connect to docker
+        if (props.getActiveTiers() == null || props.getActiveTiers().contains(environmentConfiguration.getTierName())) {
+            // Call over to DockerService so we can ensure that we've cached things as necessary
+            environmentConfiguration.getServers()*.getHostname().unique().each { String hostName ->
+                try {
+                    dockerService.getDockerClient(hostName);
+                } catch (Exception ignored) {
+                    log.warn("Unable to connect to host $hostName, removing it from the Environment Configuration")
+                    environmentConfiguration.getServers().removeAll { ServerConfiguration serverConfiguration ->
+                        serverConfiguration.getHostname() == hostName
+                    }
                 }
             }
-        }
 
-        // Tell the Service Instance Status that we have a new Environment Configuration
-        environmentConfiguration.getServers()?.each(serviceInstanceService.&initializeServerConfiguration);
+            // Tell the Service Instance Status that we have a new Environment Configuration
+            environmentConfiguration.getServers()?.each(serviceInstanceService.&initializeServerConfiguration);
+        }
     }
 
     public Collection<EnvironmentConfiguration> getActiveEnvironments() {
