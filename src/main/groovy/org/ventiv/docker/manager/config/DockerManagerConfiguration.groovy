@@ -29,8 +29,8 @@ class DockerManagerConfiguration {
     ConfigurationConfig config = new ConfigurationConfig();
     TemplateConfig template = new TemplateConfig();
     List<Class> plugins;
-    Long additionalMetricsRefreshDelay = 5000L;
-    Long dockerServerReconnectDelay = 60 * 60 * 1000L;          // 1 Hour
+    Long additionalMetricsRefreshDelay = 30 * 1000L;                 // 30 seconds
+    Long dockerServerReconnectDelay = 1 * 60 * 60 * 1000L;           // 1 Hour
 
     @ConfigurationProperties
     public static class LdapConfiguration {

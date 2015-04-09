@@ -18,3 +18,5 @@ plugins:
 
 webjars.requirejs.newModules:
 webjars.requirejs.paths.select2: dist/js/select2.min
+
+spring.jpa.hibernate.ddl-auto: update
