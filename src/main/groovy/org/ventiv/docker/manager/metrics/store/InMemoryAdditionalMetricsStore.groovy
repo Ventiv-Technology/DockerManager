@@ -25,29 +25,24 @@ class InMemoryAdditionalMetricsStore extends AbstractAdditionalMetricsStore {
     Map<String, List<AdditionalMetricsStorage>> store = [:];
 
     @Override
-    List<Map<String, Object>> getAdditionalMetricsBetween(ServiceInstance serviceInstance, Long startTime, Long endTime) {
+    List<AdditionalMetricsStorage> getAdditionalMetricsBetween(ServiceInstance serviceInstance, Long startTime, Long endTime) {
         if (startTime == null) startTime = Long.MIN_VALUE;
         if (endTime == null) endTime = System.currentTimeMillis();
 
         store[getKey(serviceInstance)]?.findAll { AdditionalMetricsStorage additionalMetricsStorage ->
             return startTime <= additionalMetricsStorage.getTimestamp() && additionalMetricsStorage.getTimestamp() <= endTime
-        }?.sort { it.getTimestamp() }?.reverse()?.collect { it.getAdditionalMetrics() }
+        }?.sort { it.getTimestamp() }?.reverse()
     }
 
     @Override
-    void storeAdditionalMetrics(ServiceInstance serviceInstance, Map<String, Object> additionalMetrics, Long timestamp) {
+    void storeAdditionalMetrics(ServiceInstance serviceInstance, AdditionalMetricsStorage additionalMetricsStorage) {
         if (!store.containsKey(getKey(serviceInstance)))
             store.put(getKey(serviceInstance), []);
 
-        store[getKey(serviceInstance)] << new AdditionalMetricsStorage(timestamp: timestamp, additionalMetrics: additionalMetrics);
+        store[getKey(serviceInstance)] << additionalMetricsStorage;
     }
 
     private String getKey(ServiceInstance serviceInstance) {
         return serviceInstance.getServerName() + "-" + serviceInstance.toString();
-    }
-
-    public static final class AdditionalMetricsStorage {
-        Long timestamp;
-        Map<String, Object> additionalMetrics;
     }
 }

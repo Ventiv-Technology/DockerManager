@@ -48,4 +48,12 @@ class AdditionalMetricsConfiguration {
     @Nullable
     Map<String, String> settings;
 
+    /**
+     * Key value pair that should be stored in the Additional Metrics Data storage.  The key here is the key that will be
+     * stored in Additional Metrics Data Storage, and the value is a SimpleTemplateService template operating on 'data'
+     * as the object returned from this particular type of Additional Metrics.
+     */
+    @Nullable
+    Map<String, String> storage;
+
 }

@@ -39,7 +39,6 @@ import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.event.PullImageEvent
-import org.ventiv.docker.manager.metrics.store.AbstractAdditionalMetricsStore
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationInfo
@@ -79,7 +78,6 @@ class EnvironmentController {
     @Resource ApplicationDeploymentService deploymentService;
     @Resource PluginService pluginService;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
-    @Resource AbstractAdditionalMetricsStore additionalMetricsStore;
     @Resource ServiceInstanceService serviceInstanceService;
 
     Map<String, BuildApplicationInfo> buildingApplications = [:]
@@ -286,13 +284,6 @@ class EnvironmentController {
         }
 
         return application;
-    }
-
-    public Map<String, Object> getServiceInstanceAdditionalMetrics(ServiceInstance serviceInstance) {
-        Map<String, Object> additionalMetrics = additionalMetricsStore.getLatestAdditionalMetrics(serviceInstance);
-        serviceInstance.setAdditionalMetrics(additionalMetrics);
-
-        return additionalMetrics;
     }
 
     public BuildApplicationInfo buildApplication(ApplicationDetails applicationDetails, Map<String, String> versionToBuild) {

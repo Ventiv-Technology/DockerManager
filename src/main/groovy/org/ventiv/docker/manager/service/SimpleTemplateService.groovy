@@ -58,9 +58,13 @@ class SimpleTemplateService {
 
             try {
                 match[1].split('\\.').each { String nextAccessor ->
-                    currentObject = currentObject[nextAccessor]
+                    if (nextAccessor.indexOf('()') > -1) {          // We're trying to call a no-arg method
+                        String methodName = nextAccessor.substring(0, nextAccessor.indexOf('('))
+                        currentObject = currentObject.getMetaClass().getMetaMethod(methodName).invoke(currentObject);
+                    } else
+                        currentObject = currentObject[nextAccessor]
                 }
-            } catch (MissingPropertyException e) {
+            } catch (Exception e) {
                 if (props.template.ignoreMissingProperties)
                     currentObject = match[0]
                 else

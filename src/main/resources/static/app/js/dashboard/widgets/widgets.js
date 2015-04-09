@@ -16,6 +16,7 @@
 'use strict';
 
 define([
+    "/api/metrics/widgets",
     "dashboard/widgets/linklist/widget",
     "dashboard/widgets/connectedhosts/widget",
     "dashboard/widgets/serviceInstanceStatus/widget",

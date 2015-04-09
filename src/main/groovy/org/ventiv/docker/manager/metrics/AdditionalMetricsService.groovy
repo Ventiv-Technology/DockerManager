@@ -60,6 +60,7 @@ class AdditionalMetricsService implements Runnable {
         serviceInstanceService.getServiceInstances().each { ServiceInstance serviceInstance ->
             if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
                 Map<String, Object> additionalMetrics = getServiceInstanceAdditionalMetrics(serviceInstance);
+                serviceInstance.setAdditionalMetrics(additionalMetrics);
                 if (additionalMetrics)
                     eventPublisher.publishEvent(new UpdatedAdditionalMetricsEvent(serviceInstance, additionalMetrics));
             }

@@ -84,6 +84,10 @@ class ServiceInstanceService implements Runnable {
         return allServiceInstances.values().flatten();
     }
 
+    public ServiceInstance getServiceInstance(String containerId) {
+        getServiceInstances().find { it.getContainerId().startsWith(containerId) }
+    }
+
     public Collection<EligibleServiceConfiguration> getAvailableServiceInstances(ServerConfiguration serverConfiguration) {
         Collection<EligibleServiceConfiguration> availableServices = new ArrayList(serverConfiguration.getEligibleServices());
         getServiceInstances(serverConfiguration).each { ServiceInstance createdInstance ->

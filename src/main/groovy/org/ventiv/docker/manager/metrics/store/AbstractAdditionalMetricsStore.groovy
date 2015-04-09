@@ -15,19 +15,47 @@
  */
 package org.ventiv.docker.manager.metrics.store
 
+import groovy.transform.CompileStatic
 import org.springframework.context.ApplicationListener
+import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.UpdatedAdditionalMetricsEvent
+import org.ventiv.docker.manager.model.AdditionalMetricsConfiguration
+import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.service.SimpleTemplateService
+
+import javax.annotation.Resource
 
 /**
  * Base class for any Additional Metrics Store.  This will store Additional Metrics when they are retrieved, so we
  * can operate on them later.
  */
+@CompileStatic
 abstract class AbstractAdditionalMetricsStore implements ApplicationListener<UpdatedAdditionalMetricsEvent> {
+
+    @Resource SimpleTemplateService templateService;
+    @Resource DockerServiceConfiguration dockerServiceConfiguration;
 
     @Override
     void onApplicationEvent(UpdatedAdditionalMetricsEvent event) {
-        storeAdditionalMetrics(event.getServiceInstance(), event.getAdditionalMetrics(), event.getTimestamp());
+        ServiceInstance serviceInstance = event.getServiceInstance();
+        Map<String, Object> additionalMetrics = event.getAdditionalMetrics();
+        Long timestamp = event.getTimestamp();
+
+        AdditionalMetricsStorage storage = new AdditionalMetricsStorage(timestamp: timestamp, additionalMetrics: [:])
+        additionalMetrics.each{ metricName, metricObject ->
+            ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName())
+            AdditionalMetricsConfiguration metricsConfiguration = serviceConfiguration.getAdditionalMetrics().find { it.getName() == metricName }
+            Map<String, Object> bindings = [data: metricObject]
+
+            metricsConfiguration?.getStorage()?.each { storageKey, storageExpression ->
+                String value = templateService.fillTemplate(storageExpression, bindings);
+                if (value && value != "null" && value != storageExpression)
+                    storage.additionalMetrics.put(metricName + "." + storageKey, new BigDecimal(value));
+            }
+        }
+
+        storeAdditionalMetrics(event.getServiceInstance(), storage);
     }
 
     /**
@@ -36,8 +64,8 @@ abstract class AbstractAdditionalMetricsStore implements ApplicationListener<Upd
      * @param serviceInstance
      * @return
      */
-    Map<String, Object> getLatestAdditionalMetrics(ServiceInstance serviceInstance) {
-        List<Map<String, Object>> allMetrics = getAdditionalMetricsBetween(serviceInstance, null, null);
+    AdditionalMetricsStorage getLatestAdditionalMetrics(ServiceInstance serviceInstance) {
+        List<AdditionalMetricsStorage> allMetrics = getAdditionalMetricsBetween(serviceInstance, null, null);
         if (allMetrics)
             return allMetrics.last();
         else
@@ -52,8 +80,8 @@ abstract class AbstractAdditionalMetricsStore implements ApplicationListener<Upd
      * @param endTime Ending time, if null, get all until now (inclusive)
      * @return All metrics between the two timestamps, sorted by time
      */
-    public abstract List<Map<String, Object>> getAdditionalMetricsBetween(ServiceInstance serviceInstance, Long startTime, Long endTime);
+    public abstract List<AdditionalMetricsStorage> getAdditionalMetricsBetween(ServiceInstance serviceInstance, Long startTime, Long endTime);
 
-    public abstract void storeAdditionalMetrics(ServiceInstance serviceInstance, Map<String, Object> additionalMetrics, Long timestamp);
+    public abstract void storeAdditionalMetrics(ServiceInstance serviceInstance, AdditionalMetricsStorage additionalMetricsStorage);
 
 }

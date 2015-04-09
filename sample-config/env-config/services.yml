@@ -48,6 +48,15 @@ services:
           authentication: ProvidedUserPassword
           user: guest
           password: guest
+        storage:                                                                                # Long term storage configuration.  Key to store in and SimpleTemplate expression to extract values from data object.  Must result in Number
+          messages.publish: "#{data.message_stats.publish}"
+          messages.publish.rate: "#{data.message_stats.publish_details.rate}"
+          messages.ack: "#{data.message_stats.ack}"
+          messages.ack.rate: "#{data.message_stats.ack_details.rate}"
+          messages.deliver.get: "#{data.message_stats.deliver_get}"
+          messages.deliver.get.rate: "#{data.message_stats.deliver_get_details.rate}"
+          messages.deliver: "#{data.message_stats.deliver}"
+          messages.deliver.rate: "#{data.message_stats.deliver_details.rate}"
     environment:
       RABBITMQ_NODENAME: rabbit1
 

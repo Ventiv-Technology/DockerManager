@@ -72,4 +72,13 @@ class SimpleTemplateServiceTest extends Specification {
         thrown(MissingPropertyException)
     }
 
+    def "can call methods with no arguments"() {
+        when:
+        String template = "The size of the list is: #{data.size()}"
+        String filledTemplate = templateService.fillTemplate(template, [data: [1, 2, 3]])
+
+        then:
+        filledTemplate == "The size of the list is: 3"
+    }
+
 }
