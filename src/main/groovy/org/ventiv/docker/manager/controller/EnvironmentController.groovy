@@ -37,8 +37,6 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
-import org.ventiv.docker.manager.event.ContainerStartedEvent
-import org.ventiv.docker.manager.event.CreateContainerEvent
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.event.PullImageEvent
 import org.ventiv.docker.manager.metrics.store.AbstractAdditionalMetricsStore
@@ -255,7 +253,7 @@ class EnvironmentController {
             if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
                 hostsController.stopContainer(serviceInstance.getServerName(), serviceInstance.getContainerId());
                 serviceInstance.setStatus(ServiceInstance.Status.Stopped);
-                serviceInstance.setContainerStatus("Exited (???) 0 seconds ago")
+                serviceInstance.setContainerStatusTime(new Date());
             }
         }
 
@@ -271,7 +269,7 @@ class EnvironmentController {
             if (serviceInstance.getStatus() == ServiceInstance.Status.Stopped) {
                 hostsController.startContainer(serviceInstance.getServerName(), serviceInstance.getContainerId());
                 serviceInstance.setStatus(ServiceInstance.Status.Running);
-                serviceInstance.setContainerStatus("Up 0 seconds")
+                serviceInstance.setContainerStatusTime(new Date());
             }
         }
 
@@ -287,7 +285,7 @@ class EnvironmentController {
             if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
                 hostsController.restartContainer(serviceInstance.getServerName(), serviceInstance.getContainerId());
                 serviceInstance.setStatus(ServiceInstance.Status.Running);
-                serviceInstance.setContainerStatus("Up 0 seconds")
+                serviceInstance.setContainerStatusTime(new Date());
             }
         }
 
@@ -392,7 +390,7 @@ class EnvironmentController {
                 .withExposedPorts(serviceConfiguration.getContainerPorts().collect { new ExposedPort(it.getPort()) } as ExposedPort[])
                 .withHostConfig(hostConfig)
                 .exec();
-        eventPublisher.publishEvent(new CreateContainerEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id), env));
+        //eventPublisher.publishEvent(new CreateContainerEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id), env));
 
         // Now start the container
         log.info("Starting container '${resp.id}' with " +
@@ -408,7 +406,7 @@ class EnvironmentController {
             startCmd.withExtraHosts(hostConfig.getExtraHosts());
 
         startCmd.exec();
-        eventPublisher.publishEvent(new ContainerStartedEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id)));
+        //eventPublisher.publishEvent(new ContainerStartedEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id)));
 
         // Create a ServiceInstance out of this Container
         Container container = docker.listContainersCmd().withShowAll(true).exec().find { it.getId() == resp.id }

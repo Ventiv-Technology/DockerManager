@@ -55,7 +55,7 @@ class ServiceInstance {
     String url;
     Integer instanceNumber
     Status status;
-    String containerStatus;
+    Date containerStatusTime;
     String containerId;
     DockerTag containerImage;
     Date containerCreatedDate;
@@ -97,7 +97,8 @@ class ServiceInstance {
     public ServiceInstance withDockerContainer(Container dockerContainer) {
         this.setDockerName(dockerContainer.getNames()[0])
         this.status = dockerContainer.getStatus().startsWith("Up") ? Status.Running : Status.Stopped;
-        this.containerStatus = dockerContainer.getStatus();
+        //this.containerStatus = dockerContainer.getStatus();
+        this.containerStatusTime = DockerUtils.convertPsStatusToDate(dockerContainer.getStatus());
         this.containerId = dockerContainer.getId();
         this.containerImage = new DockerTag(dockerContainer.getImage());
         this.containerCreatedDate = new Date(dockerContainer.getCreated() * 1000);
@@ -124,7 +125,8 @@ class ServiceInstance {
     public ServiceInstance withDockerContainer(InspectContainerResponse inspectContainerResponse) {
         this.setDockerName(inspectContainerResponse.getName());
         this.status = inspectContainerResponse.getState().isRunning() ? Status.Running : Status.Stopped
-        this.containerStatus = this.status == Status.Running ? DockerUtils.getStatusTime(inspectContainerResponse.getState().getStartedAt()) : "Exited (${inspectContainerResponse.getState().getExitCode()}) " + DockerUtils.getStatusTime(inspectContainerResponse.getState().getFinishedAt())
+        this.containerStatusTime = this.status == Status.Running ? DockerUtils.convertDockerDate(inspectContainerResponse.getState().getStartedAt()) : DockerUtils.convertDockerDate(inspectContainerResponse.getState().getFinishedAt());
+        //this.containerStatus = this.status == Status.Running ? DockerUtils.getStatusTime(inspectContainerResponse.getState().getStartedAt()) : "Exited (${inspectContainerResponse.getState().getExitCode()}) " + DockerUtils.getStatusTime(inspectContainerResponse.getState().getFinishedAt())
         this.containerId = inspectContainerResponse.getId();
         this.containerImage = new DockerTag(inspectContainerResponse.getConfig().getImage());
         this.containerCreatedDate = DockerUtils.convertDockerDate(inspectContainerResponse.getCreated())
@@ -133,6 +135,9 @@ class ServiceInstance {
         // Get the service configuration
         ServiceConfiguration serviceConfig = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
+
+        // We have environment variables, populate em!
+        this.resolvedEnvironmentVariables = inspectContainerResponse.getConfig().getEnv().collectEntries { String parts = it.split('='); return [ parts[0], parts[1] ] }
 
         // Determine the Port Definitions
         this.portDefinitions = inspectContainerResponse.getHostConfig()?.getPortBindings()?.getBindings()?.collect { ExposedPort containerPort, Ports.Binding[] bindings ->
@@ -147,6 +152,10 @@ class ServiceInstance {
         determineUrl(serviceConfig);
 
         return this;
+    }
+
+    public String getContainerStatus() {
+        return DockerUtils.getStatusTime(getContainerStatusTime());
     }
 
     @CompileStatic

@@ -23,11 +23,11 @@ import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
-import org.ventiv.docker.manager.controller.HostsController
 import org.ventiv.docker.manager.event.UpdatedAdditionalMetricsEvent
 import org.ventiv.docker.manager.model.AdditionalMetricsConfiguration
 import org.ventiv.docker.manager.model.ServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.service.ServiceInstanceService
 
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
@@ -41,7 +41,7 @@ import java.util.concurrent.ScheduledFuture
 @Service
 class AdditionalMetricsService implements Runnable {
 
-    @Resource HostsController hostsController;
+    @Resource ServiceInstanceService serviceInstanceService;
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource TaskScheduler taskScheduler;
@@ -51,12 +51,13 @@ class AdditionalMetricsService implements Runnable {
 
     @PostConstruct
     public void start() {
-        scheduledTask = taskScheduler.scheduleWithFixedDelay(this, props.additionalMetricsRefreshDelay);
+        if (props.additionalMetricsRefreshDelay > 0)
+            scheduledTask = taskScheduler.scheduleWithFixedDelay(this, props.additionalMetricsRefreshDelay);
     }
 
     @Override
     void run() {
-        hostsController.getAllActiveServiceInstances().each { ServiceInstance serviceInstance ->
+        serviceInstanceService.getServiceInstances().each { ServiceInstance serviceInstance ->
             if (serviceInstance.getStatus() == ServiceInstance.Status.Running) {
                 Map<String, Object> additionalMetrics = getServiceInstanceAdditionalMetrics(serviceInstance);
                 if (additionalMetrics)

@@ -18,8 +18,6 @@ package org.ventiv.docker.manager.controller
 import com.github.dockerjava.api.NotFoundException
 import com.github.dockerjava.api.NotModifiedException
 import com.github.dockerjava.api.command.LogContainerCmd
-import com.github.dockerjava.api.model.Container
-import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.apache.commons.io.IOUtils
@@ -30,9 +28,6 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
-import org.ventiv.docker.manager.event.ContainerRemovedEvent
-import org.ventiv.docker.manager.event.ContainerStartedEvent
-import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.model.ApplicationConfiguration
 import org.ventiv.docker.manager.model.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.ServerConfiguration
@@ -40,6 +35,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
+import org.ventiv.docker.manager.service.ServiceInstanceService
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
@@ -58,24 +54,13 @@ class HostsController {
     @Resource DockerService dockerService;
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
+    @Resource ServiceInstanceService serviceInstanceService;
 
     @RequestMapping
     public def getHostDetails() {
-        List<LinkedHashMap<String, Object>> hostDetails = getAllHosts().collect { ServerConfiguration serverConfiguration ->
-            List<Container> hostContainers = null;
-            String status = "Online";
-
-            try {
-                hostContainers = dockerService.getDockerClient(serverConfiguration.getHostname()).listContainersCmd().withShowAll(true).exec()
-            } catch (Exception ex) {
-                log.error("Unable to fetch containers from '${serverConfiguration.getHostname()}'", ex)
-                status = "Disconnected"
-            }
-
+        List<LinkedHashMap<String, Object>> hostDetails = serviceInstanceService.getAllHosts().collect { ServerConfiguration serverConfiguration ->
             // Get the Service Instances
-            List<ServiceInstance> allCreatedInstances = hostContainers?.collect {
-                return new ServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it);
-            }
+            List<ServiceInstance> allCreatedInstances = serviceInstanceService.getServiceInstances(serverConfiguration)
 
             // Get all eligible services
             List<EligibleServiceConfiguration> availableServices = new ArrayList(serverConfiguration.getEligibleServices());
@@ -89,7 +74,6 @@ class HostsController {
                     id: serverConfiguration.getId(),
                     description: serverConfiguration.getDescription(),
                     hostname: serverConfiguration.getHostname(),
-                    status: status,
                     serviceInstances: allCreatedInstances,
                     availableServices: availableServices
             ]
@@ -109,18 +93,6 @@ class HostsController {
                 hostDetails: hostDetails,
                 missingServices: missingServices
         ];
-    }
-
-    @CompileDynamic
-    public List<ServiceInstance> getAllActiveServiceInstances() {
-        return getAllHosts().collect { ServerConfiguration serverConfiguration ->
-            try {
-                List<Container> hostContainers = dockerService.getDockerClient(serverConfiguration.getHostname()).listContainersCmd().withShowAll(true).exec()
-                return hostContainers?.collect {
-                    return new ServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it);
-                }
-            } catch (Exception ignored) {}
-        }.flatten().findAll { it }
     }
 
     @RequestMapping("/{hostName}/{containerId}/stdout")
@@ -150,7 +122,7 @@ class HostsController {
     @RequestMapping(value = "/{hostName}/{containerId}/stop", method = RequestMethod.POST)
     public void stopContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).stopContainerCmd(containerId).exec();
-        eventPublisher.publishEvent(new ContainerStoppedEvent(getServiceInstance(hostName, containerId)))
+        //eventPublisher.publishEvent(new ContainerStoppedEvent(getServiceInstance(hostName, containerId)))
     }
 
     /**
@@ -163,7 +135,7 @@ class HostsController {
     @RequestMapping(value = "/{hostName}/{containerId}/start", method = RequestMethod.POST)
     public void startContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).startContainerCmd(containerId).exec();
-        eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
+        //eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
     }
 
     /**
@@ -176,7 +148,7 @@ class HostsController {
     @RequestMapping(value = "/{hostName}/{containerId}/restart", method = RequestMethod.POST)
     public void restartContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).restartContainerCmd(containerId).exec();
-        eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
+        //eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
     }
 
     /**
@@ -191,12 +163,7 @@ class HostsController {
             stopContainer(hostName, containerId);
         } catch (NotModifiedException ignored) {}       // This happens if the container is already stopped
 
-        // Need to get the service instance BEFORE we destroy it - after it's stopped....so we event with the last known state
-        ServiceInstance serviceInstance = getServiceInstance(hostName, containerId);
-
         dockerService.getDockerClient(hostName).removeContainerCmd(containerId).withForce().exec();
-
-        eventPublisher.publishEvent(new ContainerRemovedEvent(serviceInstance))
     }
 
     public ServiceInstance getServiceInstance(String hostName, String containerId) {
@@ -209,10 +176,4 @@ class HostsController {
             return null;
         }
     }
-
-    @CompileDynamic
-    private List<ServerConfiguration> getAllHosts() {
-        return (List<ServerConfiguration>) environmentConfigurationService.getActiveEnvironments()*.getServers().flatten().findAll { it }.unique { it.getHostname() }
-    }
-
 }

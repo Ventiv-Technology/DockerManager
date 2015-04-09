@@ -51,4 +51,24 @@ class DockerUtilsTest extends Specification {
         "2015-03-16T23:23:13.03291945Z"     | "9 minutes ago"
     }
 
+    def "can convert 'docker ps' status to status date"(String psStatus, String expected) {
+        expect:
+        Date referenceDate = DockerUtils.convertDockerDate("2015-03-16T23:32:00.03291945Z");
+        DockerUtils.convertPsStatusToDate(psStatus, referenceDate) == DockerUtils.convertDockerDate(expected)
+
+        where:
+        psStatus                            | expected
+        "Up 6 days"                         | "2015-03-10T23:32:00.03291945Z"
+        "Exited (0) 7 days ago"             | "2015-03-09T23:32:00.03291945Z"
+        "Exited (137) 2 seconds ago"        | "2015-03-16T23:31:58.03291945Z"
+        "Up 5 seconds"                      | "2015-03-16T23:31:55.03291945Z"
+        "Up 14 hours"                       | "2015-03-16T09:32:00.03291945Z"
+        "Up 2 weeks"                        | "2015-03-03T00:32:00.03291945Z"
+        "Up 8 minutes"                      | "2015-03-16T23:24:00.03291945Z"
+        "Up 2 years"                        | "2013-03-16T23:32:00.03291945Z"
+        "Up 2 months"                       | "2015-01-17T00:32:00.03291945Z"
+        "Exited (-1) 2 weeks ago"           | "2015-03-03T00:32:00.03291945Z"
+        "Up About an hour"                  | "2015-03-16T22:32:00.03291945Z"
+    }
+
 }

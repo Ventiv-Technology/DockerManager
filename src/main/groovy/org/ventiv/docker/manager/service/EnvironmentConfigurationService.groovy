@@ -41,6 +41,7 @@ class EnvironmentConfigurationService {
     @javax.annotation.Resource DockerManagerConfiguration props;
     @javax.annotation.Resource ResourceWatcherService resourceWatcherService;
     @javax.annotation.Resource DockerService dockerService;
+    @javax.annotation.Resource ServiceInstanceService serviceInstanceService;
 
     @PostConstruct
     public void loadConfigurationFromFile() {
@@ -78,6 +79,9 @@ class EnvironmentConfigurationService {
                 }
             }
         }
+
+        // Tell the Service Instance Status that we have a new Environment Configuration
+        environmentConfiguration.getServers()?.each(serviceInstanceService.&initializeServerConfiguration);
     }
 
     public Collection<EnvironmentConfiguration> getActiveEnvironments() {

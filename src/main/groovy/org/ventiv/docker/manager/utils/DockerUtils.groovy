@@ -16,12 +16,20 @@
 package org.ventiv.docker.manager.utils
 
 import org.joda.time.DateTime
+import org.joda.time.Period
 import org.ocpsoft.prettytime.PrettyTime
+
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 /**
  * Created by jcrygier on 3/16/15.
  */
 class DockerUtils {
+
+    public static final Pattern UP_PATTERN = ~/Up (\d*) (\w*)/
+    public static final Pattern EXITED_PATTERN = ~/Exited \((-?\d*)\) (\d*) (\w*) ago/
+    public static final Pattern APPROX_PATTERN = ~/Up About an? (\w*)/
 
     public static Date convertDockerDate(String dte) {
         return new DateTime(dte).toDate();
@@ -33,6 +41,29 @@ class DockerUtils {
 
     public static String getStatusTime(String dte) {
         return getStatusTime(convertDockerDate(dte));
+    }
+
+    public static Date convertPsStatusToDate(String psStatus, Date now = new Date()) {
+        Matcher upMatcher = UP_PATTERN.matcher(psStatus)
+        Matcher exitedMatcher = EXITED_PATTERN.matcher(psStatus)
+        Matcher approxMatcher = APPROX_PATTERN.matcher(psStatus)
+
+        DateTime dateTime = new DateTime(now)
+        Integer scalar;
+        String periodType;
+
+        if (upMatcher.find()) {
+            scalar = Integer.parseInt(upMatcher[0][1]);
+            periodType = upMatcher[0][2].toLowerCase();
+        } else if (exitedMatcher.find()) {
+            scalar = Integer.parseInt(exitedMatcher[0][2]);
+            periodType = exitedMatcher[0][3].toLowerCase();
+        } else if (approxMatcher.find()) {
+            scalar = 1;
+            periodType = approxMatcher[0][1].toLowerCase() + 's';
+        }
+
+        return dateTime.minus(Period."$periodType"(scalar)).toDate();
     }
 
 }
