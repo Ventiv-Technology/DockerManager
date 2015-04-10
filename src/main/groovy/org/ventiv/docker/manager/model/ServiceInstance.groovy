@@ -22,7 +22,6 @@ import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.Ports
 import groovy.transform.CompileStatic
 import groovy.transform.ToString
-import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
@@ -42,6 +41,19 @@ import javax.annotation.Nullable
 class ServiceInstance {
 
     public static final def DOCKER_NAME_PATTERN = /([a-zA-Z0-9][a-zA-Z0-9_-]*).([a-zA-Z0-9][a-zA-Z0-9_-]*).([a-zA-Z0-9][a-zA-Z0-9_-]*).([a-zA-Z0-9][a-zA-Z0-9_-]*).([0-9])/
+
+    @JsonIgnore private EnvironmentConfigurationService environmentConfigurationService;
+    @JsonIgnore private DockerServiceConfiguration dockerServiceConfiguration;
+    public ServiceInstance(EnvironmentConfigurationService environmentConfigurationService, DockerServiceConfiguration dockerServiceConfiguration) {
+        this.dockerServiceConfiguration = dockerServiceConfiguration;
+        this.environmentConfigurationService = environmentConfigurationService;
+    }
+
+    public ServiceInstance(Map<String, ?> values) {
+        values.each { k, v ->
+            this."$k" = v;
+        }
+    }
 
     String tierName;
     String environmentName;
@@ -88,7 +100,7 @@ class ServiceInstance {
             instanceNumber = Integer.parseInt(matcher[0][5]);
 
             // Populate the Application Description
-            EnvironmentConfiguration environmentConfiguration = DockerManagerApplication.getApplicationContext()?.getBean(EnvironmentConfigurationService)?.getEnvironment(tierName, environmentName);
+            EnvironmentConfiguration environmentConfiguration = environmentConfigurationService?.getEnvironment(tierName, environmentName);
             ApplicationConfiguration applicationConfiguration = environmentConfiguration?.getApplications()?.find { it.getId() == applicationId }
 
             environmentDescription = environmentConfiguration?.getDescription();
@@ -110,7 +122,7 @@ class ServiceInstance {
         this.containerCreatedDate = new Date(dockerContainer.getCreated() * 1000);
 
         // Get the service configuration
-        ServiceConfiguration serviceConfig = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
+        ServiceConfiguration serviceConfig = dockerServiceConfiguration.getServiceConfiguration(name)
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
         // Determine the Port Definitions
@@ -139,7 +151,7 @@ class ServiceInstance {
         this.containerImageId = inspectContainerResponse.getImageId();
 
         // Get the service configuration
-        ServiceConfiguration serviceConfig = DockerManagerApplication.getApplicationContext().getBean(DockerServiceConfiguration).getServiceConfiguration(name)
+        ServiceConfiguration serviceConfig = dockerServiceConfiguration.getServiceConfiguration(name)
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
         // We have environment variables, populate em!

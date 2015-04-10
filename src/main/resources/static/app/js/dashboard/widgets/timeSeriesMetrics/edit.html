@@ -32,8 +32,23 @@
     </div>
 
     <div class="form-group">
+        <label for="chartTimeFrame">Chart Timeframe</label>
+        <select id="chartTimeFrame" class="form-control" placeholder="Chart Temeframe" ng-model="config.chartTimeFrame" required="">
+            <option value="5.minutes">15 Minutes</option>
+            <option value="30.minutes">30 Minutes</option>
+            <option value="1.hours">1 hour</option>
+            <option value="2.hours">2 hours</option>
+            <option value="5.hours">5 hours</option>
+            <option value="12.hours">12 hours</option>
+            <option value="1.days">1 day</option>
+            <option value="3.days">3 days</option>
+            <option value="1.weeks">1 week</option>
+        </select>
+    </div>
+
+    <div class="form-group">
         <label for="groupTimeWindow">Group Time Window</label>
-        <select type="text" id="groupTimeWindow" class="form-control" placeholder="Group Time Window" ng-model="config.groupTimeWindow" required="">
+        <select id="groupTimeWindow" class="form-control" placeholder="Group Time Window" ng-model="config.groupTimeWindow" required="">
             <option value="5.minutes">5 Minutes</option>
             <option value="10.minutes">10 Minutes</option>
             <option value="20.minutes">20 Minutes</option>

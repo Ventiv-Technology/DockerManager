@@ -27,13 +27,14 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.TaskScheduler
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.ContainerRemovedEvent
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
+import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
-import org.ventiv.docker.manager.model.ServiceInstance
 
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
@@ -55,6 +56,7 @@ class ServiceInstanceService implements Runnable {
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource TaskScheduler taskScheduler;
     @Resource DockerManagerConfiguration props;
+    @Resource private DockerServiceConfiguration dockerServiceConfiguration;
 
     private ConcurrentHashMap<String, List<ServiceInstance>> allServiceInstances = new ConcurrentHashMap<>();
     private Map<String, ExecutorService> eventExecutors = [:];
@@ -118,7 +120,7 @@ class ServiceInstanceService implements Runnable {
 
         // First, lets query for all containers that exist on this host
         List<Container> hostContainers = dockerService.getDockerClient(serverConfiguration.getHostname()).listContainersCmd().withShowAll(true).exec()
-        allServiceInstances.put(serverConfigurationKey, hostContainers.collect { new ServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it) })
+        allServiceInstances.put(serverConfigurationKey, hostContainers.collect { createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it) })
 
         // Now, lets hook up to the Docker Events API
         DockerEventCallback callback = new DockerEventCallback(serverConfiguration, this)
@@ -128,6 +130,16 @@ class ServiceInstanceService implements Runnable {
 
     protected static String getServerConfigurationKey(ServerConfiguration serverConfiguration) {
         return serverConfiguration.getHostname();
+    }
+
+    @CompileDynamic
+    public ServiceInstance createServiceInstance(Map<String, ?> values = [:]) {
+        ServiceInstance answer = new ServiceInstance(environmentConfigurationService, dockerServiceConfiguration);
+        values.each { k, v ->
+            answer."$k" = v;
+        }
+
+        return answer;
     }
 
     @Override
@@ -169,7 +181,7 @@ class ServiceInstanceService implements Runnable {
             // Add the new one back
             if (event.getStatus() != "destroy") {
                 InspectContainerResponse inspectContainerResponse = serviceInstanceService.dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(event.getId()).exec()
-                serviceInstance = new ServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse);
+                serviceInstance = serviceInstanceService.createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse);
 
                 allServiceInstances << serviceInstance;
             }

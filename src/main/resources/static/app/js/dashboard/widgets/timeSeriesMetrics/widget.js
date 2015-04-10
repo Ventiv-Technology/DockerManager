@@ -34,9 +34,10 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                             config.uuid = Math.floor(Math.random() * 1000000);
 
                             if (config.metric) {
-                                var url = "/api/metrics/timeseries/" + config.metric.metricName;
+                                var url = "/api/metrics/timeseries/" + config.metric.metricName + "?dummy=dummy";
 
-                                if (config.groupTimeWindow) url = url + "?groupTimeWindow=" + config.groupTimeWindow;
+                                if (config.groupTimeWindow) url = url + "&groupTimeWindow=" + config.groupTimeWindow;
+                                if (config.chartTimeFrame) url = url + "&last=" + config.chartTimeFrame;
 
                                 return $http.get(url);
                             } else
@@ -91,14 +92,14 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                                     format: '%Y-%m-%d %H:%M'
                                 }
                             }
-                        },
+                        }/*,
                         legend: {
                             item: {
                                 onclick: function(id) {
                                     // TODO: keep track of turning legend items on / off in the config
                                 }
                             }
-                        }
+                        }*/
                     });
                 };
 

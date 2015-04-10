@@ -39,19 +39,19 @@ import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.event.PullImageEvent
-import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationInfo
 import org.ventiv.docker.manager.model.DeployApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
-import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
-import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.PortDefinition
-import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceBuildInfo
-import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
+import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
+import org.ventiv.docker.manager.model.configuration.ServerConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.ApplicationDeploymentService
 import org.ventiv.docker.manager.service.DockerService
@@ -215,7 +215,7 @@ class EnvironmentController {
             serviceInstanceService.getAvailableServiceInstances(serverConfiguration).each { EligibleServiceConfiguration eligibleServiceConfiguration ->
                 ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(eligibleServiceConfiguration.getType());
 
-                allInstances << new ServiceInstance([
+                allInstances << serviceInstanceService.createServiceInstance([
                         tierName: tierName,
                         environmentName: environmentName,
                         name: eligibleServiceConfiguration.getType(),
