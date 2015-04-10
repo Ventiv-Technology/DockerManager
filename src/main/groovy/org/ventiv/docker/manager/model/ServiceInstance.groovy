@@ -75,6 +75,9 @@ class ServiceInstance {
 
     Map<String, Object> additionalMetrics;
 
+    @JsonIgnore
+    ServiceInstanceThumbnail serviceInstanceThumbnail;
+
     public ServiceInstance setDockerName(String dockerName) {
         def matcher = dockerName =~ DOCKER_NAME_PATTERN;
         if (matcher) {

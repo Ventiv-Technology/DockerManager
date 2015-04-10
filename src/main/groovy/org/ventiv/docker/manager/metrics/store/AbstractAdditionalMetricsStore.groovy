@@ -20,9 +20,9 @@ import org.springframework.context.ApplicationListener
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.UpdatedAdditionalMetricsEvent
+import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
-import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 import org.ventiv.docker.manager.service.SimpleTemplateService
 
@@ -48,7 +48,7 @@ abstract class AbstractAdditionalMetricsStore implements ApplicationListener<Upd
         // Get Floor of timestamp so all metrics are on the same timestamp
         timestamp = ((long)timestamp / props.additionalMetricsRefreshDelay) * props.additionalMetricsRefreshDelay;
 
-        AdditionalMetricsStorage storage = new AdditionalMetricsStorage(timestamp: timestamp, additionalMetrics: [:], serverName: serviceInstance.getServerName(), serviceInstance: serviceInstance.toString())
+        AdditionalMetricsStorage storage = new AdditionalMetricsStorage(timestamp: timestamp, additionalMetrics: [:])
         additionalMetrics.each{ metricName, metricObject ->
             ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName())
             AdditionalMetricsConfiguration metricsConfiguration = serviceConfiguration.getAdditionalMetrics().find { it.getName() == metricName }

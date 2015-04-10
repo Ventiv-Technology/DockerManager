@@ -17,15 +17,12 @@ package org.ventiv.docker.manager.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.ventiv.docker.manager.model.ServiceInstanceThumbnail;
-import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage;
-
-import java.util.List;
 
 /**
- * Created by jcrygier on 4/9/15.
+ * Created by jcrygier on 4/10/15.
  */
-public interface AdditionalMetricsStorageRepository extends JpaRepository<AdditionalMetricsStorage, Long> {
+public interface ServiceInstanceThumbnailRepository extends JpaRepository<ServiceInstanceThumbnail, Long> {
 
-    public List<AdditionalMetricsStorage> findByServiceInstanceThumbnailAndTimestampBetweenOrderByTimestampDesc(ServiceInstanceThumbnail serviceInstanceThumbnail, Long lowTimestamp, Long highTimestamp);
+    public ServiceInstanceThumbnail findByServerNameAndTierNameAndEnvironmentNameAndApplicationIdAndNameAndInstanceNumber(String serverName, String tierName, String environmentName, String applicationId, String name, Integer instanceNumber);
 
 }

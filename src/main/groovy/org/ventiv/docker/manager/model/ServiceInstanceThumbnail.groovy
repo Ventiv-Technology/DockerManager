@@ -13,42 +13,45 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model.metrics
+package org.ventiv.docker.manager.model
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import org.ventiv.docker.manager.model.ServiceInstanceThumbnail
+import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 
-import javax.persistence.CollectionTable
-import javax.persistence.Column
-import javax.persistence.ElementCollection
+import javax.persistence.CascadeType
 import javax.persistence.Entity
+import javax.persistence.FetchType
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
-import javax.persistence.JoinColumn
-import javax.persistence.ManyToOne
-import javax.persistence.MapKeyColumn
+import javax.persistence.OneToMany
+import javax.persistence.Table
 
 /**
- * Created by jcrygier on 4/9/15.
+ * A thumbnail of a Service Instance, for persistence purpose
  */
 @Entity
-class AdditionalMetricsStorage {
+@Table(name = "service_instance")
+class ServiceInstanceThumbnail {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     Long id;
 
-    Long timestamp;
+    String serverName;
+
+    String tierName;
+
+    String environmentName;
+
+    String applicationId;
+
+    String name;
+
+    Integer instanceNumber;
 
     @JsonIgnore
-    @ManyToOne
-    @JoinColumn(name = "service_instance_id", nullable = false)
-    ServiceInstanceThumbnail serviceInstanceThumbnail;
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "serviceInstanceThumbnail", fetch = FetchType.LAZY)
+    List<AdditionalMetricsStorage> additionalMetrics;
 
-    @ElementCollection
-    @MapKeyColumn(name = "name")
-    @Column(name = "value")
-    @CollectionTable(name = "additional_metrics_values", joinColumns = @JoinColumn(name = "additional_metrics_storage_id"))
-    Map<String, BigDecimal> additionalMetrics;
 }

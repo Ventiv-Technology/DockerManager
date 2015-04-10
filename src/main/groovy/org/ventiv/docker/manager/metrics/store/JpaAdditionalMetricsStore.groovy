@@ -15,30 +15,51 @@
  */
 package org.ventiv.docker.manager.metrics.store
 
+import groovy.transform.CompileStatic
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.ServiceInstanceThumbnail
 import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 import org.ventiv.docker.manager.repository.AdditionalMetricsStorageRepository
+import org.ventiv.docker.manager.repository.ServiceInstanceThumbnailRepository
 
 import javax.annotation.Resource
 
 /**
  * Created by jcrygier on 4/9/15.
  */
+@CompileStatic
 class JpaAdditionalMetricsStore extends AbstractAdditionalMetricsStore {
 
     @Resource AdditionalMetricsStorageRepository repo;
+    @Resource ServiceInstanceThumbnailRepository serviceInstanceThumbnailRepository;
 
     @Override
     List<AdditionalMetricsStorage> getAdditionalMetricsBetween(ServiceInstance serviceInstance, Long startTime, Long endTime) {
         if (startTime == null) startTime = Long.MIN_VALUE;
         if (endTime == null) endTime = System.currentTimeMillis();
 
-        return repo.findByServerNameAndServiceInstanceAndTimestampBetweenOrderByTimestampDesc(serviceInstance.getServerName(), serviceInstance.toString(), startTime, endTime);
+        return repo.findByServiceInstanceThumbnailAndTimestampBetweenOrderByTimestampDesc(getServiceInstanceThumbnail(serviceInstance), startTime, endTime);
     }
 
     @Override
     void storeAdditionalMetrics(ServiceInstance serviceInstance, AdditionalMetricsStorage additionalMetricsStorage) {
+        additionalMetricsStorage.setServiceInstanceThumbnail(getServiceInstanceThumbnail(serviceInstance));
         repo.save(additionalMetricsStorage);
+    }
+
+    private ServiceInstanceThumbnail getServiceInstanceThumbnail(ServiceInstance serviceInstance) {
+        ServiceInstanceThumbnail thumbnail = serviceInstance.getServiceInstanceThumbnail();
+        if (thumbnail == null)
+            thumbnail = serviceInstanceThumbnailRepository.findByServerNameAndTierNameAndEnvironmentNameAndApplicationIdAndNameAndInstanceNumber(serviceInstance.getServerName(), serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceInstance.getName(), serviceInstance.getInstanceNumber())
+
+        if (thumbnail == null) {
+            thumbnail = new ServiceInstanceThumbnail(serverName: serviceInstance.getServerName(), tierName: serviceInstance.getTierName(), environmentName: serviceInstance.getEnvironmentName(), applicationId: serviceInstance.getApplicationId(), name: serviceInstance.getName(), instanceNumber: serviceInstance.getInstanceNumber())
+            serviceInstanceThumbnailRepository.save(thumbnail);
+        }
+
+        serviceInstance.setServiceInstanceThumbnail(thumbnail);
+
+        return thumbnail;
     }
 
 }
