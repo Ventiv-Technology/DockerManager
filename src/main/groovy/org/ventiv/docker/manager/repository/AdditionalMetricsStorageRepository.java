@@ -16,7 +16,7 @@
 package org.ventiv.docker.manager.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.ventiv.docker.manager.metrics.store.AdditionalMetricsStorage;
+import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage;
 
 import java.util.List;
 

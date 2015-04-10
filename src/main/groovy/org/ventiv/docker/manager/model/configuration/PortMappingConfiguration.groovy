@@ -13,16 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model
+package org.ventiv.docker.manager.model.configuration
+
+import com.fasterxml.jackson.annotation.JsonIgnore
 
 /**
  * Created by jcrygier on 3/3/15.
  */
-class EnvironmentConfiguration {
+class PortMappingConfiguration {
 
-    String tierName;
-    String id;
-    String description;
-    List<ServerConfiguration> servers;
-    List<ApplicationConfiguration> applications;
+    String type;
+    Integer port;
+
+    @JsonIgnore
+    String ports;
+
 }

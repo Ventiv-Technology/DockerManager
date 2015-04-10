@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.metrics.store
 
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 
 /**
  * In Memory implementation of an Additional Metrics Store.  WARNING, this currently will chew through memory.

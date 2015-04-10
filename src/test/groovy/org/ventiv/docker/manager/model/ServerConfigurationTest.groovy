@@ -15,6 +15,8 @@
  */
 package org.ventiv.docker.manager.model
 
+import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.yaml.snakeyaml.Yaml
 import spock.lang.Specification
 

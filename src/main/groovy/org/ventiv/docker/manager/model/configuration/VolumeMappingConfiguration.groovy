@@ -13,21 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model
+package org.ventiv.docker.manager.model.configuration
+
+import javax.validation.constraints.NotNull
 
 /**
- * Created by jcrygier on 3/4/15.
+ * A configured Volume Mapping
  */
-class VersionSelectionFilterConfiguration {
+class VolumeMappingConfiguration {
 
-    String groovy;
+    @NotNull
+    String type;
 
-    String filter(String versionNumber) {
-        // Groovy Filter
-        if (getGroovy()) {
-            return Eval.me('versionNumber', versionNumber, getGroovy())
-        }
+    @NotNull
+    String path;
 
-        return versionNumber;
-    }
 }

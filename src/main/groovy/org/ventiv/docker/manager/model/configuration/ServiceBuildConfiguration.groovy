@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model
+package org.ventiv.docker.manager.model.configuration
 
 import groovy.util.logging.Slf4j
 import org.jdeferred.FailCallback
@@ -23,6 +23,7 @@ import org.jdeferred.impl.DeferredObject
 import org.springframework.security.core.context.SecurityContextHolder
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.build.BuildContext
+import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.service.DockerRegistryApiService
 
 /**
@@ -33,7 +34,7 @@ class ServiceBuildConfiguration {
 
     public static final String BUILD_NEW_VERSION = "BuildNewVersion"
 
-    List<ServiceBuildStage> stages;
+    List<ServiceBuildStageConfiguration> stages;
     VersionSelectionConfiguration versionSelection;
 
     public Promise<BuildContext, Exception, String> execute(ServiceConfiguration serviceConfiguration, String requestedBuildVersion) {
@@ -59,7 +60,7 @@ class ServiceBuildConfiguration {
 
         if (!registryImageId) {
             Thread.start {
-                getStages().eachWithIndex { ServiceBuildStage buildStage, Integer idx ->
+                getStages().eachWithIndex { ServiceBuildStageConfiguration buildStage, Integer idx ->
                     if (deferred.isPending()) {
                         deferred.notify("Currently building ${idx + 1} of ${getStages().size()}")
                         try {

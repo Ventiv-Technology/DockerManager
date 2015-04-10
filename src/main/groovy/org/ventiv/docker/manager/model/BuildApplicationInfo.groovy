@@ -18,6 +18,7 @@ package org.ventiv.docker.manager.model
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.build.BuildContext
 import org.ventiv.docker.manager.event.BuildStatusEvent
+import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 
 /**
  * Created by jcrygier on 3/13/15.

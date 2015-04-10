@@ -31,8 +31,8 @@ import org.ventiv.docker.manager.event.ContainerRemovedEvent
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
-import org.ventiv.docker.manager.model.EligibleServiceConfiguration
-import org.ventiv.docker.manager.model.ServerConfiguration
+import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 
 import javax.annotation.PostConstruct
@@ -56,7 +56,7 @@ class ServiceInstanceService implements Runnable {
     @Resource TaskScheduler taskScheduler;
     @Resource DockerManagerConfiguration props;
 
-    private ConcurrentHashMap<String, List<ServiceInstance>> allServiceInstances = [:];
+    private ConcurrentHashMap<String, List<ServiceInstance>> allServiceInstances = new ConcurrentHashMap<>();
     private Map<String, ExecutorService> eventExecutors = [:];
     private Map<String, DockerEventCallback> eventCallbacks = [:];
     private ScheduledFuture scheduledTask;

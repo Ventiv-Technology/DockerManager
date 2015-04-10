@@ -28,10 +28,10 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
-import org.ventiv.docker.manager.model.ApplicationConfiguration
-import org.ventiv.docker.manager.model.ServerConfiguration
+import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
+import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
-import org.ventiv.docker.manager.model.ServiceInstanceConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService

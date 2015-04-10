@@ -63,7 +63,7 @@ configuration only deals with one host (boot2docker) so it can be a runnable sam
 
 As stated above, this file describes Docker Images so Docker Manager knows how to work with a given image.  It is also where
 you can state additional information, like how to build a Docker Image, should one not exist yet.  Each service in this file
-is mapped to the Groovy Bean 'org.ventiv.docker.manager.model.ServiceConfiguration'.  Please look there for further documentation,
+is mapped to the Groovy Bean 'org.ventiv.docker.manager.model.configuration.ServiceConfiguration'.  Please look there for further documentation,
 or in the sample-config/env-config/services.yml file for examples. Here is a sample of a simple configuration:
 
     services:
@@ -210,7 +210,7 @@ configuration of them (like environment variables).
 
 The first section of an environment configuration file is describing the servers (or hosts) that may be part of it.  These
 must include fully qualified host names, and these hosts MUST be running the Docker daemon, otherwise they will be
-discarded on application startup.  For full documentation, see comments in org.ventiv.docker.manager.model.ServerConfiguration.
+discarded on application startup.  For full documentation, see comments in org.ventiv.docker.manager.model.configuration.ServerConfiguration.
 The most important section in here is the eligibleServices portion, which describes what services are allowed to run on this
 host.
 
@@ -237,7 +237,7 @@ This mapping is done by using the port type.
 #### Application Configuration
 
 The last remaining part of configuration is for the application, where you describe the application and all of it's running
-services.  For full documentation, please see: org.ventiv.docker.manager.model.ApplicationConfiguration.  At the top level there
+services.  For full documentation, please see: org.ventiv.docker.manager.model.configuration.ApplicationConfiguration.  At the top level there
 are things like description and name, which are solely used for UI and API purposes.  Also there is a section here to describe
 the URL of this application.  You have the opportunity to specify it manually (via the 'url' attribute), or to use one
 of the service's url (via the 'serviceInstanceUrl' attribute).

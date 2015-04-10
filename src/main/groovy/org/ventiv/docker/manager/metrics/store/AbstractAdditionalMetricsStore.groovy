@@ -20,9 +20,10 @@ import org.springframework.context.ApplicationListener
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.UpdatedAdditionalMetricsEvent
-import org.ventiv.docker.manager.model.AdditionalMetricsConfiguration
-import org.ventiv.docker.manager.model.ServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 import org.ventiv.docker.manager.service.SimpleTemplateService
 
 import javax.annotation.Resource

@@ -25,6 +25,8 @@ import org.ventiv.docker.manager.build.JenkinsBuild
 import org.ventiv.docker.manager.build.jenkins.BuildQueueStatus
 import org.ventiv.docker.manager.build.jenkins.BuildStartedResponse
 import org.ventiv.docker.manager.build.jenkins.JenkinsApi
+import org.ventiv.docker.manager.model.configuration.ServiceBuildConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.yaml.snakeyaml.Yaml
 import spock.lang.Specification
 

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model
+package org.ventiv.docker.manager.model.configuration
 
 /**
  * Configuration for displaying Additional Metrics inline with the Service Interface it belongs to

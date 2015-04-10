@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.model
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 
 /**
  * The instantiated, running version of an ApplicationConfiguration.  Much of the information is copied from an

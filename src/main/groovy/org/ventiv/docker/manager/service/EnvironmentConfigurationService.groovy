@@ -21,9 +21,9 @@ import org.springframework.core.io.Resource
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
-import org.ventiv.docker.manager.model.ApplicationConfiguration
-import org.ventiv.docker.manager.model.EnvironmentConfiguration
-import org.ventiv.docker.manager.model.ServerConfiguration
+import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
+import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
+import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.yaml.snakeyaml.Yaml
 
 import javax.annotation.PostConstruct

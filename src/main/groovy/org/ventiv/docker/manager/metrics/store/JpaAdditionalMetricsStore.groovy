@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.metrics.store
 
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 import org.ventiv.docker.manager.repository.AdditionalMetricsStorageRepository
 
 import javax.annotation.Resource

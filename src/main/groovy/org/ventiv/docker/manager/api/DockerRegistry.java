@@ -17,7 +17,7 @@ package org.ventiv.docker.manager.api;
 
 import feign.Param;
 import feign.RequestLine;
-import org.ventiv.docker.manager.model.ImageLayerInformation;
+import org.ventiv.docker.manager.model.configuration.ImageLayerInformation;
 
 import java.util.Map;
 

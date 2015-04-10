@@ -13,9 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model
+package org.ventiv.docker.manager.model.configuration
 
 import org.ventiv.docker.manager.DockerManagerApplication
+import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.service.DockerRegistryApiService
 
 import javax.annotation.Nullable
@@ -81,7 +82,7 @@ class ServiceConfiguration {
      * Environment variables to set when constructing a ServiceInstance.  These variables can be thought of as generic,
      * simply to set up the service.  The 'specific' environment variables may be defined in ServiceInstanceConfiguration
      *
-     * @see org.ventiv.docker.manager.model.ServiceInstanceConfiguration for variable replacement definition
+     * @see ServiceInstanceConfiguration for variable replacement definition
      */
     @Nullable
     Map<String, String> environment;
@@ -91,7 +92,7 @@ class ServiceConfiguration {
      * to a server's mapping to make the assignment at deployment time.
      */
     @Nullable
-    List<VolumeMapping> containerVolumes;
+    List<VolumeMappingConfiguration> containerVolumes;
 
     /**
      * Additional Metrics for this service.  This is a way to get additional information about a running service, and possibly

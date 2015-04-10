@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model
+package org.ventiv.docker.manager.model.configuration
 
 import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
@@ -25,7 +25,7 @@ import org.ventiv.docker.manager.build.BuildStage
 /**
  * Created by jcrygier on 3/11/15.
  */
-class ServiceBuildStage {
+class ServiceBuildStageConfiguration {
 
     String type;
     Map<String, String> settings;

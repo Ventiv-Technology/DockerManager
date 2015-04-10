@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model
+package org.ventiv.docker.manager.model.configuration
 
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 

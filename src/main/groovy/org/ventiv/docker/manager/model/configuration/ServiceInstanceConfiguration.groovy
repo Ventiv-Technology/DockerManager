@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.model
+package org.ventiv.docker.manager.model.configuration
 
 import javax.annotation.Nullable
 import javax.validation.constraints.NotNull
@@ -59,6 +59,6 @@ class ServiceInstanceConfiguration {
     Map<String, String> environment;
 
     @Nullable
-    List<VolumeMapping> volumeMappings;
+    List<VolumeMappingConfiguration> volumeMappings;
 
 }

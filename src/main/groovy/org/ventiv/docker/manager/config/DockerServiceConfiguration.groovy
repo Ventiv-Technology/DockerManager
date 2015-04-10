@@ -20,7 +20,7 @@ import groovy.util.logging.Slf4j
 import org.springframework.core.io.Resource
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
-import org.ventiv.docker.manager.model.ServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.service.ResourceWatcherService
 import org.yaml.snakeyaml.Yaml
 

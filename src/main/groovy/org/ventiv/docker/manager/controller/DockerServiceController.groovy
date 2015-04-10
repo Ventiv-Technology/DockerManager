@@ -24,10 +24,10 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.api.DockerRegistry
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
-import org.ventiv.docker.manager.model.AdditionalMetricsConfiguration
+import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
 import org.ventiv.docker.manager.model.DockerTag
-import org.ventiv.docker.manager.model.ImageLayerInformation
-import org.ventiv.docker.manager.model.ServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.ImageLayerInformation
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.service.DockerRegistryApiService
 
 import javax.annotation.Resource

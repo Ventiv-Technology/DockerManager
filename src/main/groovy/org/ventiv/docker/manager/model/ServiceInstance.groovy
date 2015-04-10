@@ -24,6 +24,9 @@ import groovy.transform.CompileStatic
 import groovy.transform.ToString
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
+import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.utils.DockerUtils
 
