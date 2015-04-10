@@ -88,7 +88,7 @@ class ServiceInstance {
             instanceNumber = Integer.parseInt(matcher[0][5]);
 
             // Populate the Application Description
-            EnvironmentConfiguration environmentConfiguration = DockerManagerApplication.getApplicationContext().getBean(EnvironmentConfigurationService).getEnvironment(tierName, environmentName);
+            EnvironmentConfiguration environmentConfiguration = DockerManagerApplication.getApplicationContext()?.getBean(EnvironmentConfigurationService)?.getEnvironment(tierName, environmentName);
             ApplicationConfiguration applicationConfiguration = environmentConfiguration?.getApplications()?.find { it.getId() == applicationId }
 
             environmentDescription = environmentConfiguration?.getDescription();
