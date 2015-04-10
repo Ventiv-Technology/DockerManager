@@ -45,9 +45,6 @@ abstract class AbstractAdditionalMetricsStore implements ApplicationListener<Upd
         Map<String, Object> additionalMetrics = event.getAdditionalMetrics();
         Long timestamp = event.getTimestamp();
 
-        // Get Floor of timestamp so all metrics are on the same timestamp
-        timestamp = ((long)timestamp / props.additionalMetricsRefreshDelay) * props.additionalMetricsRefreshDelay;
-
         AdditionalMetricsStorage storage = new AdditionalMetricsStorage(timestamp: timestamp, additionalMetrics: [:])
         additionalMetrics.each{ metricName, metricObject ->
             ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName())

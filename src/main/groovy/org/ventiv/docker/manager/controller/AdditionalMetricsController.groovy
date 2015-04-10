@@ -20,18 +20,20 @@ import groovy.time.TimeCategory
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.metrics.store.AbstractAdditionalMetricsStore
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 import org.ventiv.docker.manager.service.ServiceInstanceService
+import org.ventiv.docker.manager.utils.StringUtils
 
 import javax.annotation.Resource
-import javax.persistence.EntityManager
-import javax.persistence.Query
 import javax.servlet.http.HttpServletResponse
 
 /**
@@ -43,9 +45,10 @@ import javax.servlet.http.HttpServletResponse
 @RequestMapping("/api/metrics")
 class AdditionalMetricsController {
 
+    @Resource DockerManagerConfiguration props;
     @Resource ServiceInstanceService serviceInstanceService;
     @Resource AbstractAdditionalMetricsStore additionalMetricsStore;
-    @Resource EntityManager em;
+    @Resource JdbcTemplate jdbcTemplate;
 
     @RequestMapping("/widgets")
     public void additionalMetricsWidgets(HttpServletResponse response) {
@@ -66,6 +69,8 @@ class AdditionalMetricsController {
     /**
      * Gets Time series for a given additional metric.
      *
+     * Note: Unfortunately, we couldn't use JPA queries for this, as they do not allow for subqueries in the FROM clause.
+     *
      * @param metricName Required, name of the metric to get
      * @param serverName Optional, filter by Service Instance Server Name
      * @param tierName Optional, filter by Service Instance
@@ -76,6 +81,7 @@ class AdditionalMetricsController {
      * @param fromTimestamp Optional, filter by Events that occurred AFTER the given time
      * @param toTimestamp Optional, filter by Events that occurred BEFORE the given time
      * @param last Optional, filter by Events that occurred within the last x units of time.  Calculated from 'toTimestamp' if provided.  Uses Groovy's TimeCategory (e.g. 5.minutes or 30.seconds)
+     * @param groupTimeWindow Optional, group events by a time window.  Defaults to configuration property: additionalMetricsRefreshDelay.  Uses Groovy's TimeCategory (e.g. 5.minutes or 30.seconds)
      * @return
      */
     @CompileDynamic
@@ -89,7 +95,8 @@ class AdditionalMetricsController {
                                                    @RequestParam(value = "instanceNumber", required = false) Integer instanceNumber,
                                                    @RequestParam(value = "fromTimestamp", required = false, defaultValue = "-9223372036854775808") Long fromTimestamp,
                                                    @RequestParam(value = "toTimestamp", required = false, defaultValue = "9223372036854775807") Long toTimestamp,
-                                                   @RequestParam(value = "last", required = false) String last) {
+                                                   @RequestParam(value = "last", required = false) String last,
+                                                   @RequestParam(value = "groupTimeWindow", required = false) String groupTimeWindow) {
         // If last is populated, use that
         if (last) {
             use (TimeCategory) {
@@ -98,39 +105,38 @@ class AdditionalMetricsController {
             }
         }
 
-        StringBuilder queryText = new StringBuilder("select m.timestamp, min(value(m.additionalMetrics)), max(value(m.additionalMetrics)), avg(value(m.additionalMetrics)), sum(value(m.additionalMetrics)), count(m) from AdditionalMetricsStorage m where key(m.additionalMetrics) = :metricName and m.timestamp between :fromTimestamp and :toTimestamp ");
+        Long timeWindow = props.additionalMetricsRefreshDelay;
+        if (groupTimeWindow) {
+            use (TimeCategory) {
+                timeWindow = Eval.me("Date now = new Date(); now.getTime() - (now - $groupTimeWindow).getTime()")
+            }
+        }
+
+        Map<String, ?> serviceInstanceParameters = [serverName: serverName, tierName: tierName, environmentName: environmentName, applicationId: applicationId, name: serviceName, instanceNumber: instanceNumber];
         Map<String, ?> queryParameters = [metricName: metricName, fromTimestamp: fromTimestamp, toTimestamp: toTimestamp];
 
-        setVariableIfPopulated("serverName", serverName, queryParameters, queryText);
-        setVariableIfPopulated("tierName", tierName, queryParameters, queryText);
-        setVariableIfPopulated("environmentName", environmentName, queryParameters, queryText);
-        setVariableIfPopulated("applicationId", applicationId, queryParameters, queryText);
-        setVariableIfPopulated("name", serviceName, queryParameters, queryText);
-        setVariableIfPopulated("instanceNumber", instanceNumber, queryParameters, queryText);
-
-        queryText << "group by m.timestamp order by m.timestamp"
-        Query query = em.createQuery(queryText.toString());
-        queryParameters.each { k, v -> query.setParameter(k, v)}
-
-        List result = query.getResultList();
-
-        return result.collect { values ->
-            return [
-                    timestamp:  values[0],
-                    min:        values[1],
-                    max:        values[2],
-                    avg:        values[3],
-                    sum:        values[4],
-                    count:      values[5]
-            ]
+        StringBuilder serviceInstanceWhere = new StringBuilder()
+        serviceInstanceParameters.each { k, v ->
+            if (v) {
+                serviceInstanceWhere << " AND SERVICE_INSTANCE."
+                serviceInstanceWhere << StringUtils.toSnakeCase(k)
+                serviceInstanceWhere << " = :"
+                serviceInstanceWhere << k
+            }
         }
-    }
 
-    private void setVariableIfPopulated(String variableName, Object variableValue, Map<String, ?> queryParameters, StringBuilder queryText) {
-        if (variableValue) {
-            queryText << "and m.serviceInstanceThumbnail.$variableName = :$variableName "
-            queryParameters.put(variableName, variableValue);
-        }
+        StringBuilder queryText = new StringBuilder("""
+            select TIMESTAMP, MAX(VALUE) as MAXIMUM, COUNT(VALUE) as COUNT FROM (
+                SELECT (ADDITIONAL_METRICS_STORAGE.TIMESTAMP/$timeWindow)*$timeWindow AS TIMESTAMP, ADDITIONAL_METRICS_VALUES.VALUE
+                FROM ADDITIONAL_METRICS_VALUES
+                INNER JOIN ADDITIONAL_METRICS_STORAGE on ADDITIONAL_METRICS_STORAGE.SERVICE_INSTANCE_ID = ADDITIONAL_METRICS_VALUES.ADDITIONAL_METRICS_STORAGE_ID
+                INNER JOIN SERVICE_INSTANCE on ADDITIONAL_METRICS_STORAGE.SERVICE_INSTANCE_ID = SERVICE_INSTANCE.ID
+                where ADDITIONAL_METRICS_VALUES.NAME = :metricName
+                $serviceInstanceWhere
+            ) group by TIMESTAMP order by TIMESTAMP
+        """);
+
+        return new NamedParameterJdbcTemplate(jdbcTemplate).queryForList(queryText.toString(), queryParameters + serviceInstanceParameters).collect { it.collectEntries { k, v -> return [k.toLowerCase(), v]} };
     }
 
 }
