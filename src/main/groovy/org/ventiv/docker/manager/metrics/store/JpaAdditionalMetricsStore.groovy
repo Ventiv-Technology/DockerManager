@@ -32,7 +32,7 @@ class JpaAdditionalMetricsStore extends AbstractAdditionalMetricsStore {
         if (startTime == null) startTime = Long.MIN_VALUE;
         if (endTime == null) endTime = System.currentTimeMillis();
 
-        return repo.findByServerNameAndServiceInstanceAndTimestampBetween(serviceInstance.getServerName(), serviceInstance.toString(), startTime, endTime);
+        return repo.findByServerNameAndServiceInstanceAndTimestampBetweenOrderByTimestampDesc(serviceInstance.getServerName(), serviceInstance.toString(), startTime, endTime);
     }
 
     @Override

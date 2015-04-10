@@ -25,6 +25,6 @@ import java.util.List;
  */
 public interface AdditionalMetricsStorageRepository extends JpaRepository<AdditionalMetricsStorage, Long> {
 
-    public List<AdditionalMetricsStorage> findByServerNameAndServiceInstanceAndTimestampBetween(String serverName, String serviceInstance, Long lowTimestamp, Long highTimestamp);
+    public List<AdditionalMetricsStorage> findByServerNameAndServiceInstanceAndTimestampBetweenOrderByTimestampDesc(String serverName, String serviceInstance, Long lowTimestamp, Long highTimestamp);
 
 }

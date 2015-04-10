@@ -37,6 +37,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
 
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledFuture
 
@@ -55,7 +56,7 @@ class ServiceInstanceService implements Runnable {
     @Resource TaskScheduler taskScheduler;
     @Resource DockerManagerConfiguration props;
 
-    private Map<String, List<ServiceInstance>> allServiceInstances = [:];
+    private ConcurrentHashMap<String, List<ServiceInstance>> allServiceInstances = [:];
     private Map<String, ExecutorService> eventExecutors = [:];
     private Map<String, DockerEventCallback> eventCallbacks = [:];
     private ScheduledFuture scheduledTask;
@@ -102,14 +103,14 @@ class ServiceInstanceService implements Runnable {
     public void initializeServerConfiguration(ServerConfiguration serverConfiguration) {
         String serverConfigurationKey = getServerConfigurationKey(serverConfiguration);
 
-        if (eventExecutors.containsKey(serverConfigurationKey)) {
-            eventExecutors[serverConfigurationKey].shutdownNow();
-            eventExecutors.remove(serverConfigurationKey)
-        }
-
         if (eventCallbacks.containsKey(serverConfigurationKey)) {
             eventCallbacks[serverConfigurationKey].stop();
             eventCallbacks.remove(serverConfigurationKey);
+        }
+
+        if (eventExecutors.containsKey(serverConfigurationKey)) {
+            eventExecutors[serverConfigurationKey].shutdownNow();
+            eventExecutors.remove(serverConfigurationKey)
         }
 
         if (allServiceInstances.containsKey(serverConfigurationKey))
