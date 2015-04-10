@@ -77,6 +77,7 @@ dependencies {
     compile 'org.webjars:angular-chart.js:0.5.3'
     compile 'org.webjars:angular-ui-sortable:0.13.0-1'
     compile 'org.webjars:jquery-ui:1.11.4'
+    compile 'org.webjars:c3:0.4.9'
 
     runtime("com.h2database:h2")
 

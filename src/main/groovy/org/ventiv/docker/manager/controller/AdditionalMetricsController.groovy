@@ -15,7 +15,6 @@
  */
 package org.ventiv.docker.manager.controller
 
-import com.google.common.net.MediaType
 import groovy.time.TimeCategory
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
@@ -27,14 +26,16 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.metrics.store.AbstractAdditionalMetricsStore
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 import org.ventiv.docker.manager.service.ServiceInstanceService
 import org.ventiv.docker.manager.utils.StringUtils
 
 import javax.annotation.Resource
-import javax.servlet.http.HttpServletResponse
 
 /**
  * Created by jcrygier on 4/9/15.
@@ -49,10 +50,26 @@ class AdditionalMetricsController {
     @Resource ServiceInstanceService serviceInstanceService;
     @Resource AbstractAdditionalMetricsStore additionalMetricsStore;
     @Resource JdbcTemplate jdbcTemplate;
+    @Resource DockerServiceConfiguration dockerServiceConfiguration;
 
-    @RequestMapping("/widgets")
-    public void additionalMetricsWidgets(HttpServletResponse response) {
-        response.setContentType(MediaType.TEXT_JAVASCRIPT_UTF_8.toString())
+    @RequestMapping
+    public List<Map<String, String>> getMetricNames() {
+        List<Map<String, String>> answer = []
+
+        dockerServiceConfiguration.getConfiguration().each { ServiceConfiguration serviceConfiguration ->
+            serviceConfiguration.getAdditionalMetrics()?.each { AdditionalMetricsConfiguration additionalMetricsConfiguration ->
+                additionalMetricsConfiguration.getStorage()?.keySet()?.each { String metricName ->
+                    answer << [
+                            service: serviceConfiguration.getName(),
+                            serviceDescription: serviceConfiguration.getDescription(),
+                            metricName: additionalMetricsConfiguration.getName() + "." + metricName,
+                            metricDescription: additionalMetricsConfiguration.getStorageDescriptions()?.get(metricName)
+                    ]
+                }
+            }
+        }
+
+        return answer;
     }
 
     @RequestMapping("/container/{containerId}")
@@ -126,10 +143,10 @@ class AdditionalMetricsController {
         }
 
         StringBuilder queryText = new StringBuilder("""
-            select TIMESTAMP, MAX(VALUE) as MAXIMUM, COUNT(VALUE) as COUNT FROM (
+            select TIMESTAMP, MIN(VALUE) as MIN, MAX(VALUE) as MAX, AVG(VALUE) as AVG, SUM(VALUE) as SUM, COUNT(VALUE) as COUNT FROM (
                 SELECT (ADDITIONAL_METRICS_STORAGE.TIMESTAMP/$timeWindow)*$timeWindow AS TIMESTAMP, ADDITIONAL_METRICS_VALUES.VALUE
                 FROM ADDITIONAL_METRICS_VALUES
-                INNER JOIN ADDITIONAL_METRICS_STORAGE on ADDITIONAL_METRICS_STORAGE.SERVICE_INSTANCE_ID = ADDITIONAL_METRICS_VALUES.ADDITIONAL_METRICS_STORAGE_ID
+                INNER JOIN ADDITIONAL_METRICS_STORAGE on ADDITIONAL_METRICS_STORAGE.ID = ADDITIONAL_METRICS_VALUES.ADDITIONAL_METRICS_STORAGE_ID
                 INNER JOIN SERVICE_INSTANCE on ADDITIONAL_METRICS_STORAGE.SERVICE_INSTANCE_ID = SERVICE_INSTANCE.ID
                 where ADDITIONAL_METRICS_VALUES.NAME = :metricName
                 $serviceInstanceWhere

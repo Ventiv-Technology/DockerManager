@@ -43,6 +43,11 @@ define([], function() {
         RESTART: "Restart",
         BUILD: "Build",
         BUILDING_IMAGE: "Building Image...",
-        DEPLOYING: "Deploying..."
+        DEPLOYING: "Deploying...",
+        min: "Minimum",
+        max: "Maximum",
+        avg: "Average",
+        sum: "Total",
+        count: "Count of Data Points"
     }
 });

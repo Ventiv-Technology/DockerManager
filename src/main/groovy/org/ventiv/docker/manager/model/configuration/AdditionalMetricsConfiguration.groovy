@@ -56,4 +56,10 @@ class AdditionalMetricsConfiguration {
     @Nullable
     Map<String, String> storage;
 
+    /**
+     * Label Key value pair for additional metrics that are stored.  Used in the UI
+     */
+    @Nullable
+    Map<String, String> storageDescriptions;
+
 }

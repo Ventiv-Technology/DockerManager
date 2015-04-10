@@ -57,6 +57,15 @@ services:
           messages.deliver.get.rate: "#{data.message_stats.deliver_get_details.rate}"
           messages.deliver: "#{data.message_stats.deliver}"
           messages.deliver.rate: "#{data.message_stats.deliver_details.rate}"
+        storageDescriptions:                                                                    # Long term storage key descriptions for the UI
+          messages.publish: Messages Published
+          messages.publish.rate: Messages Published Rate
+          messages.ack: Messages Acknowledged
+          messages.ack.rate: Messages Acknowledged Rate
+          messages.deliver.get: Messages Delivered (Get)
+          messages.deliver.get.rate: Messages Delivered (Get) Rate
+          messages.deliver: Messages Delivered
+          messages.deliver.rate: Messages Delivered Rate
     environment:
       RABBITMQ_NODENAME: rabbit1
 
