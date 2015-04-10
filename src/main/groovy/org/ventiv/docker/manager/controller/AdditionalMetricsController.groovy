@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.controller
 
 import com.google.common.net.MediaType
+import groovy.time.TimeCategory
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
@@ -62,6 +63,21 @@ class AdditionalMetricsController {
             return null;
     }
 
+    /**
+     * Gets Time series for a given additional metric.
+     *
+     * @param metricName Required, name of the metric to get
+     * @param serverName Optional, filter by Service Instance Server Name
+     * @param tierName Optional, filter by Service Instance
+     * @param environmentName Optional, filter by Service Instance
+     * @param applicationId Optional, filter by Service Instance
+     * @param serviceName Optional, filter by Service Instance
+     * @param instanceNumber Optional, filter by Service Instance
+     * @param fromTimestamp Optional, filter by Events that occurred AFTER the given time
+     * @param toTimestamp Optional, filter by Events that occurred BEFORE the given time
+     * @param last Optional, filter by Events that occurred within the last x units of time.  Calculated from 'toTimestamp' if provided.  Uses Groovy's TimeCategory (e.g. 5.minutes or 30.seconds)
+     * @return
+     */
     @CompileDynamic
     @RequestMapping("/timeseries/{metricName:.*}")
     public List<Map<String, Object>> getTimeSeries(@PathVariable("metricName") String metricName,
@@ -70,10 +86,20 @@ class AdditionalMetricsController {
                                                    @RequestParam(value = "environmentName", required = false) String environmentName,
                                                    @RequestParam(value = "applicationId", required = false) String applicationId,
                                                    @RequestParam(value = "serviceName", required = false) String serviceName,
-                                                   @RequestParam(value = "instanceNumber", required = false) Integer instanceNumber) {
+                                                   @RequestParam(value = "instanceNumber", required = false) Integer instanceNumber,
+                                                   @RequestParam(value = "fromTimestamp", required = false, defaultValue = "-9223372036854775808") Long fromTimestamp,
+                                                   @RequestParam(value = "toTimestamp", required = false, defaultValue = "9223372036854775807") Long toTimestamp,
+                                                   @RequestParam(value = "last", required = false) String last) {
+        // If last is populated, use that
+        if (last) {
+            use (TimeCategory) {
+                if (toTimestamp == Long.MAX_VALUE) toTimestamp = new Date().getTime();
+                fromTimestamp = Eval.me("new Date($toTimestamp) - $last").getTime()
+            }
+        }
 
-        StringBuilder queryText = new StringBuilder("select m.timestamp, min(value(m.additionalMetrics)), max(value(m.additionalMetrics)), avg(value(m.additionalMetrics)), sum(value(m.additionalMetrics)), count(m) from AdditionalMetricsStorage m where key(m.additionalMetrics) = :metricName ");
-        Map<String, ?> queryParameters = [metricName: metricName];
+        StringBuilder queryText = new StringBuilder("select m.timestamp, min(value(m.additionalMetrics)), max(value(m.additionalMetrics)), avg(value(m.additionalMetrics)), sum(value(m.additionalMetrics)), count(m) from AdditionalMetricsStorage m where key(m.additionalMetrics) = :metricName and m.timestamp between :fromTimestamp and :toTimestamp ");
+        Map<String, ?> queryParameters = [metricName: metricName, fromTimestamp: fromTimestamp, toTimestamp: toTimestamp];
 
         setVariableIfPopulated("serverName", serverName, queryParameters, queryText);
         setVariableIfPopulated("tierName", tierName, queryParameters, queryText);
