@@ -24,9 +24,9 @@ import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.UpdatedAdditionalMetricsEvent
+import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
-import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.service.ServiceInstanceService
 
 import javax.annotation.PostConstruct
@@ -70,8 +70,11 @@ class AdditionalMetricsService implements Runnable {
     public Map<String, Object> getServiceInstanceAdditionalMetrics(ServiceInstance serviceInstance) {
         ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName());
         Map<String, Object> additionalMetrics = serviceConfiguration?.getAdditionalMetrics()?.collectEntries { AdditionalMetricsConfiguration metricsConfiguration ->
-            AdditionalMetrics additionalMetrics = DockerManagerApplication.getApplicationContext().getBean(metricsConfiguration.getType(), AdditionalMetrics)
-            return [metricsConfiguration.getName(), additionalMetrics.getAdditionalMetrics(serviceInstance, metricsConfiguration.getSettings())];
+            AdditionalMetrics additionalMetrics = DockerManagerApplication.getApplicationContext()?.getBean(metricsConfiguration.getType(), AdditionalMetrics)
+            if (additionalMetrics)
+                return [metricsConfiguration.getName(), additionalMetrics.getAdditionalMetrics(serviceInstance, metricsConfiguration.getSettings())];
+            else
+                return [metricsConfiguration.getName(), null];
         }
 
         serviceInstance.setAdditionalMetrics(additionalMetrics);

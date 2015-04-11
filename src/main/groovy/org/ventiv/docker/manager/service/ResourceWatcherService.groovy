@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 
 import javax.annotation.PostConstruct
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ScheduledFuture
 
 /**
@@ -35,7 +36,7 @@ class ResourceWatcherService implements Runnable {
     @javax.annotation.Resource DockerManagerConfiguration props;
 
     private ScheduledFuture scheduledTask;
-    private Map<Resource, Closure<?>> watchServiceCallbacks = [:];
+    private ConcurrentHashMap<Resource, Closure<?>> watchServiceCallbacks = new ConcurrentHashMap<>();
     private Map<Resource, Long> lastUpdatedTimestamps = [:];
 
 
@@ -56,7 +57,9 @@ class ResourceWatcherService implements Runnable {
 
             if (toCheck.lastModified() != lastUpdatedTimestamp) {
                 lastUpdatedTimestamps[toCheck] = toCheck.lastModified();
-                callback(toCheck);
+
+                if (lastUpdatedTimestamp != 0)
+                    callback(toCheck);
             }
         }
     }

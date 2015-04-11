@@ -34,6 +34,7 @@ import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 
 import javax.annotation.PostConstruct
@@ -68,7 +69,13 @@ class ServiceInstanceService implements Runnable {
         if (eventExecutors)
             eventExecutors.each { k, v -> v.shutdownNow() }
 
+        // Get the active server configurations from environmentConfigurationService, and initialize them
         getAllHosts().each(this.&initializeServerConfiguration);
+
+        // Now, tell environemntConfigurationService that we're interested in any environment changes
+        environmentConfigurationService.getEnvironmentChangeCallbacks() << { EnvironmentConfiguration environmentConfiguration ->
+            environmentConfiguration.getServers()?.each(this.&initializeServerConfiguration)
+        }
 
         if (props.dockerServerReconnectDelay > 0)
             scheduledTask = taskScheduler.scheduleAtFixedRate(this, props.dockerServerReconnectDelay);

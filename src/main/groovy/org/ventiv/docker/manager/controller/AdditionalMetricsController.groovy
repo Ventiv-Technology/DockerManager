@@ -149,6 +149,7 @@ class AdditionalMetricsController {
                 INNER JOIN ADDITIONAL_METRICS_STORAGE on ADDITIONAL_METRICS_STORAGE.ID = ADDITIONAL_METRICS_VALUES.ADDITIONAL_METRICS_STORAGE_ID
                 INNER JOIN SERVICE_INSTANCE on ADDITIONAL_METRICS_STORAGE.SERVICE_INSTANCE_ID = SERVICE_INSTANCE.ID
                 where ADDITIONAL_METRICS_VALUES.NAME = :metricName
+                AND ADDITIONAL_METRICS_STORAGE.TIMESTAMP BETWEEN :fromTimestamp and :toTimestamp
                 $serviceInstanceWhere
             ) group by TIMESTAMP order by TIMESTAMP
         """);

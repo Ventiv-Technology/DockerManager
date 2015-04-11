@@ -41,13 +41,18 @@ class EnvironmentConfigurationService {
     @javax.annotation.Resource DockerManagerConfiguration props;
     @javax.annotation.Resource ResourceWatcherService resourceWatcherService;
     @javax.annotation.Resource DockerService dockerService;
-    @javax.annotation.Resource ServiceInstanceService serviceInstanceService;
+
+    List<Closure<?>> environmentChangeCallbacks = []
 
     @PostConstruct
     public void loadConfigurationFromFile() {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
         resolver.getResources(props.config.location + "/tiers/**/*.yml").each { Resource environmentConfigurationResource ->
+            // Watch this resource for changes
             resourceWatcherService.watchResource(environmentConfigurationResource, this.&readConfiguration)
+
+            // Also, load it immediately
+            readConfiguration(environmentConfigurationResource);
         }
     }
 
@@ -73,7 +78,7 @@ class EnvironmentConfigurationService {
             // Call over to DockerService so we can ensure that we've cached things as necessary
             environmentConfiguration.getServers()*.getHostname().unique().each { String hostName ->
                 try {
-                    dockerService.getDockerClient(hostName);
+                    dockerService.getDockerClient(hostName).pingCmd().exec();
                 } catch (Exception ignored) {
                     log.warn("Unable to connect to host $hostName, removing it from the Environment Configuration")
                     environmentConfiguration.getServers().removeAll { ServerConfiguration serverConfiguration ->
@@ -82,8 +87,8 @@ class EnvironmentConfigurationService {
                 }
             }
 
-            // Tell the Service Instance Status that we have a new Environment Configuration
-            environmentConfiguration.getServers()?.each(serviceInstanceService.&initializeServerConfiguration);
+            // Alert the presses!!!  We have an environment change!!!
+            environmentChangeCallbacks.each { it.call(environmentConfiguration) }
         }
     }
 

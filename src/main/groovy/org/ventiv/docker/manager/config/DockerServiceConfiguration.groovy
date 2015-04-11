@@ -44,7 +44,11 @@ class DockerServiceConfiguration {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
         Resource resource = resolver.getResource(props.config.location + "/services.yml")
 
+        // Watch the resource
         resourceWatcherService.watchResource(resource, this.&readConfiguration)
+
+        // Also, load it immediately
+        readConfiguration(resource);
     }
 
     public void readConfiguration(Resource resource) {
