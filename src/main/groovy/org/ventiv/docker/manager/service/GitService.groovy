@@ -28,7 +28,6 @@ import org.springframework.core.annotation.Order
 import org.springframework.scheduling.TaskScheduler
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
-import org.ventiv.docker.manager.config.DockerServiceConfiguration
 
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
@@ -47,7 +46,6 @@ class GitService implements Runnable {
 
     @Resource DockerManagerConfiguration props;
     @Resource TaskScheduler taskScheduler;
-    @Resource DockerServiceConfiguration dockerServiceConfiguration;
 
     private Repository repository;
     private Git git;
