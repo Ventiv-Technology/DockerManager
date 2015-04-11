@@ -23,6 +23,8 @@ import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.transport.CredentialsProvider
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider
+import org.springframework.core.Ordered
+import org.springframework.core.annotation.Order
 import org.springframework.scheduling.TaskScheduler
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
@@ -37,6 +39,7 @@ import java.util.concurrent.ScheduledFuture
  */
 @Slf4j
 @Service
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @CompileStatic
 class GitService implements Runnable {
 
@@ -61,7 +64,7 @@ class GitService implements Runnable {
                 credentialsProvider = new UsernamePasswordCredentialsProvider(props.config.git.user, props.config.git.password);
 
             if (!cloneLocation.exists()) {
-                log.debug("Cloning config repository ${props.config.git.url} to ${props.config.git.location}")
+                log.info("Cloning config repository ${props.config.git.url} to ${props.config.git.location}")
                 
                 Git.cloneRepository()
                         .setURI(props.config.git.url)

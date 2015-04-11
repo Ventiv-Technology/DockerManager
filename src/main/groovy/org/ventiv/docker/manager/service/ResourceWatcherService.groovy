@@ -34,6 +34,7 @@ class ResourceWatcherService implements Runnable {
 
     @javax.annotation.Resource TaskScheduler taskScheduler;
     @javax.annotation.Resource DockerManagerConfiguration props;
+    @javax.annotation.Resource GitService gitService;                           // Here so we load git first
 
     private ScheduledFuture scheduledTask;
     private ConcurrentHashMap<Resource, Closure<?>> watchServiceCallbacks = new ConcurrentHashMap<>();
