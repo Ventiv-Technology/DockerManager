@@ -30,8 +30,12 @@ import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.metrics.store.AbstractAdditionalMetricsStore
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
+import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
+import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
+import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
+import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
 import org.ventiv.docker.manager.utils.StringUtils
 
@@ -52,15 +56,15 @@ class AdditionalMetricsController {
     @Resource AbstractAdditionalMetricsStore additionalMetricsStore;
     @Resource JdbcTemplate jdbcTemplate;
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
+    @Resource EnvironmentConfigurationService environmentConfigurationService;
 
     @RequestMapping
-    public List<Map<String, String>> getMetricNames() {
-        List<Map<String, String>> answer = []
-
+    public Map<String, Object> getEditOptions() {
+        List<Map<String, String>> availableMetrics = []
         dockerServiceConfiguration.getConfiguration().each { ServiceConfiguration serviceConfiguration ->
             serviceConfiguration.getAdditionalMetrics()?.each { AdditionalMetricsConfiguration additionalMetricsConfiguration ->
                 additionalMetricsConfiguration.getStorage()?.keySet()?.each { String metricName ->
-                    answer << [
+                    availableMetrics << [
                             service: serviceConfiguration.getName(),
                             serviceDescription: serviceConfiguration.getDescription(),
                             metricName: additionalMetricsConfiguration.getName() + "." + metricName,
@@ -70,7 +74,47 @@ class AdditionalMetricsController {
             }
         }
 
-        return answer;
+        List<Map<String, String>> availableServers = []
+        List<Map<String, String>> availableTiers = []
+        List<Map<String, String>> availableEnvironments = []
+        List<Map<String, String>> availableApplications = []
+        environmentConfigurationService.getActiveEnvironments().each { EnvironmentConfiguration environmentConfiguration ->
+            environmentConfiguration.getServers()?.each { ServerConfiguration serverConfiguration ->
+                availableServers << [
+                        hostName: serverConfiguration.getHostname(),
+                        hostDescription: serverConfiguration.getDescription(),
+                        environmentId: environmentConfiguration.getId(),
+                        environmentDescription: environmentConfiguration.getDescription()
+                ]
+            }
+
+            environmentConfiguration.getApplications()?.each { ApplicationConfiguration applicationConfiguration ->
+                availableApplications << [
+                        applicationId: applicationConfiguration.getId(),
+                        applicationDescription: applicationConfiguration.getDescription(),
+                        environmentId: environmentConfiguration.getId(),
+                        environmentDescription: environmentConfiguration.getDescription()
+                ]
+            }
+
+            availableTiers << [
+                    tierName: environmentConfiguration.getTierName()
+            ]
+
+            availableEnvironments << [
+                    environmentId: environmentConfiguration.getId(),
+                    environmentDescription: environmentConfiguration.getDescription(),
+                    tierName: environmentConfiguration.getTierName()
+            ]
+        }
+
+        return [
+                availableMetrics: availableMetrics,
+                availableServers: availableServers,
+                availableTiers: availableTiers.unique(),
+                availableEnvironments: availableEnvironments,
+                availableApplications: availableApplications
+        ];
     }
 
     @RequestMapping("/container/{containerId}")

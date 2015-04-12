@@ -18,7 +18,7 @@
 <form >
     <div class="form-group">
         <label for="metricName">Metric Name</label>
-        <select name="metricName" id="metricName" class="form-control" placeholder="Metric Name" ng-model="config.metric" required="" data-ng-options="metric.metricDescription group by metric.serviceDescription for metric in availableMetrics">
+        <select name="metricName" id="metricName" class="form-control" placeholder="Metric Name" ng-model="config.metric" required="" data-ng-options="metric.metricDescription group by metric.serviceDescription for metric in editOptions.availableMetrics">
         </select>
     </div>
 
@@ -57,6 +57,24 @@
             <option value="1.hours">1 hour</option>
             <option value="2.hours">2 hours</option>
             <option value="5.hours">5 hours</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="tierName">Restrict Tier (Optional)</label>
+        <select name="tierName" id="tierName" class="form-control" placeholder="Restrict Tier" ng-model="config.tierName" required="" data-ng-options="tier.tierName for tier in editOptions.availableTiers">
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="environmentName">Restrict Envrionment (Optional)</label>
+        <select name="environmentName" id="environmentName" class="form-control" placeholder="Restrict Environment" ng-model="config.environmentName" required="" data-ng-options="environment.environmentDescription group by environment.tierName for environment in editOptions.availableEnvironments">
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="serverName">Restrict Server (Optional)</label>
+        <select name="serverName" id="serverName" class="form-control" placeholder="Restrict Server" ng-model="config.serverName" required="" data-ng-options="server.hostDescription group by server.environmentDescription for server in editOptions.availableServers">
         </select>
     </div>
 </form>

@@ -39,6 +39,10 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
 
                                 if (config.groupTimeWindow) url = url + "&groupTimeWindow=" + config.groupTimeWindow;
                                 if (config.chartTimeFrame) url = url + "&last=" + config.chartTimeFrame;
+                                if (config.tierName) url = url + "&tierName=" + config.tierName.tierName;
+                                if (config.serverName) url = url + "&serverName=" + config.serverName.hostName;
+                                if (config.applicationId) url = url + "&applicationId=" + config.applicationId.applicationId;
+                                if (config.environmentName) url = url + "&environmentName=" + config.environmentName.environmentId;
 
                                 var requestPromise = $http.get(url);
                                 requestPromise.then(function(response) {
@@ -53,7 +57,12 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                     edit: {
                         templateUrl: 'app/js/dashboard/widgets/timeSeriesMetrics/edit.html',
                         reload: true,
-                        controller: 'TimeSeriesMetricsEditController'
+                        controller: 'TimeSeriesMetricsEditController',
+                        resolve: {
+                            editOptions: function($http, config) {
+                                return $http.get("/api/metrics");
+                            }
+                        }
                     }
                 });
         })
@@ -98,14 +107,15 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                                     format: '%Y-%m-%d %H:%M'
                                 }
                             }
-                        }/*,
+                        },
                         legend: {
                             item: {
                                 onclick: function(id) {
-                                    // TODO: keep track of turning legend items on / off in the config
+                                    console.log("Intercepted Legend Click: ", id);
+                                    chart.toggle(id);
                                 }
                             }
-                        }*/
+                        }
                     });
                 };
 
@@ -131,9 +141,7 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
             }
         })
 
-        .controller('TimeSeriesMetricsEditController', function($scope, $http) {
-            $http.get("/api/metrics").then(function(data) {
-                $scope.availableMetrics = data.data;
-            })
+        .controller('TimeSeriesMetricsEditController', function($scope, editOptions) {
+            $scope.editOptions = editOptions.data;
         })
 });
