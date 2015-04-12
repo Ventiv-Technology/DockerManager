@@ -23,6 +23,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
 import org.ventiv.docker.manager.service.AllowAnyoneAuthenticationProvider
+import org.ventiv.docker.manager.utils.CacheHeaderWriter
 
 import javax.annotation.Resource
 
@@ -57,6 +58,8 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
         }
 
         http.csrf().disable();
+        http.headers().cacheControl().disable();
+        http.headers().addHeaderWriter(new CacheHeaderWriter());
     }
 
     @Configuration

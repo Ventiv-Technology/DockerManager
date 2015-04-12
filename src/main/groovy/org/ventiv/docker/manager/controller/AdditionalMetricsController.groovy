@@ -36,6 +36,7 @@ import org.ventiv.docker.manager.service.ServiceInstanceService
 import org.ventiv.docker.manager.utils.StringUtils
 
 import javax.annotation.Resource
+import javax.servlet.http.HttpServletResponse
 
 /**
  * Created by jcrygier on 4/9/15.
@@ -113,7 +114,8 @@ class AdditionalMetricsController {
                                                    @RequestParam(value = "fromTimestamp", required = false, defaultValue = "-9223372036854775808") Long fromTimestamp,
                                                    @RequestParam(value = "toTimestamp", required = false, defaultValue = "9223372036854775807") Long toTimestamp,
                                                    @RequestParam(value = "last", required = false) String last,
-                                                   @RequestParam(value = "groupTimeWindow", required = false) String groupTimeWindow) {
+                                                   @RequestParam(value = "groupTimeWindow", required = false) String groupTimeWindow,
+                                                   HttpServletResponse response) {
         // If last is populated, use that
         if (last) {
             use (TimeCategory) {
@@ -128,6 +130,8 @@ class AdditionalMetricsController {
                 timeWindow = Eval.me("Date now = new Date(); now.getTime() - (now - $groupTimeWindow).getTime()")
             }
         }
+
+        response.setHeader("X-Refresh-Period", timeWindow.toString());
 
         Map<String, ?> serviceInstanceParameters = [serverName: serverName, tierName: tierName, environmentName: environmentName, applicationId: applicationId, name: serviceName, instanceNumber: instanceNumber];
         Map<String, ?> queryParameters = [metricName: metricName, fromTimestamp: fromTimestamp, toTimestamp: toTimestamp];

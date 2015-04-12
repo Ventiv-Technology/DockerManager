@@ -26,6 +26,7 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                     description: 'Shows stored metrics over time',
                     controller: 'TimeSeriesMetricsController',
                     templateUrl: 'app/js/dashboard/widgets/timeSeriesMetrics/widget.html',
+                    reload: true,
                     resolve: {
                         hostData: function(HostsService, config) {
                             return HostsService.get();
@@ -39,7 +40,12 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                                 if (config.groupTimeWindow) url = url + "&groupTimeWindow=" + config.groupTimeWindow;
                                 if (config.chartTimeFrame) url = url + "&last=" + config.chartTimeFrame;
 
-                                return $http.get(url);
+                                var requestPromise = $http.get(url);
+                                requestPromise.then(function(response) {
+                                    config.refreshPeriod = parseInt(response.headers("X-Refresh-Period"));
+                                });
+
+                                return requestPromise;
                             } else
                                 return null;
                         }
@@ -52,7 +58,7 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                 });
         })
 
-        .controller('TimeSeriesMetricsController', function ($scope, $timeout, config, hostData, timeSeriesData) {
+        .controller('TimeSeriesMetricsController', function ($scope, $timeout, $interval, config, hostData, timeSeriesData) {
             if (timeSeriesData) {
                 $scope.data = timeSeriesData.data;
 
@@ -108,6 +114,20 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                     if (uuid)
                         $timeout($scope.updateChart, 10);
                 });
+
+                // If we've found a refresh period, update the chart at that specified interval
+                if (config.refreshPeriod && config.autoRefresh) {
+                    $interval(function() {
+                        // Find the reload method in the parent scopes
+                        var currentScope = $scope;
+                        while (currentScope && currentScope.reload === undefined) {
+                            currentScope = currentScope.$parent;
+                        }
+
+                        if (currentScope)
+                            currentScope.reload();
+                    }, config.refreshPeriod);
+                }
             }
         })
 

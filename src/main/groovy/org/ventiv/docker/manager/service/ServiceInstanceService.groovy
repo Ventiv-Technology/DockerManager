@@ -39,7 +39,6 @@ import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledFuture
 
@@ -59,9 +58,9 @@ class ServiceInstanceService implements Runnable {
     @Resource DockerManagerConfiguration props;
     @Resource private DockerServiceConfiguration dockerServiceConfiguration;
 
-    private ConcurrentHashMap<String, List<ServiceInstance>> allServiceInstances = new ConcurrentHashMap<>();
-    private Map<String, ExecutorService> eventExecutors = [:];
-    private Map<String, DockerEventCallback> eventCallbacks = [:];
+    private final Map<String, List<ServiceInstance>> allServiceInstances = [:]
+    private final Map<String, ExecutorService> eventExecutors = [:];
+    private final Map<String, DockerEventCallback> eventCallbacks = [:];
     private ScheduledFuture scheduledTask;
 
     @PostConstruct
@@ -110,29 +109,33 @@ class ServiceInstanceService implements Runnable {
     }
 
     public void initializeServerConfiguration(ServerConfiguration serverConfiguration) {
-        String serverConfigurationKey = getServerConfigurationKey(serverConfiguration);
+        synchronized (allServiceInstances) {
+            String serverConfigurationKey = getServerConfigurationKey(serverConfiguration);
 
-        if (eventCallbacks.containsKey(serverConfigurationKey)) {
-            eventCallbacks[serverConfigurationKey].stop();
-            eventCallbacks.remove(serverConfigurationKey);
+            if (eventCallbacks.containsKey(serverConfigurationKey)) {
+                eventCallbacks[serverConfigurationKey].stop();
+                eventCallbacks.remove(serverConfigurationKey);
+            }
+
+            if (eventExecutors.containsKey(serverConfigurationKey)) {
+                eventExecutors[serverConfigurationKey].shutdownNow();
+                eventExecutors.remove(serverConfigurationKey)
+            }
+
+            if (allServiceInstances.containsKey(serverConfigurationKey))
+                allServiceInstances.remove(serverConfigurationKey);
+
+            // First, lets query for all containers that exist on this host
+            List<Container> hostContainers = dockerService.getDockerClient(serverConfiguration.getHostname()).listContainersCmd().withShowAll(true).exec()
+            allServiceInstances.put(serverConfigurationKey, hostContainers.collect {
+                createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it)
+            })
+
+            // Now, lets hook up to the Docker Events API
+            DockerEventCallback callback = new DockerEventCallback(serverConfiguration, this)
+            eventExecutors.put(serverConfigurationKey, dockerService.getDockerClient(serverConfiguration.getHostname()).eventsCmd(callback).exec());
+            eventCallbacks.put(serverConfigurationKey, callback);
         }
-
-        if (eventExecutors.containsKey(serverConfigurationKey)) {
-            eventExecutors[serverConfigurationKey].shutdownNow();
-            eventExecutors.remove(serverConfigurationKey)
-        }
-
-        if (allServiceInstances.containsKey(serverConfigurationKey))
-            allServiceInstances.remove(serverConfigurationKey);
-
-        // First, lets query for all containers that exist on this host
-        List<Container> hostContainers = dockerService.getDockerClient(serverConfiguration.getHostname()).listContainersCmd().withShowAll(true).exec()
-        allServiceInstances.put(serverConfigurationKey, hostContainers.collect { createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it) })
-
-        // Now, lets hook up to the Docker Events API
-        DockerEventCallback callback = new DockerEventCallback(serverConfiguration, this)
-        eventExecutors.put(serverConfigurationKey, dockerService.getDockerClient(serverConfiguration.getHostname()).eventsCmd(new DockerEventCallback(serverConfiguration, this)).exec());
-        eventCallbacks.put(serverConfigurationKey, callback);
     }
 
     protected static String getServerConfigurationKey(ServerConfiguration serverConfiguration) {
@@ -177,35 +180,39 @@ class ServiceInstanceService implements Runnable {
             if (["export", "kill", "pause", "restart", "unpause", "stop"].contains(event.getStatus()))
                 return;
 
-            String serverConfigurationKey = getServerConfigurationKey(serverConfiguration);
-            ServiceInstance serviceInstance = null;  // Will be cretaed
+            synchronized (serviceInstanceService.allServiceInstances) {
+                String serverConfigurationKey = getServerConfigurationKey(serverConfiguration);
+                ServiceInstance serviceInstance = null;  // Will be cretaed
 
-            // Remove the service instance from the list, if it existed
-            List<ServiceInstance> allServiceInstances = serviceInstanceService.allServiceInstances.get(serverConfigurationKey);
-            ServiceInstance previousServiceInstance = allServiceInstances.find { it.getContainerId() == event.getId() }
-            allServiceInstances.remove(previousServiceInstance);
+                // Remove the service instance from the list, if it existed
+                List<ServiceInstance> allServiceInstances = serviceInstanceService.allServiceInstances.get(serverConfigurationKey);
+                ServiceInstance previousServiceInstance = allServiceInstances.find {
+                    it.getContainerId() == event.getId()
+                }
+                allServiceInstances.remove(previousServiceInstance);
 
-            // Add the new one back
-            if (event.getStatus() != "destroy") {
-                InspectContainerResponse inspectContainerResponse = serviceInstanceService.dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(event.getId()).exec()
-                serviceInstance = serviceInstanceService.createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse);
+                // Add the new one back
+                if (event.getStatus() != "destroy") {
+                    InspectContainerResponse inspectContainerResponse = serviceInstanceService.dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(event.getId()).exec()
+                    serviceInstance = serviceInstanceService.createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse);
 
-                allServiceInstances << serviceInstance;
+                    allServiceInstances << serviceInstance;
+                }
+
+                // Publish the event
+                ApplicationEvent eventToPublish = null;
+                if (event.getStatus() == "create")
+                    eventToPublish = new CreateContainerEvent(serviceInstance, serviceInstance.getResolvedEnvironmentVariables())
+                else if (event.getStatus() == "destroy")
+                    eventToPublish = new ContainerRemovedEvent(previousServiceInstance);
+                else if (event.getStatus() == "die")
+                    eventToPublish = new ContainerStoppedEvent(serviceInstance);
+                else if (event.getStatus() == "start")
+                    eventToPublish = new ContainerStartedEvent(serviceInstance);
+
+                if (eventToPublish)
+                    serviceInstanceService.eventPublisher.publishEvent(eventToPublish);
             }
-
-            // Publish the event
-            ApplicationEvent eventToPublish = null;
-            if (event.getStatus() == "create")
-                eventToPublish = new CreateContainerEvent(serviceInstance, serviceInstance.getResolvedEnvironmentVariables())
-            else if (event.getStatus() == "destroy")
-                eventToPublish = new ContainerRemovedEvent(previousServiceInstance);
-            else if (event.getStatus() == "die")
-                eventToPublish = new ContainerStoppedEvent(serviceInstance);
-            else if (event.getStatus() == "start")
-                eventToPublish = new ContainerStartedEvent(serviceInstance);
-
-            if (eventToPublish)
-                serviceInstanceService.eventPublisher.publishEvent(eventToPublish);
         }
 
         @Override
