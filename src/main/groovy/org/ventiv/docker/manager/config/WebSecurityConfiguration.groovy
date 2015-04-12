@@ -54,12 +54,19 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                         .and()
                     .logout()
                         .logoutUrl("/logout")
-                        .permitAll()
+                        .permitAll();
         }
 
-        http.csrf().disable();
-        http.headers().cacheControl().disable();
-        http.headers().addHeaderWriter(new CacheHeaderWriter());
+        // No matter what, we always want to set these headers, and disable CSRF protection
+        http.headers()
+                .contentTypeOptions()
+                .xssProtection()
+                .httpStrictTransportSecurity()
+                .frameOptions()
+                .addHeaderWriter(new CacheHeaderWriter())
+                .and()
+            .csrf()
+                .disable();
     }
 
     @Configuration
