@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.utils
 
+import groovy.time.TimeCategory
 import org.springframework.security.web.header.HeaderWriter
 import org.springframework.stereotype.Component
 
@@ -29,15 +30,15 @@ class CacheHeaderWriter implements HeaderWriter {
 
     @Override
     void writeHeaders(HttpServletRequest request, HttpServletResponse response) {
-        if (request.getRequestURI().startsWith("/webjars/")) {
-            response.addHeader("Cache-Control", "max-age=31536000, public")
-            response.addHeader("Expires", "Fri, 01 Jan 9999 12:00:00 GMT");
-        } else {
-            response.addHeader("Cache-Control","no-cache, no-store, max-age=0, must-revalidate");
-            response.addHeader("Pragma","no-cache");
-            response.addHeader("Expires","0");
+        use(TimeCategory) {
+            if (request.getRequestURI().startsWith("/webjars/")) {
+                response.setHeader("Cache-Control", "public, max-age=31536000")
+                response.setDateHeader("Expires", (new Date() + 1.years).getTime());
+            } else {
+                response.addHeader("Cache-Control", "no-cache, no-store, max-age=0, must-revalidate");
+                response.addHeader("Pragma", "no-cache");
+                response.addHeader("Expires", "0");
+            }
         }
-
-
     }
 }
