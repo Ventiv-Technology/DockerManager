@@ -19,6 +19,7 @@ import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.model.Version
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.core.DockerClientConfig
+import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.utils.TimingUtils
 
@@ -33,6 +34,7 @@ import javax.annotation.Resource
  * - docker.client.<hostName>.certPath: Default: ./config/certs/<hostName>
  */
 @Service
+@Profile("!integrationTest")
 class DockerService {
 
     @Resource PropertyService props;

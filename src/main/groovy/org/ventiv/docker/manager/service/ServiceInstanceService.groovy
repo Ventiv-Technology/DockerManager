@@ -118,7 +118,7 @@ class ServiceInstanceService implements Runnable {
             }
 
             if (eventExecutors.containsKey(serverConfigurationKey)) {
-                eventExecutors[serverConfigurationKey].shutdownNow();
+                eventExecutors[serverConfigurationKey]?.shutdownNow();
                 eventExecutors.remove(serverConfigurationKey)
             }
 
