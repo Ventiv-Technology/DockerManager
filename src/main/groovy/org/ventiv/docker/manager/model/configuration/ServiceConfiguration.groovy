@@ -101,7 +101,7 @@ class ServiceConfiguration {
     @Nullable
     List<AdditionalMetricsConfiguration> additionalMetrics;
 
-    public List<String> getPossibleVersions() {
+    public List<String> getPossibleVersions(String query = null) {
         List<String> answer = [];
 
         if (getBuild()?.getVersionSelection())  // We know how to build an image
@@ -113,6 +113,12 @@ class ServiceConfiguration {
                 answer = [ tag.getTag() ]
             else if (tag.getRegistry())                  // We need to query the Docker Remote API to get the list of versions
                 answer = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.namespace, tag.repository).keySet() as List<String>;
+        }
+
+        if (query) {
+            answer = answer.findAll { it.contains(query) }
+            if (answer.size() == 0)
+                return []
         }
 
         Integer toTake = Math.min(maxPossibleVersions, answer.size()) - 1;
