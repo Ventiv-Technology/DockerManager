@@ -23,6 +23,7 @@ import org.jdeferred.impl.DeferredObject
 import org.springframework.security.core.context.SecurityContextHolder
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.build.BuildContext
+import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.service.DockerRegistryApiService
 
@@ -37,7 +38,7 @@ class ServiceBuildConfiguration {
     List<ServiceBuildStageConfiguration> stages;
     VersionSelectionConfiguration versionSelection;
 
-    public Promise<BuildContext, Exception, String> execute(ServiceConfiguration serviceConfiguration, String requestedBuildVersion) {
+    public Promise<BuildContext, Exception, String> execute(ApplicationDetails applicationDetails, ServiceConfiguration serviceConfiguration, String requestedBuildVersion) {
         DeferredObject<BuildContext, Exception, String> deferred = new DeferredObject<>();
 
         // The tag of the desired docker image after the build is done
@@ -47,7 +48,8 @@ class ServiceBuildConfiguration {
         BuildContext buildContext = new BuildContext([
                 userAuthentication: SecurityContextHolder.getContext().getAuthentication(),
                 requestedBuildVersion: requestedBuildVersion,
-                outputDockerImage: tag
+                outputDockerImage: tag,
+                applicationDetails: applicationDetails
         ])
 
         // First, we need to determine if this build exists in the docker registry, if it does, we're not going to bother building

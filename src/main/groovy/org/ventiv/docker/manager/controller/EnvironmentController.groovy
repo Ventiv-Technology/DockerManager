@@ -298,7 +298,7 @@ class EnvironmentController {
                 // Let's make sure that this service can be built - TODO: Ensure that this service isn't being built from another application
                 if (serviceConfiguration.getBuild()) {
                     log.debug("Scheduling build for service: ${serviceConfiguration.getName()}");
-                    serviceBuildInfo.setPromise(serviceConfiguration.getBuild().execute(serviceConfiguration, versionToBuild[serviceConfiguration.getName()]));
+                    serviceBuildInfo.setPromise(serviceConfiguration.getBuild().execute(applicationDetails, serviceConfiguration, versionToBuild[serviceConfiguration.getName()]));
                 }
             }
         }

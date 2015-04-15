@@ -52,6 +52,14 @@ class ServerConfiguration {
     Boolean resolveHostname = false;
 
     /**
+     * Should this host be allowed to execute docker builds?  Default is no, and will determine build host
+     * from overall application configuration.  If this is enabled, it will first try to use this host to build, before
+     * using the overall application configuration.
+     */
+    @Nullable
+    Boolean buildEnabled = false;
+
+    /**
      * The list of services that are eligible to run on this host.
      */
     @NotNull

@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.build
 
 import org.springframework.security.core.Authentication
+import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.DockerTag
 
 /**
@@ -27,6 +28,7 @@ class BuildContext {
     String buildingVersion;
     String requestedBuildVersion;
     DockerTag outputDockerImage;
+    ApplicationDetails applicationDetails;
     Map<String, Object> extraParameters = [:]
 
 }

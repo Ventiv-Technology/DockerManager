@@ -70,7 +70,8 @@ class ServiceBuildConfigurationTest extends Specification {
         mockedJenkinsApi.getBuildQueueStatus(536) >> new BuildQueueStatus([task: new BuildQueueStatus.TaskInformation([name: "JohnCTest"]), executable: new BuildQueueStatus.ExecutableInformation([number: 56])]);
 
         when:
-        Promise<Map<String, Object>, Exception, String> buildContext = config.getBuild().execute(config, ServiceBuildConfiguration.BUILD_NEW_VERSION)
+        ApplicationDetails details = new ApplicationDetails(tierName: "localhost", environmentName: "boot2docker")
+        Promise<Map<String, Object>, Exception, String> buildContext = config.getBuild().execute(details, config, ServiceBuildConfiguration.BUILD_NEW_VERSION)
 
         then:
         buildContext

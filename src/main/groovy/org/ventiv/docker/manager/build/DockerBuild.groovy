@@ -32,7 +32,9 @@ import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
 import org.springframework.stereotype.Component
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.service.DockerService
+import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.SimpleTemplateService
 
 import javax.annotation.Resource
@@ -57,12 +59,13 @@ class DockerBuild implements AsyncBuildStage {
     @Resource DockerService dockerService;
     @Resource DockerManagerConfiguration props;
     @Resource SimpleTemplateService templateService;
+    @Resource EnvironmentConfigurationService environmentConfigurationService;
 
     @Override
     Promise<Object, Exception, String> doBuild(Map<String, String> buildSettings, BuildContext buildContext) {
         Deferred<Object, Exception, String> deferred = new DeferredObject<>()
 
-        String buildHostName = buildSettings[CONFIG_BUILD_HOSTNAME] ?: props.getConfig().getBuildHost();
+        String buildHostName = buildSettings[CONFIG_BUILD_HOSTNAME] ?: getBuildHost(buildContext) ?: props.getConfig().getBuildHost();
         File buildDirectory = new File(buildSettings[CONFIG_BUILD_DIRECTORY]);
         DockerClient docker = dockerService.getDockerClient(buildHostName);
         boolean skipPush = buildSettings[CONFIG_SKIP_PUSH] ? Boolean.parseBoolean(buildSettings[CONFIG_SKIP_PUSH]) : false;
@@ -107,6 +110,11 @@ class DockerBuild implements AsyncBuildStage {
         }
 
         return deferred.promise();
+    }
+
+    private String getBuildHost(BuildContext buildContext) {
+        EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(buildContext.getApplicationDetails().getTierName(), buildContext.getApplicationDetails().getEnvironmentName());
+        return environmentConfiguration?.getServers()?.find { it.getBuildEnabled() }?.getHostname()
     }
 
     public <T> void deserializeStream(InputStream inputStream, Class<T> serializedType, Closure<?> callback) {
