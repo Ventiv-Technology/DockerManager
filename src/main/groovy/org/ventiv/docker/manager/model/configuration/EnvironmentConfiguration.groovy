@@ -25,4 +25,23 @@ class EnvironmentConfiguration {
     String description;
     List<ServerConfiguration> servers;
     List<ApplicationConfiguration> applications;
+
+    void setApplications(List<ApplicationConfiguration> applications) {
+        applications.each {
+            it.setTierName(tierName);
+            it.setEnvironmentId(id);
+        }
+
+        this.applications = applications;
+    }
+
+    void setTierName(String value) {
+        this.tierName = value;
+        applications?.each { it.setTierName(value) }
+    }
+
+    void setId(String value) {
+        this.id = value;
+        applications?.each { it.setEnvironmentId(value) }
+    }
 }

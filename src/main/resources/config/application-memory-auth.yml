@@ -6,3 +6,19 @@ auth.users:
     password: admin
     roles:
       - ADMIN
+
+  - login: rolea
+    password: rolea
+    roles:
+      - A
+
+  - login: roleb
+    password: roleb
+    roles:
+      - B
+
+  - login: roleab
+    password: roleab
+    roles:
+      - A
+      - B

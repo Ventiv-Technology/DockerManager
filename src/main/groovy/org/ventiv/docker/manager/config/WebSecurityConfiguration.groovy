@@ -19,9 +19,12 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.authentication.configurers.GlobalAuthenticationConfigurerAdapter
 import org.springframework.security.config.annotation.authentication.configurers.provisioning.InMemoryUserDetailsManagerConfigurer
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
+import org.springframework.security.web.access.expression.DefaultWebSecurityExpressionHandler
+import org.ventiv.docker.manager.security.DockerManagerPermissionEvaluator
 import org.ventiv.docker.manager.service.AllowAnyoneAuthenticationProvider
 import org.ventiv.docker.manager.utils.CacheHeaderWriter
 
@@ -32,19 +35,25 @@ import javax.annotation.Resource
  */
 @Configuration
 @EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true)
 class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
 
     @Resource DockerManagerConfiguration props;
+    @Resource DockerManagerPermissionEvaluator permissionEvaluator;
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         if (props.auth.bypass)
             http.authorizeRequests().anyRequest().permitAll();
         else {
+            DefaultWebSecurityExpressionHandler expressionHandler = new DefaultWebSecurityExpressionHandler();
+            expressionHandler.setPermissionEvaluator(permissionEvaluator);
+
             http.authorizeRequests()
                     .antMatchers("/webjars/**/*").permitAll()
                     .antMatchers("/app/css/*").permitAll()
                     .antMatchers("/health").permitAll()
+                    .expressionHandler(expressionHandler)
                     .anyRequest()
                         .fullyAuthenticated()
                         .and()

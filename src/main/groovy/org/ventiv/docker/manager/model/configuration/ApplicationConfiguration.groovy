@@ -15,6 +15,9 @@
  */
 package org.ventiv.docker.manager.model.configuration
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import org.springframework.security.acls.domain.ObjectIdentityImpl
+import org.springframework.security.acls.model.ObjectIdentity
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 
 import javax.annotation.Nullable
@@ -54,5 +57,22 @@ class ApplicationConfiguration {
 
     @NotNull
     List<ServiceInstanceConfiguration> serviceInstances;
+
+    /**
+     * Not null, but pushed here on object creation
+     */
+    @NotNull
+    String tierName;
+
+    /**
+     * Not null, but pushed here on object creation
+     */
+    @NotNull
+    String environmentId;
+
+    @JsonIgnore
+    public ObjectIdentity getObjectIdentity() {
+        return new ObjectIdentityImpl(this.getClass(), "${tierName}.${environmentId}.${id}".toString())
+    }
 
 }

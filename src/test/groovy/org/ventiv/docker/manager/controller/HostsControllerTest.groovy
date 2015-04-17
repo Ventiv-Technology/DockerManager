@@ -18,6 +18,7 @@ package org.ventiv.docker.manager.controller
 import com.github.dockerjava.api.command.LogContainerCmd
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mock.web.MockHttpServletResponse
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.ventiv.docker.manager.AbstractIntegrationTest
 import org.ventiv.docker.manager.mock.MockDockerClient
 import org.ventiv.docker.manager.service.DockerService
@@ -34,6 +35,7 @@ class HostsControllerTest extends AbstractIntegrationTest {
 
     def setup() {
         mockClient = (MockDockerClient) dockerService.getDockerClient("boot2docker")
+        setUser("ADMIN", "ADMIN", [new SimpleGrantedAuthority("ADMIN")])
     }
 
     def "can get standard out copied to servlet output stream"() {

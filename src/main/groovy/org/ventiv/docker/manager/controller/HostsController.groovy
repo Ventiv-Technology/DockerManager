@@ -22,6 +22,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.apache.commons.io.IOUtils
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
@@ -32,6 +33,8 @@ import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
+import org.ventiv.docker.manager.security.DockerManagerPermission
+import org.ventiv.docker.manager.security.SecurityUtil
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
@@ -62,7 +65,7 @@ class HostsController {
                     id: serverConfiguration.getId(),
                     description: serverConfiguration.getDescription(),
                     hostname: serverConfiguration.getHostname(),
-                    serviceInstances: serviceInstanceService.getServiceInstances(serverConfiguration).sort { it.getContainerStatusTime() }.reverse(),
+                    serviceInstances: SecurityUtil.filter(serviceInstanceService.getServiceInstances(serverConfiguration).sort { it.getContainerStatusTime() }.reverse(), DockerManagerPermission.READ),
                     availableServices: serviceInstanceService.getAvailableServiceInstances(serverConfiguration)
             ]
         }
@@ -83,6 +86,7 @@ class HostsController {
         ];
     }
 
+    @PreAuthorize("hasPermission(#containerId, 'LOGS')")
     @RequestMapping("/{hostName}/{containerId}/stdout")
     public void getStdOutLog(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
         LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdOut()
@@ -92,6 +96,7 @@ class HostsController {
         IOUtils.copy(cmd.exec(), response.getOutputStream());
     }
 
+    @PreAuthorize("hasPermission(#containerId, 'LOGS')")
     @RequestMapping("/{hostName}/{containerId}/stderr")
     public void getStdErrLog(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
         LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdErr()
@@ -107,6 +112,7 @@ class HostsController {
      * @param hostName
      * @param containerId
      */
+    @PreAuthorize("hasPermission(#containerId, 'STOP')")
     @RequestMapping(value = "/{hostName}/{containerId}/stop", method = RequestMethod.POST)
     public void stopContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).stopContainerCmd(containerId).exec();
@@ -120,6 +126,7 @@ class HostsController {
      * @param hostName
      * @param containerId
      */
+    @PreAuthorize("hasPermission(#containerId, 'START')")
     @RequestMapping(value = "/{hostName}/{containerId}/start", method = RequestMethod.POST)
     public void startContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).startContainerCmd(containerId).exec();
@@ -133,6 +140,7 @@ class HostsController {
      * @param hostName
      * @param containerId
      */
+    @PreAuthorize("hasPermission(#containerId, 'RESTART')")
     @RequestMapping(value = "/{hostName}/{containerId}/restart", method = RequestMethod.POST)
     public void restartContainer(@PathVariable String hostName, @PathVariable String containerId) {
         dockerService.getDockerClient(hostName).restartContainerCmd(containerId).exec();
@@ -145,6 +153,7 @@ class HostsController {
      * @param hostName
      * @param containerId
      */
+    @PreAuthorize("hasPermission(#containerId, 'REMOVE')")
     @RequestMapping(value = "/{hostName}/{containerId}/remove", method = RequestMethod.POST)
     public void removeContainer(@PathVariable String hostName, @PathVariable String containerId) {
         try {

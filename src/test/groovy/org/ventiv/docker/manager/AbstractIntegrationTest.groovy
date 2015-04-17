@@ -22,6 +22,9 @@ import org.springframework.boot.test.SpringApplicationContextLoader
 import org.springframework.boot.test.WebIntegrationTest
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.GrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.context.ContextConfiguration
 import org.ventiv.docker.manager.mock.MockDockerClient
 import org.ventiv.docker.manager.service.DockerService
@@ -57,6 +60,10 @@ class AbstractIntegrationTest extends Specification {
             mockedDockerClients.put(hostName, new MockDockerClient(execResponses: [(ListContainersCmd): getContainersForStartup(hostName)]))
 
         return mockedDockerClients[hostName];
+    }
+
+    public void setUser(String userName, String password, Collection<GrantedAuthority> authorities) {
+        SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(userName, password, authorities))
     }
 
     public List<Container> getContainersForStartup(String hostName) {
