@@ -30,6 +30,8 @@ class AuthorizationConfigurationService {
     @javax.annotation.Resource ResourceWatcherService resourceWatcherService;
     @javax.annotation.Resource InMemoryMutableAclService mutableAclService;
 
+    boolean resourceExists = false;
+
     @PostConstruct
     public void loadConfigurationFromFile() {
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver()
@@ -43,6 +45,8 @@ class AuthorizationConfigurationService {
     }
 
     public void readConfiguration(Resource resource) {
+        resourceExists = resource.exists();
+
         if (resource.exists()) {
             Yaml yaml = new Yaml()
 

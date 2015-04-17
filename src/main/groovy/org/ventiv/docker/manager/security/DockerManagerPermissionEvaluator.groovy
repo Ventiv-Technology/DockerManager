@@ -44,12 +44,16 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
 
     @Resource ServiceInstanceService serviceInstanceService;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
+    @Resource AuthorizationConfigurationService authorizationConfigurationService;
     @Resource AclService aclService;
 
     private SidRetrievalStrategy sidRetrievalStrategy = new SidRetrievalStrategyImpl();
 
     @Override
     boolean hasPermission(Authentication authentication, Object targetDomainObject, Object rawPermission) {
+        if (!authorizationConfigurationService.isResourceExists())
+            return true;
+
         ApplicationConfiguration applicationConfiguration = getApplicationConfiguration(targetDomainObject);
         if (applicationConfiguration) {
             try {
@@ -59,8 +63,6 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
                 return false;
             }
         }
-
-        // TODO: If the authorization.yml file is completely missing, ignore auth
 
         return true        // TODO: Verify permissions for docker containers that are not in the configuration / managed by DockerManager
     }

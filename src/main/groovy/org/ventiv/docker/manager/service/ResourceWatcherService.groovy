@@ -56,7 +56,7 @@ class ResourceWatcherService implements Runnable {
         watchServiceCallbacks.each { Resource toCheck, Closure<?> callback ->
             Long lastUpdatedTimestamp = lastUpdatedTimestamps[toCheck] ?: 0L;
 
-            if (toCheck.lastModified() != lastUpdatedTimestamp) {
+            if (toCheck.exists() && toCheck.lastModified() != lastUpdatedTimestamp) {
                 lastUpdatedTimestamps[toCheck] = toCheck.lastModified();
 
                 if (lastUpdatedTimestamp != 0)
