@@ -79,26 +79,32 @@ class AuthorizationConfigurationService {
         }
     }
 
-    private void addPermissionToConfig(String key, Permission permission, String usersAndGroups) {
+    private void addPermissionToConfig(String key, Permission desiredPermission, String usersAndGroups) {
         ObjectIdentity oi = new ObjectIdentityImpl(ApplicationConfiguration, key);
+        List<Permission> allPermissions = [desiredPermission]
 
-        usersAndGroups?.split(',')?.each { String userOrGroup ->
-            MutableAcl acl = null;
-            try {
-                acl = mutableAclService.readAclById(oi)
-            } catch (NotFoundException ignored) {
-                acl = mutableAclService.createAcl(oi);
+        if (desiredPermission == DockerManagerPermission.DEPLOY)
+            allPermissions.addAll([DockerManagerPermission.READ, DockerManagerPermission.START, DockerManagerPermission.STOP, DockerManagerPermission.REMOVE])
+
+        allPermissions.each { Permission permission ->
+            usersAndGroups?.split(',')?.each { String userOrGroup ->
+                MutableAcl acl = null;
+                try {
+                    acl = mutableAclService.readAclById(oi)
+                } catch (NotFoundException ignored) {
+                    acl = mutableAclService.createAcl(oi);
+                }
+
+                if (userOrGroup.trim().startsWith('[USER]')) {
+                    String principal = userOrGroup.trim().substring(6).trim()
+                    acl.insertAce(acl.getEntries().size(), permission, new PrincipalSid(principal), true);
+                } else {
+                    String grantedAuthority = userOrGroup.trim();
+                    acl.insertAce(acl.getEntries().size(), permission, new GrantedAuthoritySid("ROLE_" + grantedAuthority), true);
+                }
+
+                mutableAclService.updateAcl(acl);
             }
-
-            if (userOrGroup.trim().startsWith('[USER]')) {
-                String principal = userOrGroup.trim().substring(6).trim()
-                acl.insertAce(acl.getEntries().size(), permission, new PrincipalSid(principal), true);
-            } else {
-                String grantedAuthority = userOrGroup.trim();
-                acl.insertAce(acl.getEntries().size(), permission, new GrantedAuthoritySid("ROLE_" + grantedAuthority), true);
-            }
-
-            mutableAclService.updateAcl(acl);
         }
     }
 

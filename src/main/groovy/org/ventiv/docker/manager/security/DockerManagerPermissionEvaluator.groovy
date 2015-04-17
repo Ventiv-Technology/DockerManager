@@ -23,6 +23,7 @@ import org.springframework.security.acls.model.NotFoundException
 import org.springframework.security.acls.model.SidRetrievalStrategy
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Component
+import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
@@ -41,6 +42,7 @@ import javax.annotation.Resource
 class DockerManagerPermissionEvaluator implements PermissionEvaluator {
 
     public static final def CONTAINER_ID_PATTERN = /[a-f0-9]{6,64}/
+    public static final def DOCKER_NAME_PATTERN = /([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*).*/
 
     @Resource ServiceInstanceService serviceInstanceService;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
@@ -89,9 +91,11 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
             return targetDomainObject;
         else if (targetDomainObject instanceof String) {
             // First, let's check if it's a fully qualified docker name
-            def matcher = targetDomainObject.toString() =~ ServiceInstance.DOCKER_NAME_PATTERN;
+            def matcher = targetDomainObject.toString() =~ DOCKER_NAME_PATTERN;
             if (matcher) {
-                ServiceInstance serviceInstance = serviceInstanceService.getServiceInstances().find { it.tierName == targetDomainObject.toString() }
+                ServiceInstance serviceInstance = serviceInstanceService.getServiceInstances().find {
+                    return it.tierName == matcher[0][1] && it.environmentName == matcher[0][2] && it.applicationId == matcher[0][3]
+                }
                 return getApplicationConfigForServiceInstance(serviceInstance);
             }
 
@@ -100,8 +104,11 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
             if (matcher) {
                 return getApplicationConfigForServiceInstance(serviceInstanceService.getServiceInstance(targetDomainObject.toString()))
             }
-        } else if (targetDomainObject instanceof ServiceInstance)
+        } else if (targetDomainObject instanceof ServiceInstance) {
             return getApplicationConfigForServiceInstance(targetDomainObject)
+        } else if (targetDomainObject instanceof ApplicationDetails) {
+            return targetDomainObject.getApplicationConfiguration()
+        }
 
         return null;
     }

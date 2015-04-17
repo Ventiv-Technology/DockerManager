@@ -12,7 +12,7 @@ class DockerManagerPermission extends AbstractPermission {
     public static final Permission START =                  new DockerManagerPermission(1 << 1, 'S'); // 2
     public static final Permission STOP =                   new DockerManagerPermission(1 << 2, 'K'); // 4
     public static final Permission RESTART =                new DockerManagerPermission(1 << 3, 'B'); // 8
-    public static final Permission DEPLOY =                 new DockerManagerPermission(1 << 4, 'D'); // 16
+    public static final Permission DEPLOY =                 new DockerManagerPermission(1 << 4, 'D'); // 16             NOTE: If you have DEPLOY permissions, you get READ, START, STOP, REMOVE as well
     public static final Permission LOGS =                   new DockerManagerPermission(1 << 5, 'L'); // 32
     public static final Permission REMOVE =                 new DockerManagerPermission(1 << 6, 'V'); // 64
     public static final Permission METRICS_OVERVIEW =       new DockerManagerPermission(1 << 7, 'O'); // 128

@@ -24,6 +24,8 @@ import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.ApplicationListener
+import org.springframework.security.core.Authentication
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.controller.EnvironmentController
 import org.ventiv.docker.manager.controller.HostsController
@@ -70,9 +72,11 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
     }
 
     Promise<ApplicationDetails, ApplicationException, String> startDeployment(ApplicationDetails applicationDetails, Map<String, String> serviceVersions) {
+        Authentication deploymentRequestor = SecurityContextHolder.getContext().getAuthentication();
         Deferred<ApplicationDetails, ApplicationException, String> deferred = new DeferredObject<>();
 
         Thread.start {
+            SecurityContextHolder.getContext().setAuthentication(deploymentRequestor);
             TimingUtils.time("Deploy Application ${applicationDetails.getId()}") {
                 try {
                     Collection<ServiceInstance> createdServiceInstances = environmentController.getServiceInstances(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());

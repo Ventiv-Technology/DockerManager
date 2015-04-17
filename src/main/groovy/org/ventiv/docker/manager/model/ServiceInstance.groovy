@@ -40,7 +40,7 @@ import javax.annotation.Nullable
 @ToString
 class ServiceInstance {
 
-    public static final def DOCKER_NAME_PATTERN = /([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([0-9])/
+    public static final def DOCKER_NAME_PATTERN = /([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([0-9]*)/
 
     @JsonIgnore private EnvironmentConfigurationService environmentConfigurationService;
     @JsonIgnore private DockerServiceConfiguration dockerServiceConfiguration;

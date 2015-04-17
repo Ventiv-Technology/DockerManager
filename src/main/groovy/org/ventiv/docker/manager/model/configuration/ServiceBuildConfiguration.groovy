@@ -20,6 +20,7 @@ import org.jdeferred.FailCallback
 import org.jdeferred.ProgressCallback
 import org.jdeferred.Promise
 import org.jdeferred.impl.DeferredObject
+import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.build.BuildContext
@@ -39,6 +40,7 @@ class ServiceBuildConfiguration {
     VersionSelectionConfiguration versionSelection;
 
     public Promise<BuildContext, Exception, String> execute(ApplicationDetails applicationDetails, ServiceConfiguration serviceConfiguration, String requestedBuildVersion) {
+        Authentication buildRequestor = SecurityContextHolder.getContext().getAuthentication();
         DeferredObject<BuildContext, Exception, String> deferred = new DeferredObject<>();
 
         // The tag of the desired docker image after the build is done
@@ -62,6 +64,7 @@ class ServiceBuildConfiguration {
 
         if (!registryImageId) {
             Thread.start {
+                SecurityContextHolder.getContext().setAuthentication(buildRequestor);
                 getStages().eachWithIndex { ServiceBuildStageConfiguration buildStage, Integer idx ->
                     if (deferred.isPending()) {
                         deferred.notify("Currently building ${idx + 1} of ${getStages().size()}")

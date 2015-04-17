@@ -29,6 +29,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.http.HttpStatus
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -54,6 +55,8 @@ import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
+import org.ventiv.docker.manager.security.DockerManagerPermission
+import org.ventiv.docker.manager.security.SecurityUtil
 import org.ventiv.docker.manager.service.ApplicationDeploymentService
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
@@ -96,11 +99,11 @@ class EnvironmentController {
 
     @CompileStatic
     @RequestMapping("/{tierName}/{environmentName}")
-    public List<ApplicationDetails> getEnvironmentDetails(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
+    public Collection<ApplicationDetails> getEnvironmentDetails(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
         Collection<ServiceInstance> serviceInstances = getServiceInstances(tierName, environmentName);
 
-        return envConfiguration.getApplications().collect { ApplicationConfiguration applicationConfiguration ->
+        return SecurityUtil.filter(envConfiguration.getApplications().collect { ApplicationConfiguration applicationConfiguration ->
             Collection<ServiceInstance> applicationInstances = serviceInstances.findAll { it.getApplicationId() == applicationConfiguration.getId() };
 
             // Now make ServiceInstance objects for each one defined
@@ -131,7 +134,7 @@ class EnvironmentController {
                     deploymentInProgress: deploymentService.isRunning(tierName, environmentName, applicationConfiguration.getId()),
                     version: versionsDeployed.join(", ")
             ]).withApplicationConfiguration(applicationConfiguration)
-        }
+        }, DockerManagerPermission.READ)
     }
 
     @RequestMapping("/{tierName}/{environmentName}/app/{applicationId}/versions")
@@ -160,6 +163,7 @@ class EnvironmentController {
      * 1.) Any missingServiceInstances (see getEnvironmentDetails) will be built out according to the requested versions
      * 2.) Each serviceInstance (see getEnvironmentDetails) is on the proper version.  If not, it will destroy the container and rebuild.
      */
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #deployRequest.name, 'DEPLOY')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(value = "/{tierName}/{environmentName}", method = RequestMethod.POST)
     public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody DeployApplicationRequest deployRequest) {
@@ -174,6 +178,7 @@ class EnvironmentController {
         }
     }
 
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'DEPLOY')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/{version}", method = RequestMethod.POST)
     public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("version") String version) {
@@ -236,9 +241,10 @@ class EnvironmentController {
             }
         }
 
-        return allInstances
+        return SecurityUtil.filter(allInstances, DockerManagerPermission.READ)
     }
 
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'STOP')")
     @CompileStatic
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/stop", method = RequestMethod.POST)
     public ApplicationDetails stopApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
@@ -255,6 +261,7 @@ class EnvironmentController {
         return application;
     }
 
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'START')")
     @CompileStatic
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/start", method = RequestMethod.POST)
     public ApplicationDetails startApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
@@ -271,6 +278,7 @@ class EnvironmentController {
         return application;
     }
 
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'RESTART')")
     @CompileStatic
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/restart", method = RequestMethod.POST)
     public ApplicationDetails restartApplication(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId) {
