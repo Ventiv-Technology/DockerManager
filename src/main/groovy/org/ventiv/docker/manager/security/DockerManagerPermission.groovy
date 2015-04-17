@@ -39,4 +39,8 @@ class DockerManagerPermission extends AbstractPermission {
         else
             return (DockerManagerPermission) DockerManagerPermission."$rawPermission";
     }
+
+    public static String getPermissionName(Permission permission) {
+        DockerManagerPermission.getDeclaredFields().find { it.get(null) == permission }?.getName()
+    }
 }

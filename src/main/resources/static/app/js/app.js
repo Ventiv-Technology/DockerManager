@@ -61,8 +61,16 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             });
 
             $http.get("/health").then(function(response) {
-                $scope.userDetails = response.data.user.user;
+                $scope.$root.userDetails = response.data.user.user;
             });
+
+            $scope.isPermissionGranted = function(applicationDetails, desiredPermission) {
+                var grantingPermissionIdx = _.findIndex($scope.userDetails.effectivePermissions, function(permission) {
+                    return permission.tierName == applicationDetails.tierName && permission.environmentId == applicationDetails.environmentName && permission.applicationId == applicationDetails.id && permission.grantedPermission == desiredPermission;
+                });
+
+                return grantingPermissionIdx !== -1;
+            };
 
             $scope.isMultipleTiers = function() {
                 if ($scope.tiers)
@@ -85,6 +93,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     windowClass: 'service-instance-details',
                     size: 'lg',
                     resolve: {
+                        effectivePermissions: function() { return [] },
                         serviceInstance: function() { return serviceInstance }
                     }
                 });
@@ -248,6 +257,17 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         throw "Problems performing " + operation + " operation on container...";
                     }
                 );
+            };
+
+            $scope.isServiceInstancePermissionGranted = function(desiredPermission) {
+                if (serviceInstance.tierName == null && serviceInstance.environmentName == null && serviceInstance.applicationId == null)
+                    return true;
+
+                var grantingPermissionIdx = _.findIndex($scope.userDetails.effectivePermissions, function(permission) {
+                    return permission.tierName == serviceInstance.tierName && permission.environmentId == serviceInstance.environmentName && permission.applicationId == serviceInstance.applicationId && permission.grantedPermission == desiredPermission;
+                });
+
+                return grantingPermissionIdx !== -1;
             };
         })
 
