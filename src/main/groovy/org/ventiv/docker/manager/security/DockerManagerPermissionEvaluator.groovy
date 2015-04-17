@@ -16,10 +16,12 @@
 package org.ventiv.docker.manager.security
 
 import org.springframework.security.access.PermissionEvaluator
+import org.springframework.security.acls.domain.GrantedAuthoritySid
 import org.springframework.security.acls.domain.SidRetrievalStrategyImpl
 import org.springframework.security.acls.model.Acl
 import org.springframework.security.acls.model.AclService
 import org.springframework.security.acls.model.NotFoundException
+import org.springframework.security.acls.model.Sid
 import org.springframework.security.acls.model.SidRetrievalStrategy
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Component
@@ -60,7 +62,10 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
         if (applicationConfiguration) {
             try {
                 Acl acl = aclService.readAclById(applicationConfiguration.getObjectIdentity())
-                return acl.isGranted([DockerManagerPermission.getPermission(rawPermission)], sidRetrievalStrategy.getSids(authentication), false)
+                List<Sid> allSids = sidRetrievalStrategy.getSids(authentication);
+                allSids << new GrantedAuthoritySid("ALL_USERS");
+
+                return acl.isGranted([DockerManagerPermission.getPermission(rawPermission)], allSids, false)
             } catch (NotFoundException ignored) {       // No permissions have been granted at all for this application
                 return false;
             }

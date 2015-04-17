@@ -95,9 +95,11 @@ class AuthorizationConfigurationService {
                     acl = mutableAclService.createAcl(oi);
                 }
 
-                if (userOrGroup.trim().startsWith('[USER]')) {
-                    String principal = userOrGroup.trim().substring(6).trim()
+                if (userOrGroup.trim().startsWith('USER:')) {
+                    String principal = userOrGroup.trim().substring(5).trim()
                     acl.insertAce(acl.getEntries().size(), permission, new PrincipalSid(principal), true);
+                } else if (userOrGroup.trim().equals("ALL_USERS")) {
+                    acl.insertAce(acl.getEntries().size(), permission, new GrantedAuthoritySid("ALL_USERS"), true);
                 } else {
                     String grantedAuthority = userOrGroup.trim();
                     acl.insertAce(acl.getEntries().size(), permission, new GrantedAuthoritySid("ROLE_" + grantedAuthority), true);
