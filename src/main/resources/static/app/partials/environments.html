@@ -72,8 +72,8 @@
                             <span>[{{serviceInstance.containerImage.tag}} - deployed @ {{serviceInstance.containerCreatedDate | date:'short'}} - {{serviceInstance.containerStatus}}]</span>
                         </div>
                     </div>
-                    <div data-ng-repeat="(metricName, metricValue) in serviceInstance.additionalMetrics" data-ng-if="serviceInstance.additionalMetrics && serviceInstance.status == 'Running'" class="col-md-2">
-                        <div class="btn btn-info btn-block" data-ng-click="additionalMetricsDetails(serviceInstance, metricName, metricValue)" data-ng-include="'/api/service/' + serviceInstance.name + '/metrics/' + metricName + '/button'"></div>
+                    <div data-ng-repeat="(metricName, metricValue) in serviceInstance.additionalMetrics" data-ng-if="serviceInstance.additionalMetrics && serviceInstance.status == 'Running' && isPermissionGranted(application, 'METRICS_OVERVIEW')" class="col-md-2">
+                        <div class="btn btn-info btn-block" data-ng-click="additionalMetricsDetails(application, serviceInstance, metricName, metricValue)" data-ng-include="'/api/service/' + serviceInstance.name + '/metrics/' + metricName + '/button'"></div>
                     </div>
                 </div>
 

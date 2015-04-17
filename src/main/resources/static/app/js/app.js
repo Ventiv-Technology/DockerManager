@@ -103,21 +103,23 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 });
             };
 
-            $scope.additionalMetricsDetails = function(serviceInstance, metricName, metricValue) {
-                var additionalMetricsDetailsModal = $modal.open({
-                    templateUrl: '/api/service/' + serviceInstance.name + '/metrics/' + metricName + '/details',
-                    controller: 'AdditionalMetricsDetailsController',
-                    windowClass: 'additional-metrics-details',
-                    size: 'lg',
-                    resolve: {
-                        serviceInstance: function() { return serviceInstance },
-                        data: function() { return metricValue }
-                    }
-                });
+            $scope.additionalMetricsDetails = function(application, serviceInstance, metricName, metricValue) {
+                if ($scope.isPermissionGranted(application, 'METRICS_DETAILS')) {
+                    var additionalMetricsDetailsModal = $modal.open({
+                        templateUrl: '/api/service/' + serviceInstance.name + '/metrics/' + metricName + '/details',
+                        controller: 'AdditionalMetricsDetailsController',
+                        windowClass: 'additional-metrics-details',
+                        size: 'lg',
+                        resolve: {
+                            serviceInstance: function () { return serviceInstance },
+                            data: function () { return metricValue }
+                        }
+                    });
 
-                additionalMetricsDetailsModal.result.then(function () {
+                    additionalMetricsDetailsModal.result.then(function () {
 
-                });
+                    });
+                }
             };
         })
 
@@ -214,6 +216,9 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             };
 
             $scope.serviceInstanceButtonSizeClass = function(application) {
+                if (!$scope.isPermissionGranted(application, 'METRICS_OVERVIEW'))
+                    return "col-md-12";
+
                 // Get number of metrics for each instance, then get the max
                 var metricsSize = _.max(_.map(application.serviceInstances, function(instance) { return _.keys(instance.additionalMetrics).length; }));
                 return "col-md-" + (12 - (metricsSize * 2));
