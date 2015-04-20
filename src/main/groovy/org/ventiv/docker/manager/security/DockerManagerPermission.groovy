@@ -34,10 +34,14 @@ class DockerManagerPermission extends AbstractPermission {
     }
 
     public static DockerManagerPermission getPermission(Object rawPermission) {
-        if (rawPermission instanceof DockerManagerPermission)
-            return (DockerManagerPermission) rawPermission;
-        else
-            return (DockerManagerPermission) DockerManagerPermission."$rawPermission";
+        try {
+            if (rawPermission instanceof DockerManagerPermission)
+                return (DockerManagerPermission) rawPermission;
+            else
+                return (DockerManagerPermission) DockerManagerPermission."$rawPermission";
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     public static String getPermissionName(Permission permission) {

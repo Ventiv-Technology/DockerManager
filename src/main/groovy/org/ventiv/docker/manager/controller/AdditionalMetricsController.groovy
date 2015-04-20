@@ -177,7 +177,8 @@ class AdditionalMetricsController {
 
         response.setHeader("X-Refresh-Period", timeWindow.toString());
 
-        Map<String, ?> serviceInstanceParameters = [serverName: serverName, tierName: tierName, environmentName: environmentName, applicationId: applicationId, name: serviceName, instanceNumber: instanceNumber];
+        Map<String, ?> serviceInstanceParameters = [serverName: serverName, instanceNumber: instanceNumber];
+        Map<String, ?> applicationParameters = [tierName: tierName, environmentName: environmentName, applicationId: applicationId];
         Map<String, ?> queryParameters = [metricName: metricName, fromTimestamp: fromTimestamp, toTimestamp: toTimestamp];
 
         StringBuilder serviceInstanceWhere = new StringBuilder()
@@ -190,19 +191,29 @@ class AdditionalMetricsController {
             }
         }
 
+        applicationParameters.each { k, v ->
+            if (v) {
+                serviceInstanceWhere << " AND APPLICATION."
+                serviceInstanceWhere << StringUtils.toSnakeCase(k)
+                serviceInstanceWhere << " = :"
+                serviceInstanceWhere << k
+            }
+        }
+
         StringBuilder queryText = new StringBuilder("""
             select TIMESTAMP, MIN(VALUE) as MIN, MAX(VALUE) as MAX, AVG(VALUE) as AVG, SUM(VALUE) as SUM, COUNT(VALUE) as COUNT FROM (
                 SELECT (ADDITIONAL_METRICS_STORAGE.TIMESTAMP/$timeWindow)*$timeWindow AS TIMESTAMP, ADDITIONAL_METRICS_VALUES.VALUE
                 FROM ADDITIONAL_METRICS_VALUES
                 INNER JOIN ADDITIONAL_METRICS_STORAGE on ADDITIONAL_METRICS_STORAGE.ID = ADDITIONAL_METRICS_VALUES.ADDITIONAL_METRICS_STORAGE_ID
                 INNER JOIN SERVICE_INSTANCE on ADDITIONAL_METRICS_STORAGE.SERVICE_INSTANCE_ID = SERVICE_INSTANCE.ID
+                INNER JOIN APPLICATION on APPLICATION.ID = SERVICE_INSTANCE.APPLICATION_ID
                 where ADDITIONAL_METRICS_VALUES.NAME = :metricName
                 AND ADDITIONAL_METRICS_STORAGE.TIMESTAMP BETWEEN :fromTimestamp and :toTimestamp
                 $serviceInstanceWhere
             ) group by TIMESTAMP order by TIMESTAMP
         """);
 
-        return new NamedParameterJdbcTemplate(jdbcTemplate).queryForList(queryText.toString(), queryParameters + serviceInstanceParameters).collect { it.collectEntries { k, v -> return [k.toLowerCase(), v]} };
+        return new NamedParameterJdbcTemplate(jdbcTemplate).queryForList(queryText.toString(), queryParameters + serviceInstanceParameters + applicationParameters).collect { it.collectEntries { k, v -> return [k.toLowerCase(), v]} };
     }
 
 }

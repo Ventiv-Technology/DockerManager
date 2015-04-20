@@ -32,10 +32,13 @@ import org.ventiv.docker.manager.event.ContainerRemovedEvent
 import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
+import org.ventiv.docker.manager.model.ApplicationThumbnail
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.ServiceInstanceThumbnail
 import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
+import org.ventiv.docker.manager.repository.ServiceInstanceThumbnailRepository
 
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
@@ -57,6 +60,7 @@ class ServiceInstanceService implements Runnable {
     @Resource TaskScheduler taskScheduler;
     @Resource DockerManagerConfiguration props;
     @Resource private DockerServiceConfiguration dockerServiceConfiguration;
+    @Resource ServiceInstanceThumbnailRepository serviceInstanceThumbnailRepository;
 
     private final Map<String, List<ServiceInstance>> allServiceInstances = [:]
     private final Map<String, ExecutorService> eventExecutors = [:];
@@ -150,6 +154,22 @@ class ServiceInstanceService implements Runnable {
         }
 
         return answer;
+    }
+
+    public ServiceInstanceThumbnail getServiceInstanceThumbnail(ServiceInstance serviceInstance) {
+        ServiceInstanceThumbnail thumbnail = serviceInstance.getServiceInstanceThumbnail();
+        if (thumbnail == null)
+            thumbnail = serviceInstanceThumbnailRepository.findServiceInstanceThumbnail(serviceInstance.getServerName(), serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceInstance.getName(), serviceInstance.getInstanceNumber())
+
+        if (thumbnail == null) {
+            ApplicationThumbnail applicationThumbnail = environmentConfigurationService.getApplicationThumbnail(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId());
+            thumbnail = new ServiceInstanceThumbnail(application: applicationThumbnail, serverName: serviceInstance.getServerName(), name: serviceInstance.getName(), instanceNumber: serviceInstance.getInstanceNumber())
+            serviceInstanceThumbnailRepository.save(thumbnail);
+        }
+
+        serviceInstance.setServiceInstanceThumbnail(thumbnail);
+
+        return thumbnail;
     }
 
     @Override

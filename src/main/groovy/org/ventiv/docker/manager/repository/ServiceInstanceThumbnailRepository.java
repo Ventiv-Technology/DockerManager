@@ -16,6 +16,8 @@
 package org.ventiv.docker.manager.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.ventiv.docker.manager.model.ServiceInstanceThumbnail;
 
 /**
@@ -23,6 +25,12 @@ import org.ventiv.docker.manager.model.ServiceInstanceThumbnail;
  */
 public interface ServiceInstanceThumbnailRepository extends JpaRepository<ServiceInstanceThumbnail, Long> {
 
-    public ServiceInstanceThumbnail findByServerNameAndTierNameAndEnvironmentNameAndApplicationIdAndNameAndInstanceNumber(String serverName, String tierName, String environmentName, String applicationId, String name, Integer instanceNumber);
+    @Query("from ServiceInstanceThumbnail si where si.serverName = :serverName and si.application.tierName = :tierName and si.application.environmentName = :environmentName and si.application.applicationId = :applicationId and si.name = :name and si.instanceNumber = :instanceNumber")
+    public ServiceInstanceThumbnail findServiceInstanceThumbnail(@Param("serverName") String serverName,
+                                                                 @Param("tierName") String tierName,
+                                                                 @Param("environmentName") String environmentName,
+                                                                 @Param("applicationId") String applicationId,
+                                                                 @Param("name") String name,
+                                                                 @Param("instanceNumber") Integer instanceNumber);
 
 }

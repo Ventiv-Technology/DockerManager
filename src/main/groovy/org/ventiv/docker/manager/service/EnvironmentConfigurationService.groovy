@@ -21,9 +21,11 @@ import org.springframework.core.io.Resource
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.model.ApplicationThumbnail
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
+import org.ventiv.docker.manager.repository.ApplicationThumbnailRepository
 import org.yaml.snakeyaml.Yaml
 
 import javax.annotation.PostConstruct
@@ -41,6 +43,7 @@ class EnvironmentConfigurationService {
     @javax.annotation.Resource DockerManagerConfiguration props;
     @javax.annotation.Resource ResourceWatcherService resourceWatcherService;
     @javax.annotation.Resource DockerService dockerService;
+    @javax.annotation.Resource ApplicationThumbnailRepository applicationThumbnailRepository;
 
     List<Closure<?>> environmentChangeCallbacks = []
 
@@ -102,6 +105,15 @@ class EnvironmentConfigurationService {
 
     public ApplicationConfiguration getApplication(String tierName, String environmentName, String applicationId) {
         return getEnvironment(tierName, environmentName).getApplications().find { it.getId() == applicationId};
+    }
+
+    public ApplicationThumbnail getApplicationThumbnail(String tierName, String environmentId, String applicationId) {
+        ApplicationThumbnail applicationThumbnail = applicationThumbnailRepository.findByTierNameAndEnvironmentNameAndApplicationId(tierName, environmentId, applicationId);
+
+        if (applicationThumbnail == null)
+            applicationThumbnail = applicationThumbnailRepository.save(new ApplicationThumbnail(tierName: tierName, environmentName: environmentId, applicationId: applicationId));
+
+        return applicationThumbnail;
     }
 
 }
