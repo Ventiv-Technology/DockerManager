@@ -228,6 +228,23 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 var metricsSize = _.keys(serviceInstance.additionalMetrics).length;
                 return "col-md-" + (12 - (metricsSize * 2));
             };
+
+            $scope.showUserAudit = function(application) {
+                var userAuditDetailsModal = $modal.open({
+                    templateUrl: '/app/partials/applicationHistory.html',
+                    controller: 'ApplicationHistoryController',
+                    windowClass: 'application-history-details',
+                    size: 'lg',
+                    resolve: {
+                        userAuditDetails: function() { return $http.get("/userAudits/search/findUserAuditsForApplication" +
+                                    "?tierName=" + application.tierName +
+                                    "&environmentName=" + application.environmentName +
+                                    "&applicationId=" + application.id +
+                                    "&sort=permissionEvaluated,desc")
+                        }
+                    }
+                });
+            };
         })
 
         .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {
@@ -274,11 +291,31 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
 
                 return grantingPermissionIdx !== -1;
             };
+
+            if ($scope.isServiceInstancePermissionGranted('READ_USER_AUDIT')) {
+                $http.get("/userAudits/search/findUserAuditsForServiceInstance?serverName=" + serviceInstance.serverName +
+                          "&tierName=" + serviceInstance.tierName +
+                          "&environmentName=" + serviceInstance.environmentName +
+                          "&applicationId=" + serviceInstance.applicationId +
+                          "&name=" + serviceInstance.name +
+                          "&instanceNumber=" + serviceInstance.instanceNumber +
+                          "&sort=permissionEvaluated,desc").then(function(data) {
+                    $scope.auditHistory = data.data;
+                });
+            }
         })
 
         .controller('AdditionalMetricsDetailsController', function($scope, $modalInstance, serviceInstance, data) {
             $scope.serviceInstance = serviceInstance;
             $scope.data = data;
+
+            $scope.dismiss = function(dismissObj) {
+                $modalInstance.dismiss(dismissObj);
+            };
+        })
+
+        .controller('ApplicationHistoryController', function($scope, $modalInstance, userAuditDetails) {
+            $scope.auditHistory = userAuditDetails.data;
 
             $scope.dismiss = function(dismissObj) {
                 $modalInstance.dismiss(dismissObj);

@@ -1,0 +1,15 @@
+<div class="row">
+    <div class="col-md-2"><span translate="HISTORY_LAST">History Last</span><span>{{auditHistory.page.size}}:</span></div>
+    <div class="col-md-1" translate="LOGIN"><b>Login</b></div>
+    <div class="col-md-2" translate="ACTION_PERMISSION"><b>Action Permission</b></div>
+    <div class="col-md-3" translate="TIMESTAMP"><b>Timestamp</b></div>
+    <div class="col-md-3" translate="AUDIT_DETAILS"><b>Audit Details</b></div>
+</div>
+
+<div class="row" data-ng-repeat="userAudit in auditHistory._embedded.userAudits">
+    <div class="col-md-2">&nbsp;</div>
+    <div class="col-md-1">{{userAudit.principal}}</div>
+    <div class="col-md-2">{{userAudit.permission}}</div>
+    <div class="col-md-3">{{userAudit.permissionEvaluated | date:'medium'}}</div>
+    <div class="col-md-3">{{userAudit.auditDetails | json}}</div>
+</div>

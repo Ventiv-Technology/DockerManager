@@ -51,6 +51,7 @@
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-show="isPermissionGranted(application, 'STOP')" data-ng-click="statusChangeApplication(application, 'stop')" translate="STOP">Stop</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-show="isPermissionGranted(application, 'START')" data-ng-click="statusChangeApplication(application, 'start')" translate="START">Start</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-show="isPermissionGranted(application, 'RESTART')" data-ng-click="statusChangeApplication(application, 'restart')" translate="RESTART">Restart</button></div>
+                    <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-show="isPermissionGranted(application, 'READ_USER_AUDIT')" data-ng-click="showUserAudit(application)" translate="HISTORY">History</button></div>
                 </div>
 
                 <div data-ng-show="application.buildStatus.building" id="build-info">

@@ -48,6 +48,13 @@ define([], function() {
         max: "Maximum",
         avg: "Average",
         sum: "Total",
-        count: "Count of Data Points"
+        count: "Count of Data Points",
+        HISTORY_LAST: "History Last ",
+        HISTORY: "History",
+        LOGIN: "Login",
+        ACTION_PERMISSION: "Action Permission",
+        TIMESTAMP: "Timestamp",
+        APPLICATION_HISTORY: "Application History",
+        AUDIT_DETAILS: "Audit Details"
     }
 });
