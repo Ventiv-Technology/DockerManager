@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.ventiv.docker.manager.security.DockerManagerPermission
 
 /**
  * Created by jcrygier on 3/9/15.
@@ -59,6 +60,14 @@ class DockerManagerConfiguration {
         SecurityType type;
         String realm = "Docker Manager";
         List<SecurityUser> users;
+        List<String> permissionsToAudit;
+
+        public Collection<DockerManagerPermission> getAuditablePermissions() {
+            if (permissionsToAudit == null)
+                return DockerManagerPermission.getAllPermissions();
+
+            return permissionsToAudit.collect { DockerManagerPermission.getPermission(it) }
+        }
 
         @ConfigurationProperties
         public static class SecurityUser {

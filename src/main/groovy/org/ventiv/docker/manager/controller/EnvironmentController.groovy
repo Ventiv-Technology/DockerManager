@@ -62,6 +62,7 @@ import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.PluginService
 import org.ventiv.docker.manager.service.ServiceInstanceService
+import org.ventiv.docker.manager.utils.UserAuditFilter
 
 import javax.annotation.Resource
 
@@ -170,6 +171,11 @@ class EnvironmentController {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
         ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == deployRequest.getName() }
         applicationDetails.setBuildServiceVersionsTemplate(deployRequest.getServiceVersions());
+
+        // Update our audit object with the version
+        UserAuditFilter.getAuditsForPermission(DockerManagerPermission.DEPLOY).each {
+            it.setAuditDetails(deployRequest.getServiceVersions());
+        }
 
         // First, Build the application
         buildApplication(applicationDetails, deployRequest.getServiceVersions()).onSuccessfulBuild { ApplicationDetails builtApplication ->

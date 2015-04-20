@@ -17,6 +17,7 @@ package org.ventiv.docker.manager.security
 
 import org.springframework.security.access.PermissionEvaluator
 import org.springframework.security.acls.domain.GrantedAuthoritySid
+import org.springframework.security.acls.domain.PrincipalSid
 import org.springframework.security.acls.domain.SidRetrievalStrategyImpl
 import org.springframework.security.acls.model.Acl
 import org.springframework.security.acls.model.AclService
@@ -25,11 +26,15 @@ import org.springframework.security.acls.model.Sid
 import org.springframework.security.acls.model.SidRetrievalStrategy
 import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Component
+import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.ServiceInstanceThumbnail
+import org.ventiv.docker.manager.model.UserAudit
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
+import org.ventiv.docker.manager.utils.UserAuditFilter
 
 import javax.annotation.Resource
 
@@ -46,6 +51,7 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
     public static final def CONTAINER_ID_PATTERN = /[a-f0-9]{6,64}/
     public static final def DOCKER_NAME_PATTERN = /([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*).*/
 
+    @Resource DockerManagerConfiguration props;
     @Resource ServiceInstanceService serviceInstanceService;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
     @Resource AuthorizationConfigurationService authorizationConfigurationService;
@@ -64,14 +70,35 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
                 Acl acl = aclService.readAclById(applicationConfiguration.getObjectIdentity())
                 List<Sid> allSids = sidRetrievalStrategy.getSids(authentication);
                 allSids << new GrantedAuthoritySid("ALL_USERS");
+                DockerManagerPermission permission = DockerManagerPermission.getPermission(rawPermission)
 
-                return acl.isGranted([DockerManagerPermission.getPermission(rawPermission)], allSids, false)
+                boolean granted = acl.isGranted([permission], allSids, false)
+
+                if (granted)
+                    auditAuthorizedPermission(authentication, targetDomainObject, applicationConfiguration, permission);
+
+                return granted;
             } catch (NotFoundException ignored) {       // No permissions have been granted at all for this application
                 return false;
             }
         }
 
         return true        // TODO: Verify permissions for docker containers that are not in the configuration / managed by DockerManager
+    }
+
+    void auditAuthorizedPermission(Authentication authentication, Object targetDomainObject, ApplicationConfiguration applicationConfiguration, DockerManagerPermission permission) {
+        if (props.getAuth().getAuditablePermissions().contains(permission)) {
+            UserAudit toPersist = new UserAudit([
+                    principal               : new PrincipalSid(authentication).getPrincipal(),
+                    permission              : DockerManagerPermission.getPermissionName(permission),
+                    permissionEvaluated     : new Date(),
+                    serviceInstanceThumbnail: getServiceInstanceThumbnail(targetDomainObject),
+                    applicationThumbnail    : environmentConfigurationService.getApplicationThumbnail(applicationConfiguration.getTierName(), applicationConfiguration.getEnvironmentId(), applicationConfiguration.getId())
+            ])
+
+            // Put the UserAudit object in the ThreadLocal.  The UserAuditFilter will do the persisting in bulk at the end of the request.
+            UserAuditFilter.getUserAudits().get() << toPersist;
+        }
     }
 
     @Override
@@ -113,6 +140,19 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
             return getApplicationConfigForServiceInstance(targetDomainObject)
         } else if (targetDomainObject instanceof ApplicationDetails) {
             return targetDomainObject.getApplicationConfiguration()
+        }
+
+        return null;
+    }
+
+    private ServiceInstanceThumbnail getServiceInstanceThumbnail(Object targetDomainObject) {
+        if (targetDomainObject instanceof ServiceInstance)
+            return serviceInstanceService.getServiceInstanceThumbnail(targetDomainObject);
+        else if (targetDomainObject instanceof String) {
+            def matcher = targetDomainObject.toString() =~ CONTAINER_ID_PATTERN;
+            if (matcher) {
+                return serviceInstanceService.getServiceInstanceThumbnail(serviceInstanceService.getServiceInstance(targetDomainObject.toString()))
+            }
         }
 
         return null;

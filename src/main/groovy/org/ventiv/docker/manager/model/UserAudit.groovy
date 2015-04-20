@@ -1,15 +1,16 @@
 package org.ventiv.docker.manager.model
 
-import org.springframework.boot.actuate.audit.AuditEvent
-import org.ventiv.docker.manager.security.DockerManagerPermission
-
 import javax.annotation.Nullable
+import javax.persistence.CollectionTable
+import javax.persistence.Column
+import javax.persistence.ElementCollection
 import javax.persistence.Entity
 import javax.persistence.GeneratedValue
 import javax.persistence.GenerationType
 import javax.persistence.Id
 import javax.persistence.JoinColumn
 import javax.persistence.ManyToOne
+import javax.persistence.MapKeyColumn
 import javax.persistence.Table
 import javax.validation.constraints.NotNull
 
@@ -31,7 +32,14 @@ class UserAudit {
     String principal;
 
     @NotNull
-    DockerManagerPermission permission;
+    String permission;
+
+    @NotNull
+    Date permissionEvaluated;
+
+    Date requestFinished;
+
+    UUID requestUUID;
 
     @Nullable
     @ManyToOne
@@ -43,16 +51,14 @@ class UserAudit {
     @JoinColumn(name = "application_id", nullable = true)
     ApplicationThumbnail applicationThumbnail;
 
+    @ElementCollection
+    @MapKeyColumn(name = "name")
+    @Column(name = "value")
+    @CollectionTable(name = "user_audit_details", joinColumns = @JoinColumn(name = "user_audit_id"))
+    Map<String, String> auditDetails;
+
     public boolean isPersistable() {
         return permission != null;
-    }
-
-    public static UserAudit fromAuditEvent(AuditEvent auditEvent) {
-        return new UserAudit([
-                principal: auditEvent.getPrincipal(),
-                auditType: DockerManagerPermission.getPermission(auditEvent.getType()),
-                serviceInstanceThumbnail: auditEvent.getData().get("serviceInstanceThumbnail")
-        ])
     }
 
 }
