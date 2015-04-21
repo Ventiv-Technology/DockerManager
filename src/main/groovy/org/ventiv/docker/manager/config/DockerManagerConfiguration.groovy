@@ -89,6 +89,7 @@ class DockerManagerConfiguration {
         GitConfig git;
         String buildHost = "boot2docker";
         Long refreshPeriod = 5000L;
+        PrivateRegistryConfig registry;
 
         @ConfigurationProperties
         public static class GitConfig {
@@ -98,6 +99,14 @@ class DockerManagerConfiguration {
             String password;
             String branch = "master";
             Long refreshPeriod = 0L;            // 0 means do not refresh
+        }
+
+        @ConfigurationProperties
+        public static class PrivateRegistryConfig {
+            String username;
+            String password;
+            String email;
+            String server;
         }
 
     }

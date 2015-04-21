@@ -56,7 +56,6 @@ dependencies {
     compile 'org.jdeferred:jdeferred-core:1.2.3'
     compile 'joda-time:joda-time:2.7'
     compile 'org.ocpsoft.prettytime:prettytime:3.2.7.Final'
-    runtime 'org.jolokia:jolokia-core'
 
     // Web Loading
     compile 'org.webjars:webjars-locator:0.21'

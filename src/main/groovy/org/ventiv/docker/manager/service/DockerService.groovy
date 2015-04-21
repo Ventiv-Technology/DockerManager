@@ -21,6 +21,7 @@ import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.core.DockerClientConfig
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
+import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.utils.TimingUtils
 
 import javax.annotation.Resource
@@ -38,6 +39,7 @@ import javax.annotation.Resource
 class DockerService {
 
     @Resource PropertyService props;
+    @Resource DockerManagerConfiguration dockerManagerConfiguration;
 
     private Map<String, String> hostToApiVersionName = [:]
 
@@ -59,6 +61,13 @@ class DockerService {
                 builder.withDockerCertPath(certs)
             else
                 builder.withSSLConfig(null);
+
+            if (dockerManagerConfiguration.config.registry) {
+                builder.withUsername(dockerManagerConfiguration.config.registry.username)
+                       .withPassword(dockerManagerConfiguration.config.registry.password)
+                       .withServerAddress(dockerManagerConfiguration.config.registry.server)
+                       .withEmail(dockerManagerConfiguration.config.registry.email)
+            }
 
             return DockerClientBuilder.getInstance(builder.build()).build();
         }
