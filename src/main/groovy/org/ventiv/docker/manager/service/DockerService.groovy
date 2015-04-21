@@ -62,13 +62,6 @@ class DockerService {
             else
                 builder.withSSLConfig(null);
 
-            if (dockerManagerConfiguration.config.registry) {
-                builder.withUsername(dockerManagerConfiguration.config.registry.username)
-                       .withPassword(dockerManagerConfiguration.config.registry.password)
-                       .withServerAddress(dockerManagerConfiguration.config.registry.server)
-                       .withEmail(dockerManagerConfiguration.config.registry.email)
-            }
-
             return DockerClientBuilder.getInstance(builder.build()).build();
         }
     }

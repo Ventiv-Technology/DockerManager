@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectReader
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.BuildImageCmd
 import com.github.dockerjava.api.command.PushImageCmd
+import com.github.dockerjava.api.model.AuthConfig
 import com.github.dockerjava.api.model.EventStreamItem
 import com.github.dockerjava.api.model.PushEventStreamItem
 import groovy.transform.CompileStatic
@@ -90,7 +91,19 @@ class DockerBuild implements AsyncBuildStage {
                     deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
 
                     // Push the Image
-                    PushImageCmd.Response pushResponse = docker.pushImageCmd(buildContext.getOutputDockerImage().getName()).withTag(buildContext.getOutputDockerImage().getTag()).exec()
+                    PushImageCmd pushCmd = docker.pushImageCmd(buildContext.getOutputDockerImage().getName()).withTag(buildContext.getOutputDockerImage().getTag())
+
+                    // Set the auth, if needed
+                    if (props.config.registry && props.config.registry.server == buildContext.getOutputDockerImage().getRegistry()) {
+                        AuthConfig authConfig = pushCmd.getAuthConfig() ?: new AuthConfig();
+                        authConfig.setServerAddress(props.config.registry.server)
+                        authConfig.setUsername(props.config.registry.username)
+                        authConfig.setPassword(props.config.registry.password)
+                        authConfig.setEmail(props.config.registry.email)
+                        pushCmd.withAuthConfig(authConfig);
+                    }
+
+                    PushImageCmd.Response pushResponse = pushCmd.exec();
                     deserializeStream(pushResponse, PushEventStreamItem) { PushEventStreamItem event ->
                         if (event?.getStatus())
                             deferred.notify((event?.getProgress() ? event?.getProgress() + ": " : "") + event?.getStatus())
