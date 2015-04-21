@@ -21,14 +21,16 @@ import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.api.DockerRegistry
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
-import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
 import org.ventiv.docker.manager.model.DockerTag
+import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
 import org.ventiv.docker.manager.model.configuration.ImageLayerInformation
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.service.DockerRegistryApiService
+import org.ventiv.docker.manager.service.ServiceInstanceService
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
@@ -43,10 +45,16 @@ class DockerServiceController {
 
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource DockerRegistryApiService dockerRegistryApiService;
+    @Resource ServiceInstanceService serviceInstanceService;
 
     @RequestMapping()
     public List<String> getServiceNames() {
         dockerServiceConfiguration.getServiceNames()
+    }
+
+    @RequestMapping(value = "/refresh", method = RequestMethod.POST)
+    public List<String> refreshDockerState() {
+        serviceInstanceService.initialize();
     }
 
     @RequestMapping("/{serviceName}")

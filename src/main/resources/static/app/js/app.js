@@ -121,6 +121,16 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     });
                 }
             };
+
+            $scope.refreshDockerState = function() {
+                $http.post("/api/service/refresh")
+                    .success(function() {
+                        alert("Successful Refresh")
+                    })
+                    .error(function(data) {
+                        alert("Error Refreshing: " + data);
+                    })
+            }
         })
 
         .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular, $http, StatusService) {
