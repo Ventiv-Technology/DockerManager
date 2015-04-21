@@ -115,6 +115,7 @@ class HostsController {
     @PreAuthorize("hasPermission(#containerId, 'STOP')")
     @RequestMapping(value = "/{hostName}/{containerId}/stop", method = RequestMethod.POST)
     public void stopContainer(@PathVariable String hostName, @PathVariable String containerId) {
+        log.info("Stopping container: ${containerId} on ${hostName}")
         dockerService.getDockerClient(hostName).stopContainerCmd(containerId).exec();
         //eventPublisher.publishEvent(new ContainerStoppedEvent(getServiceInstance(hostName, containerId)))
     }
@@ -160,6 +161,7 @@ class HostsController {
             stopContainer(hostName, containerId);
         } catch (NotModifiedException ignored) {}       // This happens if the container is already stopped
 
+        log.info("Removing container: ${containerId} on ${hostName}")
         dockerService.getDockerClient(hostName).removeContainerCmd(containerId).withForce().exec();
     }
 

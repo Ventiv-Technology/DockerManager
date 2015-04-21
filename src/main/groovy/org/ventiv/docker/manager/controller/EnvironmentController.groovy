@@ -326,6 +326,7 @@ class EnvironmentController {
     }
 
     public String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {
+        log.info("Creating Container for Application ($applicationDetails), Service ($instance), version ($desiredVersion)")
         EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
         ServerConfiguration serverConfiguration = environmentConfiguration.getServers().find { it.getHostname() == instance.getServerName() }
         ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(instance.getName());
@@ -373,6 +374,7 @@ class EnvironmentController {
         try {
             // Do a docker pull, just to ensure we have the image locally
             eventPublisher.publishEvent(new PullImageEvent(instance));
+            log.info("Pulling image: ${toDeploy.toString()}")
             InputStream pullIn = docker.pullImageCmd(toDeploy.toString()).exec();
             pullIn.eachLine {
                 log.debug(it);
@@ -385,6 +387,10 @@ class EnvironmentController {
         pluginService.getCreateContainerPlugins()?.each { it.doWithServiceInstance(instance) }
 
         // Create the actual container
+        log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
+                "with image: '${instance.getContainerImage().toString()}', " +
+                "name: '${instance.toString()}', " +
+                "env: ${instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"}}")
         CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])

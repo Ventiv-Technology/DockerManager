@@ -30,11 +30,6 @@ class CreateContainerEvent extends AbstractServiceInstanceEvent {
         super(serviceInstance)
 
         this.environmentVariables = environmentVariables;
-
-        log.info("Creating new Docker Container on Host: '${serviceInstance.getServerName()}' " +
-                "with image: '${serviceInstance.getContainerImage().toString()}', " +
-                "name: '${serviceInstance.toString()}', " +
-                "env: ${environmentVariables.collect {k, v -> "$k=$v"}}")
     }
 
 }

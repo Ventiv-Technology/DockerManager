@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.security
 
+import groovy.util.logging.Slf4j
 import org.springframework.security.access.PermissionEvaluator
 import org.springframework.security.acls.domain.GrantedAuthoritySid
 import org.springframework.security.acls.domain.PrincipalSid
@@ -45,6 +46,7 @@ import javax.annotation.Resource
  *
  * @author jcrygier
  */
+@Slf4j
 @Component
 class DockerManagerPermissionEvaluator implements PermissionEvaluator {
 
@@ -78,7 +80,8 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
                     auditAuthorizedPermission(authentication, targetDomainObject, applicationConfiguration, permission);
 
                 return granted;
-            } catch (NotFoundException ignored) {       // No permissions have been granted at all for this application
+            } catch (NotFoundException e) {       // No permissions have been granted at all for this application
+                log.debug("Object not authorized: $targetDomainObject, Permission: $rawPermission")
                 return false;
             }
         }
@@ -97,7 +100,7 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
             ])
 
             // Put the UserAudit object in the ThreadLocal.  The UserAuditFilter will do the persisting in bulk at the end of the request.
-            UserAuditFilter.getUserAudits().get() << toPersist;
+            UserAuditFilter.getUserAudits().get()?.add(toPersist);
         }
     }
 

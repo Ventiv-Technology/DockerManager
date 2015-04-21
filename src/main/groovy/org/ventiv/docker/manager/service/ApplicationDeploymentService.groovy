@@ -107,15 +107,20 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
 
                                 // We have a version mismatch...destroy the container and rebuild it
                                 if (expectedImageId != runningImageId) {
+                                    log.info("Redeploying container ${anInstance.getContainerId()} from image ${runningImageId} to ${expectedImageId}")
+
                                     // First, let's destroy the container
                                     hostsController.removeContainer(anInstance.getServerName(), anInstance.getContainerId());
                                     applicationDetails.getServiceInstances().remove(anInstance);
 
                                     // Now, create a new one
                                     environmentController.createDockerContainer(applicationDetails, anInstance, serviceVersions.get(anInstance.getName()));
+                                } else {
+                                    log.info("Not modifying container ${anInstance.getContainerId()} as it's already on the proper image: ${expectedImageId}")
                                 }
-                            } catch (Exception ignored) {
+                            } catch (Exception e) {
                                 // This is okay, likely means that this image only exists locally
+                                log.debug("Exception Redeploying container ${anInstance.getContainerId()} to $tag", e)
                             }
                         }
                     }
