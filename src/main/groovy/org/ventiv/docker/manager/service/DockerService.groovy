@@ -22,9 +22,13 @@ import com.github.dockerjava.core.DockerClientConfig
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.dockerjava.RenameContainerCmd
+import org.ventiv.docker.manager.dockerjava.RenameContainerCmdExec
+import org.ventiv.docker.manager.dockerjava.RenameContainerCmdImpl
 import org.ventiv.docker.manager.utils.TimingUtils
 
 import javax.annotation.Resource
+import javax.ws.rs.client.WebTarget
 
 /**
  * Gets a DockerClient for a given host.  Will attempt to use default values, but will override with application properties
@@ -52,6 +56,8 @@ class DockerService {
 
             if (!apiVersion)
                 apiVersion = getApiVersion(hostName, uri, certs);
+            else
+                hostToApiVersionName.put(hostName, apiVersion);
 
             DockerClientConfig.DockerClientConfigBuilder builder = DockerClientConfig.createDefaultConfigBuilder()
                     .withVersion(apiVersion)
@@ -66,7 +72,7 @@ class DockerService {
         }
     }
 
-    String getApiVersion(String hostName, String uri, String certs) {
+    private String getApiVersion(String hostName, String uri, String certs) {
         if (!hostToApiVersionName.containsKey(hostName)) {
             DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
                 .withUri(uri)
@@ -79,4 +85,21 @@ class DockerService {
 
         return hostToApiVersionName[hostName]
     }
+
+    Integer getMajorApiVersion(String hostName) {
+        return Integer.parseInt(hostToApiVersionName[hostName].split('\\.')[0])
+    }
+
+    Integer getMinorApiVersion(String hostName) {
+        return Integer.parseInt(hostToApiVersionName[hostName].split('\\.')[1])
+    }
+
+    WebTarget getBaseResource(String hostName) {
+        return getDockerClient(hostName).getDockerCmdExecFactory().getBaseResource()
+    }
+
+    RenameContainerCmd getRenameContainerCmd(String hostName, String containerId, String newName) {
+        return new RenameContainerCmdImpl(new RenameContainerCmdExec(getBaseResource(hostName)), containerId, newName);
+    }
+
 }

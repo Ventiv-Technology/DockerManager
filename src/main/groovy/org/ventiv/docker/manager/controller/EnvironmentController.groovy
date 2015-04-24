@@ -301,6 +301,34 @@ class EnvironmentController {
         return application;
     }
 
+    @CompileStatic
+    @RequestMapping(value = "/{tierName}/{environmentName}/switch/{applicationId1}/{applicationId2}", method = RequestMethod.POST)
+    public void switchApplicationInstances(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId1, @PathVariable String applicationId2) {
+        Collection<ServiceInstance> serviceInstances1 = serviceInstanceService.getServiceInstances().findAll {
+            it.getTierName() == tierName && it.getEnvironmentName() == it.getEnvironmentName() && it.getApplicationId() == applicationId1
+        }
+
+        Collection<ServiceInstance> serviceInstances2 = serviceInstanceService.getServiceInstances().findAll {
+            it.getTierName() == tierName && it.getEnvironmentName() == it.getEnvironmentName() && it.getApplicationId() == applicationId2
+        }
+
+        // Verify each service is on a server with at least v1.17 of docker (that is when rename was introduced)
+        (serviceInstances1 + serviceInstances2).collect { it.getServerName() }.unique().each { String serverName ->
+            if (dockerService.getMinorApiVersion(serverName) < 17)
+                throw new IllegalArgumentException("Unable to rename containers as $serverName is not on at least docker 1.5 (api v1.17)");
+        }
+
+        serviceInstances1.each { ServiceInstance serviceInstance ->
+            serviceInstance.setApplicationId(applicationId2);       // Rename the instance
+            dockerService.getRenameContainerCmd(serviceInstance.getServerName(), serviceInstance.getContainerId(), serviceInstance.toString()).exec()
+        }
+
+        serviceInstances2.each { ServiceInstance serviceInstance ->
+            serviceInstance.setApplicationId(applicationId1);       // Rename the instance
+            dockerService.getRenameContainerCmd(serviceInstance.getServerName(), serviceInstance.getContainerId(), serviceInstance.toString()).exec()
+        }
+    }
+
     public BuildApplicationInfo buildApplication(ApplicationDetails applicationDetails, Map<String, String> versionToBuild) {
         String applicationKey = "${applicationDetails.tierName}.${applicationDetails.environmentName}.${applicationDetails.id}";
         if (!buildingApplications.containsKey(applicationKey) || !buildingApplications[applicationKey].isBuilding()) {

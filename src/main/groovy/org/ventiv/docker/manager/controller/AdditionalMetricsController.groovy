@@ -128,6 +128,19 @@ class AdditionalMetricsController {
             return null;
     }
 
+    @RequestMapping("/application/{tierName}/{environmentId}/{applicationId}/{serviceType}/{metricName}")
+    public Collection<Object> getApplicationMetrics(@PathVariable("tierName") String tierName,
+                                              @PathVariable("environmentId") String environmentId,
+                                              @PathVariable("applicationId") String applicationId,
+                                              @PathVariable("serviceType") String serviceType,
+                                              @PathVariable("metricName") String metricName) {
+        Collection<ServiceInstance> eligibleServices = serviceInstanceService.getServiceInstances().findAll {
+            it.getTierName() == tierName && it.getEnvironmentName() == environmentId && it.getApplicationId() == applicationId && it.getName() == serviceType
+        }
+
+        return eligibleServices ? eligibleServices.collect { it?.getAdditionalMetrics()?.get(metricName) }.findAll { it }.flatten() : []
+    }
+
     /**
      * Gets Time series for a given additional metric.
      *
