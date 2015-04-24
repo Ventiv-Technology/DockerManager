@@ -16,7 +16,9 @@
 package org.ventiv.docker.manager.security
 
 import org.springframework.security.access.PermissionEvaluator
+import org.springframework.security.acls.domain.PrincipalSid
 import org.springframework.security.acls.model.Permission
+import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.ventiv.docker.manager.DockerManagerApplication
 
@@ -37,5 +39,14 @@ class SecurityUtil {
 
         return permissionEvaluator;
     }
+
+    public static final Authentication getAuthentication() {
+        return SecurityContextHolder.getContext().getAuthentication();
+    }
+
+    public static final String getLoggedInUserId(Authentication authentication = getAuthentication()) {
+        return new PrincipalSid(authentication).getPrincipal()
+    }
+
 
 }

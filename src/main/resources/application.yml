@@ -21,3 +21,8 @@ webjars.requirejs.newModules:
 webjars.requirejs.paths.select2: dist/js/select2.min
 
 spring.jpa.hibernate.ddl-auto: update
+
+spring.activiti.processDefinitionLocationPrefix: file:./config/env-config/processes/
+
+# Since we do not use one single Rabbit Connection (it's configured by Jobs), disable health check
+management.health.rabbit.enabled: false

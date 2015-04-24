@@ -89,5 +89,23 @@
             </div>
         </accordion-group>
     </accordion>
+
+    <div id="workflow-processes" data-ng-if="workflowProcesses.length > 0" data-ng-cloak>
+        <div class="environment-title" translate="WORKFLOW_PROCESSES">Workflow Processes</div>
+        <hr>
+        <accordion close-others="false" close-others="'true'">
+            <accordion-group data-ng-repeat="workflowProcess in workflowProcesses" is-open="workflowProcess.isOpen" heading="{{workflowProcess.name}}">
+                <div data-ng-show="workflowProcess.processInstances.length == 0">
+                    <button class="btn btn-primary" data-ng-click="startProcess(workflowProcess)" translate="START_PROCESS">Start Process</button>
+                </div>
+                <div data-ng-show="workflowProcess.processInstances.length > 0">
+                    Executing Step: {{workflowProcess.processInstances[0].executions[0].currentStage}}
+                </div>
+                <div>
+                    <img data-ng-if="workflowProcess.isOpen" src="{{getImageUrl(workflowProcess)}}"/>
+                </div>
+            </accordion-group>
+        </accordion>
+    </div>
 </div> <!-- /container -->
 

@@ -55,6 +55,8 @@ define([], function() {
         ACTION_PERMISSION: "Action Permission",
         TIMESTAMP: "Timestamp",
         APPLICATION_HISTORY: "Application History",
-        AUDIT_DETAILS: "Audit Details"
+        AUDIT_DETAILS: "Audit Details",
+        WORKFLOW_PROCESSES: "Workflow Processes",
+        START_PROCESS: "Start Process"
     }
 });

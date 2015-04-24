@@ -31,7 +31,7 @@ import javax.annotation.Resource
 @Service
 class ApplicationEventMessagingService implements ApplicationListener<ApplicationEvent> {
 
-    @Resource private final MessageSendingOperations<String> messagingTemplate;
+    @Resource(name = "brokerMessagingTemplate") private final MessageSendingOperations<String> messagingTemplate;
     @Resource private final DockerManagerConfiguration props;
 
     @Override

@@ -60,9 +60,12 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 });
             });
 
-            $http.get("/health").then(function(response) {
-                $scope.$root.userDetails = response.data.user.user;
-            });
+            $http.get("/health")
+                .success(function(data) {
+                    $scope.$root.userDetails = data.user.user;
+                }).error(function(data) {
+                    $scope.$root.userDetails = data.user.user;
+                });
 
             $scope.isPermissionGranted = function(applicationDetails, desiredPermission) {
                 var grantingPermissionIdx = _.findIndex($scope.userDetails.effectivePermissions, function(permission) {
@@ -134,6 +137,8 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
         })
 
         .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular, $http, StatusService) {
+            $scope.workflowProcesses = [];
+
             $scope.$watch("tiers", function(tiers) {
                 if (tiers !== undefined) {
                     $scope.environment = _.find(tiers[$stateParams.tierName], function (environment) {
@@ -192,6 +197,15 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     application.deploymentInProgress = false;
                     $scope.$digest();
                 });
+
+                $http.get("/api/process/" + tierName + "/" + environmentId)
+                    .success(function(data) {
+                        $scope.workflowProcesses = data;
+                    });
+
+                $scope.startProcess = function(workflowProcess) {
+                    $http.post("/api/process/" + tierName + "/" + environmentId + "/" + workflowProcess.key)
+                };
 
                 return $scope.asyncExecutionPromise;
             };
@@ -254,6 +268,13 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         }
                     }
                 });
+            };
+
+            $scope.getImageUrl = function(workflowProcess) {
+                if (workflowProcess)
+                    return "/activiti/processes/" + workflowProcess.key;
+                else
+                    return "#"
             };
         })
 
