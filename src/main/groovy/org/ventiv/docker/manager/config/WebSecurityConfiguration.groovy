@@ -25,6 +25,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
+import org.springframework.security.ldap.userdetails.InetOrgPersonContextMapper
 import org.springframework.security.web.access.expression.DefaultWebSecurityExpressionHandler
 import org.ventiv.docker.manager.security.DockerManagerPermissionEvaluator
 import org.ventiv.docker.manager.service.AllowAnyoneAuthenticationProvider
@@ -104,6 +105,7 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                         .userSearchFilter(props.ldap.user.searchFilter)
                         .groupSearchBase(props.ldap.group.searchBase)
                         .groupSearchFilter(props.ldap.group.searchFilter)
+                        .userDetailsContextMapper(new InetOrgPersonContextMapper())
                         .contextSource()
                             .url(props.ldap.server.url)
                             .managerDn(props.ldap.server.managerDn)

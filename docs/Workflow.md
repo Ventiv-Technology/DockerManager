@@ -39,6 +39,18 @@ When any workflow process is started, a set of default variables will be injecte
         - server: Server name this instance is running in (e.g. To use in BPMN: ${activiti.activiti.server})
         - port: List of ports for this service (e.g. To use in BPMN: ${activiti.activiti.ports.http})
 
+Authorization
+-------------
+
+Activiti users and authentication is shared with however you've configured Docker Manager Authorization.  Upon login, it will
+copy your user and authorizations over to the Activiti database.  This means that to assign a task to a user, they will have
+had to log in first, to create their Activiti User.
+
+Docker Manager also adheres to the [Process Initiation Authorization] (http://activiti.org/userguide/index.html#security)
+section of the Activiti User Manual.  If there is no authorization defined in your BPMN file, the system will assume
+all users are authorized to start it.  NOTE: Being able to check progress is also the same authorization, as Activiti
+does not have fine-grained authorizations.
+
 Custom Tasks
 ------------
 

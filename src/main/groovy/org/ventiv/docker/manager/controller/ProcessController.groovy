@@ -24,6 +24,7 @@ import org.activiti.engine.TaskService
 import org.activiti.engine.repository.ProcessDefinition
 import org.activiti.engine.runtime.Execution
 import org.activiti.engine.runtime.ProcessInstance
+import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
@@ -60,6 +61,11 @@ class ProcessController {
 
     @RequestMapping(value = "/{tierName}/{environmentId}/{processKey}", method = RequestMethod.POST)
     public def startProcess(@PathVariable("tierName") String tierName, @PathVariable("environmentId") String environmentId, @PathVariable("processKey") String processKey) {
+        // Query for the process key, to ensure it's startable by this user
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().active().processDefinitionKey(processKey).singleResult();
+        if (!isUserAuthorizedToStart(processDefinition))
+            throw new AccessDeniedException("User ${SecurityUtil.getLoggedInUserId()} not authrorized to start $processKey workflow process")
+
         EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentId);
         Map<String, Object> variables = environmentConfiguration.getApplications().collectEntries(this.&extractApplication);
         variables.put(TIER_NAME_VARIABLE_KEY, tierName)
@@ -78,7 +84,11 @@ class ProcessController {
 
     @RequestMapping(value = "/{tierName}/{environmentId}", method = RequestMethod.GET)
     public def getProcesses(@PathVariable("tierName") String tierName, @PathVariable("environmentId") String environmentId) {
-        List<ProcessDefinition> definitionsForEnv = repositoryService.createProcessDefinitionQuery().active().processDefinitionCategoryLike("%$tierName.$environmentId%").list();
+        Collection<ProcessDefinition> definitionsForEnv = repositoryService.createProcessDefinitionQuery()
+                .active()
+                .processDefinitionCategoryLike("%$tierName.$environmentId%")
+                .list()
+                .findAll { isUserAuthorizedToStart(it) };
 
         return definitionsForEnv.collect { ProcessDefinition processDefinition ->
             [
@@ -106,6 +116,13 @@ class ProcessController {
                     }
             ]
         };
+    }
+
+    private boolean isUserAuthorizedToStart(ProcessDefinition processDefinition) {
+        if (repositoryService.getIdentityLinksForProcessDefinition(processDefinition.getId()).size() == 0)
+            return true;
+        else
+            return repositoryService.createProcessDefinitionQuery().startableByUser(SecurityUtil.getLoggedInUserId()).processDefinitionId(processDefinition.getId()).singleResult() != null
     }
 
     private Map<String, ?> extractApplication(ApplicationConfiguration applicationConfiguration) {

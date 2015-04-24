@@ -15,13 +15,18 @@
  */
 package org.ventiv.docker.manager.config
 
+import groovy.transform.CompileStatic
 import org.activiti.engine.IdentityService
 import org.activiti.engine.RuntimeService
+import org.activiti.engine.identity.Group
 import org.activiti.engine.identity.User
 import org.springframework.context.ApplicationListener
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.acls.domain.PrincipalSid
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent
+import org.springframework.security.core.Authentication
+import org.springframework.security.core.GrantedAuthority
+import org.springframework.security.ldap.userdetails.InetOrgPerson
 import org.ventiv.docker.manager.process.AuthorizationEventListener
 
 import javax.annotation.PostConstruct
@@ -30,6 +35,7 @@ import javax.annotation.Resource
 /**
  * Created by jcrygier on 4/22/15.
  */
+@CompileStatic
 @Configuration
 class ActivitiConfiguration implements ApplicationListener<AuthenticationSuccessEvent> {
 
@@ -94,14 +100,46 @@ class ActivitiConfiguration implements ApplicationListener<AuthenticationSuccess
 
     @Override
     void onApplicationEvent(AuthenticationSuccessEvent event) {
-        // Add the user to activiti
-        String userId = new PrincipalSid(event.getAuthentication()).getPrincipal();
+        User activitiUser = addUserToActiviti(event.getAuthentication());
+        event.getAuthentication().getAuthorities().each { def grantedAuthority ->
+            addUserToGroup((User) activitiUser, ((GrantedAuthority)grantedAuthority).getAuthority().replaceAll("ROLE_", ""));
+        }
+    }
+
+    private User addUserToActiviti(Authentication authentication) {
+        String userId = new PrincipalSid(authentication).getPrincipal();
         User user = identityService.createUserQuery().userId(userId).singleResult();
 
         if (user == null)
-            user = identityService.newUser(new PrincipalSid(event.getAuthentication()).getPrincipal());
+            user = identityService.newUser(userId);
 
-        user.setPassword(event.getAuthentication().getCredentials().toString());
+        // If we're an LDAP InetOrgPerson, grab some additional details
+        if (authentication.getPrincipal() instanceof InetOrgPerson) {
+            InetOrgPerson person = (InetOrgPerson) authentication.getPrincipal();
+            user.setEmail(person.getMail());
+            user.setFirstName(person.getDisplayName().split(" ")[0])
+            user.setLastName(person.getDisplayName().split(" ")[1])
+        }
+
+        user.setPassword(authentication.getCredentials().toString());
         identityService.saveUser(user);
+
+        return user;
     }
+
+    private Group addUserToGroup(User user, String groupId) {
+        Group group = identityService.createGroupQuery().groupId(groupId).singleResult();
+
+        if (group == null) {
+            group = identityService.newGroup(groupId);
+            identityService.saveGroup(group);
+        }
+
+        try {
+            identityService.createMembership(user.getId(), groupId);
+        } catch (Exception ignored) {}
+
+        return group;
+    }
+
 }
