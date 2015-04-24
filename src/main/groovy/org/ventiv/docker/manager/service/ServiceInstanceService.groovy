@@ -90,11 +90,15 @@ class ServiceInstanceService implements Runnable {
     }
 
     public List<ServiceInstance> getServiceInstances(ServerConfiguration serverConfiguration) {
-        return allServiceInstances[getServerConfigurationKey(serverConfiguration)];
+        synchronized (allServiceInstances) {
+            return allServiceInstances[getServerConfigurationKey(serverConfiguration)];
+        }
     }
 
     public Collection<ServiceInstance> getServiceInstances() {
-        return allServiceInstances.values().flatten();
+        synchronized (allServiceInstances) {
+            return allServiceInstances.values().flatten();
+        }
     }
 
     public ServiceInstance getServiceInstance(String containerId) {
