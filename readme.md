@@ -47,6 +47,10 @@ is as follows:
 For the best in example and documentation, these Yaml files have been carefully constructed to illustrate certain features.  These
 files also have many of the lines commented so you can tell what they are for.
 
+## Workflows (with Activiti)
+
+See [Workflow Documentation] (https://github.com/Ventiv-Technology/DockerManager/blob/master/docs/Workflow.md)
+
 ## Configuring
 
 Configuration is split up into two different types of files, the Service Definition file (services.yml) and the Environment
