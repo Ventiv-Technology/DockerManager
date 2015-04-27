@@ -1,0 +1,56 @@
+<!--
+
+    Copyright (c) 2014 - 2015 Ventiv Technology
+
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not
+    use this file except in compliance with the License. You may obtain a copy of
+    the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+    License for the specific language governing permissions and limitations under
+    the License.
+
+-->
+<div class="" id="start-form-details" cg-busy="asyncExecutionPromise">
+    <div class="modal-header">
+        <h3 class="modal-title"><span translate="START_FORM">Start Form</span></h3>
+    </div>
+    <div class="modal-body">
+        <form name="processForm">
+            <div class="form-group" data-ng-repeat="formVariable in formDetails">
+                <label for="{{formVariable.id}}">{{formVariable.name}}</label>
+
+                <!-- String Data Type -->
+                <input data-ng-if="formVariable.type.name == 'string'" type="text" class="form-control" data-ng-model="formVariable.value" id="{{formVariable.id}}" name="{{formVariable.id}}" placeholder="{{formVariable.name}}">
+
+                <!-- Boolean Type -->
+                <input data-ng-if="formVariable.type.name == 'boolean'" type="checkbox" class="form-control" data-ng-model="formVariable.value" id="{{formVariable.id}}" name="{{formVariable.id}}" placeholder="{{formVariable.name}}">
+
+                <!-- Enum Type -->
+                <select data-ng-if="formVariable.type.name == 'enum'" data-ng-model="formVariable.value" data-ng-options="k as v for (k, v) in formVariable.values" class="form-control" id="{{formVariable.id}}" name="{{formVariable.id}}" placeholder="{{formVariable.name}}">
+
+                <!-- Date Type -->
+                <input data-ng-if="formVariable.type.name == 'date'" type="datetime-local" class="form-control" data-ng-model="formVariable.value" id="{{formVariable.id}}" name="{{formVariable.id}}" placeholder="{{formVariable.name}}">
+
+                <!-- Long Type -->
+                <input data-ng-if="formVariable.type.name == 'long'" type="number" class="form-control" data-ng-model="formVariable.value" id="{{formVariable.id}}" name="{{formVariable.id}}" placeholder="{{formVariable.name}}">
+
+                <!-- Double Type -->
+                <input data-ng-if="formVariable.type.name == 'double'" type="number" class="form-control" data-ng-model="formVariable.value" id="{{formVariable.id}}" name="{{formVariable.id}}" placeholder="{{formVariable.name}}">
+
+                <!-- Month Type -->
+                <input data-ng-if="formVariable.type.name == 'month'" type="month" class="form-control" data-ng-model="formVariable.value" id="{{formVariable.id}}" name="{{formVariable.id}}" placeholder="{{formVariable.name}}">
+            </div>
+        </form>
+    </div>
+
+    <div class="modal-footer">
+        <button class="btn btn-primary" data-ng-click="start()" translate="START_PROCESS">Start Process</button>
+        <button class="btn btn-info" data-ng-click="dismiss('cancel')" translate="CANCEL">Cancel</button>
+    </div>
+
+</div>

@@ -17,15 +17,20 @@ package org.ventiv.docker.manager.controller
 
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.activiti.engine.FormService
 import org.activiti.engine.IdentityService
 import org.activiti.engine.RepositoryService
 import org.activiti.engine.RuntimeService
 import org.activiti.engine.TaskService
+import org.activiti.engine.form.StartFormData
 import org.activiti.engine.repository.ProcessDefinition
 import org.activiti.engine.runtime.Execution
 import org.activiti.engine.runtime.ProcessInstance
+import org.apache.commons.io.IOUtils
+import org.springframework.core.io.ClassPathResource
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
@@ -38,6 +43,7 @@ import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
 
 import javax.annotation.Resource
+import javax.servlet.http.HttpServletResponse
 
 /**
  * Created by jcrygier on 4/22/15.
@@ -58,9 +64,10 @@ class ProcessController {
     @Resource TaskService taskService;
     @Resource IdentityService identityService;
     @Resource RepositoryService repositoryService;
+    @Resource FormService formService;
 
     @RequestMapping(value = "/{tierName}/{environmentId}/{processKey}", method = RequestMethod.POST)
-    public def startProcess(@PathVariable("tierName") String tierName, @PathVariable("environmentId") String environmentId, @PathVariable("processKey") String processKey) {
+    public def startProcess(@PathVariable("tierName") String tierName, @PathVariable("environmentId") String environmentId, @PathVariable("processKey") String processKey, @RequestBody(required = false) Map<String, Object> startForm) {
         // Query for the process key, to ensure it's startable by this user
         ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().active().processDefinitionKey(processKey).singleResult();
         if (!isUserAuthorizedToStart(processDefinition))
@@ -68,6 +75,7 @@ class ProcessController {
 
         EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentId);
         Map<String, Object> variables = environmentConfiguration.getApplications().collectEntries(this.&extractApplication);
+        variables.putAll(startForm);
         variables.put(TIER_NAME_VARIABLE_KEY, tierName)
         variables.put(ENVIRONMENT_ID_VARIABLE_KEY, environmentId)
         variables.put(INITIATOR_AUTHENTICATION_OBJECT_VARIABLE_KEY, SecurityUtil.getAuthentication());
@@ -80,6 +88,34 @@ class ProcessController {
         } finally {
             identityService.setAuthenticatedUserId(null);
         }
+    }
+
+    @RequestMapping(value = "/startForm/{processId}", method = RequestMethod.GET)
+    public void getStartForm(@PathVariable("processId") String processId, HttpServletResponse response) {
+        StartFormData startFormData = formService.getStartFormData(processId);
+        if (startFormData.getFormKey()) {
+            Object formData = formService.getRenderedStartForm(processId)
+            IOUtils.copy(new StringReader(formData.toString()), response.getOutputStream());
+        } else {
+            ClassPathResource angularForm = new ClassPathResource("/static/app/partials/angularForm.html")
+            IOUtils.copy(angularForm.getInputStream(), response.getOutputStream());
+        }
+    }
+
+    @RequestMapping(value = "/startFormVariables/{processId}", method = RequestMethod.GET)
+    public List<Map<String, Object>> getStartFormVariables(@PathVariable("processId") String processId) {
+        StartFormData startFormData = formService.getStartFormData(processId);
+        return startFormData.getFormProperties().collect {
+            return [
+                    id: it.getId(),
+                    name: it.getName(),
+                    type: it.getType(),
+                    required: it.isRequired(),
+                    readable: it.isReadable(),
+                    writable: it.isWritable(),
+                    values: it.getType().getInformation("values")
+            ]
+        };
     }
 
     @RequestMapping(value = "/{tierName}/{environmentId}", method = RequestMethod.GET)
@@ -97,6 +133,7 @@ class ProcessController {
                     name: processDefinition.getName(),
                     id: processDefinition.getId(),
                     deploymentId: processDefinition.getDeploymentId(),
+                    startForm: formService.getStartFormData(processDefinition.getId()).getFormProperties() || formService.getStartFormData(processDefinition.getId()).getFormKey(),
                     processInstances: runtimeService.createProcessInstanceQuery().active().includeProcessVariables().processDefinitionKey(processDefinition.getKey()).list().findAll {
                         it.getProcessVariables()[TIER_NAME_VARIABLE_KEY] == tierName && it.getProcessVariables()[ENVIRONMENT_ID_VARIABLE_KEY] == environmentId
                     }.collect { ProcessInstance processInstance ->

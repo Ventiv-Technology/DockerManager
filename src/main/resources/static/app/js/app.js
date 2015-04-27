@@ -204,7 +204,22 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     });
 
                 $scope.startProcess = function(workflowProcess) {
-                    $http.post("/api/process/" + tierName + "/" + environmentId + "/" + workflowProcess.key)
+                    if (workflowProcess.startForm) {
+                        var startFormModal = $modal.open({
+                            templateUrl: '/api/process/startForm/' + workflowProcess.id,
+                            controller: 'ProcessFormController',
+                            windowClass: 'process-form',
+                            size: 'lg',
+                            resolve: {
+                                formDetails: function() { return $http.get('/api/process/startFormVariables/' + workflowProcess.id) },
+                                tierName: function() { return tierName },
+                                environmentId: function() { return environmentId },
+                                workflowProcess: function() { return workflowProcess }
+                            }
+                        });
+                    } else {
+                        $http.post("/api/process/" + tierName + "/" + environmentId + "/" + workflowProcess.key)
+                    }
                 };
 
                 return $scope.asyncExecutionPromise;
@@ -347,6 +362,27 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
 
         .controller('ApplicationHistoryController', function($scope, $modalInstance, userAuditDetails) {
             $scope.auditHistory = userAuditDetails.data;
+
+            $scope.dismiss = function(dismissObj) {
+                $modalInstance.dismiss(dismissObj);
+            };
+        })
+
+        .controller('ProcessFormController', function($scope, $http, $modalInstance, tierName, environmentId, workflowProcess, formDetails) {
+            $scope.formDetails = formDetails.data;
+            $scope.formVariables = {};
+
+            $scope.start = function() {
+                var formToSubmit = {};
+                _.each($scope.formDetails, function(formVariable) {
+                    formToSubmit[formVariable.id] = formVariable.value;
+                });
+
+                $modalInstance.dismiss(
+                    $http.post("/api/process/" + tierName + "/" + environmentId + "/" + workflowProcess.key, formToSubmit)
+                );
+
+            };
 
             $scope.dismiss = function(dismissObj) {
                 $modalInstance.dismiss(dismissObj);
