@@ -22,7 +22,9 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.model.ApplicationThumbnail
+import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
+import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.repository.ApplicationThumbnailRepository
@@ -114,6 +116,22 @@ class EnvironmentConfigurationService {
             applicationThumbnail = applicationThumbnailRepository.save(new ApplicationThumbnail(tierName: tierName, environmentName: environmentId, applicationId: applicationId));
 
         return applicationThumbnail;
+    }
+
+    public EligibleServiceConfiguration getEligibleServiceConfiguration(ServiceInstance serviceInstance) {
+        return getEligibleServiceConfiguration(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getServerName(), serviceInstance.getName(), serviceInstance.getInstanceNumber());
+    }
+
+    public EligibleServiceConfiguration getEligibleServiceConfiguration(String tierName, String environmentName, String hostName, String serviceType, Integer instanceNumber) {
+        EnvironmentConfiguration environmentConfiguration = getEnvironment(tierName, environmentName)
+        if (environmentConfiguration) {
+            ServerConfiguration serverConfiguration = environmentConfiguration.getServers().find { it.getHostname() == hostName }
+            if (serverConfiguration) {
+                return serverConfiguration.getEligibleServices().find { it.getType() == serviceType && it.getInstanceNumber() == instanceNumber }
+            }
+        }
+
+        return null;
     }
 
 }

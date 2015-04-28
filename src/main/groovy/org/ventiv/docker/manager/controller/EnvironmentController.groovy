@@ -428,6 +428,9 @@ class EnvironmentController {
                 .exec();
         //eventPublisher.publishEvent(new CreateContainerEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id), env));
 
+        // Lets get an updated port mapping, just in case it was lost because the container was stopped
+        instance.setPortsFromConfiguration();
+
         // Now start the container
         log.info("Starting container '${resp.id}' with " +
                 "ports: ${instance.getPortDefinitions().collect { '0.0.0.0:' + it.getHostPort() + '->' + it.getContainerPort() } }, " +

@@ -24,6 +24,7 @@ import groovy.transform.CompileStatic
 import groovy.transform.ToString
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
+import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
@@ -105,6 +106,9 @@ class ServiceInstance {
 
             environmentDescription = environmentConfiguration?.getDescription();
             applicationDescription = applicationConfiguration?.getDescription();
+
+            if (!portDefinitions)
+                setPortsFromConfiguration();
         } else {
             name = dockerName.substring(1);
         }
@@ -170,6 +174,20 @@ class ServiceInstance {
         determineUrl(serviceConfig);
 
         return this;
+    }
+
+    public void setPortsFromConfiguration() {
+        ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(getName());
+        EligibleServiceConfiguration eligibleServiceConfiguration = environmentConfigurationService.getEligibleServiceConfiguration(this);
+        if (eligibleServiceConfiguration) {
+            this.portDefinitions = eligibleServiceConfiguration.portMappings.collect { portMapping ->
+                return new PortDefinition([
+                        portType: portMapping.type,
+                        hostPort: portMapping.port,
+                        containerPort: serviceConfiguration.containerPorts.find { it.type == portMapping.type }.port
+                ])
+            }
+        }
     }
 
     public String getContainerStatus() {
