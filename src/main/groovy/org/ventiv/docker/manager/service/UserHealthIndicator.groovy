@@ -62,23 +62,25 @@ class UserHealthIndicator extends AbstractHealthIndicator {
 
         environmentConfigurationService.getActiveEnvironments().each { EnvironmentConfiguration environmentConfiguration ->
             environmentConfiguration.getApplications().each { ApplicationConfiguration applicationConfiguration ->
-                Acl acl = aclService.readAclById(applicationConfiguration.getObjectIdentity())
+                try {
+                    Acl acl = aclService.readAclById(applicationConfiguration.getObjectIdentity())
 
-                List<Sid> allSids = sidRetrievalStrategy.getSids(authentication);
-                allSids << new GrantedAuthoritySid("ALL_USERS");
+                    List<Sid> allSids = sidRetrievalStrategy.getSids(authentication);
+                    allSids << new GrantedAuthoritySid("ALL_USERS");
 
-                DockerManagerPermission.getAllPermissions().each { Permission permission ->
-                    try {
-                        if (acl.isGranted([permission], allSids, false)) {
-                            effectivePermissions << new EffectiveDockerManagerPermission([
-                                    tierName: applicationConfiguration.getTierName(),
-                                    environmentId: applicationConfiguration.getEnvironmentId(),
-                                    applicationId: applicationConfiguration.getId(),
-                                    grantedPermission: DockerManagerPermission.getPermissionName(permission)
-                            ]);
-                        }
-                    } catch (NotFoundException ignored) {}
-                }
+                    DockerManagerPermission.getAllPermissions().each { Permission permission ->
+                        try {
+                            if (acl.isGranted([permission], allSids, false)) {
+                                effectivePermissions << new EffectiveDockerManagerPermission([
+                                        tierName            : applicationConfiguration.getTierName(),
+                                        environmentId       : applicationConfiguration.getEnvironmentId(),
+                                        applicationId       : applicationConfiguration.getId(),
+                                        grantedPermission   : DockerManagerPermission.getPermissionName(permission)
+                                ]);
+                            }
+                        } catch (NotFoundException ignored) {}
+                    }
+                } catch (NotFoundException ignored) {}
             }
         }
 
