@@ -38,6 +38,11 @@ When any workflow process is started, a set of default variables will be injecte
     - serviceName: Each service will be applied here.  Note, it's only the FIRST instance that gets placed here (e.g. To use in BPMN: ${activiti.activiti})
         - server: Server name this instance is running in (e.g. To use in BPMN: ${activiti.activiti.server})
         - port: List of ports for this service (e.g. To use in BPMN: ${activiti.activiti.ports.http})
+        
+NOTE: The applicationKey and serviceName will have dashes (-) replaced with underscores (_).  This is because when Activiti
+evaluates expressions, it will evaluate a dash as the minus operator.  Obviously, this is not what we want, so you will
+want to refer to these things with underscores in the BPMN.  Example, my-future-application may look like this in BPMN:
+${my_future_application.complicated_service.server}
 
 Authorization
 -------------

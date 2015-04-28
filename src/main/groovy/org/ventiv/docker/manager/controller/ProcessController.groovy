@@ -75,7 +75,7 @@ class ProcessController {
 
         EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentId);
         Map<String, Object> variables = environmentConfiguration.getApplications().collectEntries(this.&extractApplication);
-        variables.putAll(startForm);
+        if (startForm) variables.putAll(startForm);
         variables.put(TIER_NAME_VARIABLE_KEY, tierName)
         variables.put(ENVIRONMENT_ID_VARIABLE_KEY, environmentId)
         variables.put(INITIATOR_AUTHENTICATION_OBJECT_VARIABLE_KEY, SecurityUtil.getAuthentication());
@@ -163,7 +163,7 @@ class ProcessController {
     }
 
     private Map<String, ?> extractApplication(ApplicationConfiguration applicationConfiguration) {
-        return [(applicationConfiguration.getId()): applicationConfiguration.getServiceInstances().collectEntries {
+        return [(applicationConfiguration.getId().replace('-', '_')): applicationConfiguration.getServiceInstances().collectEntries {
             return extractServices(applicationConfiguration, it)
         }]
     }
@@ -176,7 +176,7 @@ class ProcessController {
         Map<String, ?> templateBindings = serviceInstance?.getTemplateBindings();
         templateBindings?.remove("instance");            // Must do this, or it will attempt to serialize ServiceInstance
 
-        return [(serviceInstanceConfiguration.getType()): templateBindings]
+        return [(serviceInstanceConfiguration.getType().replace('-', '_')): templateBindings]
     }
 
 }
