@@ -38,6 +38,7 @@ import org.ventiv.docker.manager.security.SecurityUtil
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
+import org.ventiv.docker.manager.utils.DockerLogsOutputStream
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
@@ -93,7 +94,7 @@ class HostsController {
         if (tail)
             cmd.withTail(tail);
 
-        IOUtils.copy(cmd.exec(), response.getOutputStream());
+        IOUtils.copy(cmd.exec(), new DockerLogsOutputStream(response.getOutputStream()));
     }
 
     @PreAuthorize("hasPermission(#containerId, 'LOGS')")
@@ -103,7 +104,17 @@ class HostsController {
         if (tail)
             cmd.withTail(tail);
 
-        IOUtils.copy(cmd.exec(), response.getOutputStream());
+        IOUtils.copy(cmd.exec(), new DockerLogsOutputStream(response.getOutputStream()));
+    }
+
+    @PreAuthorize("hasPermission(#containerId, 'LOGS')")
+    @RequestMapping("/{hostName}/{containerId}/logs")
+    public void getLogs(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
+        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdOut().withStdErr()
+        if (tail)
+            cmd.withTail(tail);
+
+        IOUtils.copy(cmd.exec(), new DockerLogsOutputStream(response.getOutputStream(), true));
     }
 
     /**
