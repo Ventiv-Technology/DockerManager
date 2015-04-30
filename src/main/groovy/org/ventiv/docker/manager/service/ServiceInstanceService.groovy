@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.service
 
+import com.github.dockerjava.api.NotFoundException
 import com.github.dockerjava.api.command.EventCallback
 import com.github.dockerjava.api.command.InspectContainerResponse
 import com.github.dockerjava.api.model.Container
@@ -217,10 +218,15 @@ class ServiceInstanceService implements Runnable {
 
                 // Add the new one back
                 if (event.getStatus() != "destroy") {
-                    InspectContainerResponse inspectContainerResponse = serviceInstanceService.dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(event.getId()).exec()
-                    serviceInstance = serviceInstanceService.createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse);
+                    try {
+                        InspectContainerResponse inspectContainerResponse = serviceInstanceService.dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(event.getId()).exec()
+                        serviceInstance = serviceInstanceService.createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse);
 
-                    allServiceInstances << serviceInstance;
+                        allServiceInstances << serviceInstance;
+                    } catch (NotFoundException ignored) {
+                        log.info("Event received from container ${event.getId()}, but it must have been destroyed before we could read the status.  Ignoring the container...")
+                        return;
+                    }
                 }
 
                 // Publish the event

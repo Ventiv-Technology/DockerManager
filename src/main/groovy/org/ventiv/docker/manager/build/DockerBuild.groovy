@@ -57,6 +57,9 @@ class DockerBuild implements AsyncBuildStage {
     // Should we skip pushing (i.e. just for testing locally)
     public static final String CONFIG_SKIP_PUSH =                      'skipPush'
 
+    // Should we pull the base image before building?  Default is to Always pull, set this to false to override
+    public static final String CONFIG_PULL =                           'pull'
+
     @Resource DockerService dockerService;
     @Resource DockerManagerConfiguration props;
     @Resource SimpleTemplateService templateService;
@@ -70,6 +73,7 @@ class DockerBuild implements AsyncBuildStage {
         File buildDirectory = new File(buildSettings[CONFIG_BUILD_DIRECTORY]);
         DockerClient docker = dockerService.getDockerClient(buildHostName);
         boolean skipPush = buildSettings[CONFIG_SKIP_PUSH] ? Boolean.parseBoolean(buildSettings[CONFIG_SKIP_PUSH]) : false;
+        boolean pull = buildSettings[CONFIG_PULL] ? Boolean.parseBoolean(buildSettings[CONFIG_PULL]) : true;
 
         // Treat the Dockerfile as a template, and replace variables
         File dockerFile = new File(buildDirectory, "Dockerfile");
@@ -81,7 +85,7 @@ class DockerBuild implements AsyncBuildStage {
                 log.debug("DockerBuild building from ${buildDirectory.getAbsolutePath()}");
 
                 // Build the Image
-                BuildImageCmd.Response buildResponse = docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).exec();
+                BuildImageCmd.Response buildResponse = docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).withPull(pull).exec();
                 deserializeStream(buildResponse, EventStreamItem) { EventStreamItem event ->
                     if (event?.getStream()?.trim())
                         deferred.notify(event?.getStream()?.trim());
