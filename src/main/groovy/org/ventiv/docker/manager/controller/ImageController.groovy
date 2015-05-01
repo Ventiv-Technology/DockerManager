@@ -40,8 +40,9 @@ class ImageController {
     @Resource DockerService dockerService;
     @Resource ServiceInstanceService serviceInstanceService;
 
-    @RequestMapping("/{hostName}")
+    @RequestMapping("/{hostName:.*}")
     public List<ImageDetails> getImages(@PathVariable String hostName) {
+        // TODO: Make tree out of response, and push serviceInstanceList up to parents
         dockerService.getDockerClient(hostName).listImagesCmd().exec().collect { Image image ->
             return new ImageDetails([
                     id: image.getId(),

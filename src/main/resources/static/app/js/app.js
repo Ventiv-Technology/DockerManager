@@ -15,11 +15,11 @@
  */
 'use strict';
 
-define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService', 'select2', 'dashboard/dashboard'], function ($, angular, translations) {
+define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService', 'select2', 'dashboard/dashboard', 'controller/imageController'], function ($, angular, translations) {
 
     // Declare app level module which depends on filters, and services
 
-    return angular.module('myApp', ['ui.bootstrap', 'restangular', 'pascalprecht.translate', 'ui.router', 'cgBusy', 'myApp.statusService', 'myApp.dashbaord'])
+    return angular.module('myApp', ['ui.bootstrap', 'restangular', 'pascalprecht.translate', 'ui.router', 'cgBusy', 'myApp.statusService', 'myApp.dashbaord', 'myApp.image'])
         .config(function (RestangularProvider, $translateProvider, $stateProvider, $urlRouterProvider) {
             // Configure RESTAngular
             RestangularProvider.setBaseUrl("/api");
@@ -50,6 +50,16 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     url: '/env/{tierName}/{environmentId}/{applicationId}',
                     templateUrl: '/app/partials/environments.html',
                     controller: 'EnvironmentController'
+                })
+                .state('images', {
+                    url: '/images/{hostName}',
+                    templateUrl: '/app/partials/images.html',
+                    controller: 'ImageController'
+                })
+                .state('imageDetails', {
+                    url: '/images/{hostName}/{imageName}',
+                    templateUrl: '/app/partials/imageDetails.html',
+                    controller: 'ImageDetailsController'
                 });
         })
 
