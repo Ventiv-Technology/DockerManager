@@ -22,6 +22,9 @@ import com.github.dockerjava.core.DockerClientConfig
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.dockerjava.ImageHistoryCmd
+import org.ventiv.docker.manager.dockerjava.ImageHistoryCmdExec
+import org.ventiv.docker.manager.dockerjava.ImageHistoryCmdImpl
 import org.ventiv.docker.manager.dockerjava.RenameContainerCmd
 import org.ventiv.docker.manager.dockerjava.RenameContainerCmdExec
 import org.ventiv.docker.manager.dockerjava.RenameContainerCmdImpl
@@ -103,6 +106,10 @@ class DockerService {
 
     RenameContainerCmd getRenameContainerCmd(String hostName, String containerId, String newName) {
         return new RenameContainerCmdImpl(new RenameContainerCmdExec(getBaseResource(hostName)), containerId, newName);
+    }
+
+    ImageHistoryCmd getImageHistoryCmd(String hostName, String imageName) {
+        return new ImageHistoryCmdImpl(new ImageHistoryCmdExec(getBaseResource(hostName)), imageName);
     }
 
 }
