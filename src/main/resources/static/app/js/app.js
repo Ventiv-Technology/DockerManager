@@ -45,6 +45,11 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     url: '/env/{tierName}/{environmentId}',
                     templateUrl: '/app/partials/environments.html',
                     controller: 'EnvironmentController'
+                })
+                .state('application', {
+                    url: '/env/{tierName}/{environmentId}/{applicationId}',
+                    templateUrl: '/app/partials/environments.html',
+                    controller: 'EnvironmentController'
                 });
         })
 
@@ -291,6 +296,17 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 else
                     return "#"
             };
+
+            $scope.$watch("environment.applications", function(applications) {
+                if (applications && $stateParams.applicationId) {
+                    var application = _.find(applications, function(application) {
+                        return application.id == $stateParams.applicationId;
+                    });
+
+                    if (application)
+                        application.opened = true;
+                }
+            }, true)
         })
 
         .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {

@@ -34,7 +34,9 @@
             <td><a href
                    ui-sref="environment({tierName: serviceInstance.tierName, environmentId: serviceInstance.environmentName})">{{serviceInstance.environmentDescription}}</a>
             </td>
-            <td>{{serviceInstance.applicationDescription}}</td>
+            <td><a href
+                   ui-sref="application({tierName: serviceInstance.tierName, environmentId: serviceInstance.environmentName, applicationId: serviceInstance.applicationId})">{{serviceInstance.applicationDescription}}</a>
+            </td>
             <td>{{serviceInstance.containerImage.tag}}</td>
             <td><span class="label" data-ng-click="serviceInstanceDetails(serviceInstance)"
                       data-ng-class="{'label-success': serviceInstance.status == 'Running', 'label-danger': serviceInstance.status == 'Stopped'}">{{serviceInstance.containerStatus}}</span>

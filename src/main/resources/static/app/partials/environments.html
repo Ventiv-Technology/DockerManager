@@ -22,8 +22,8 @@
         <hr>
     </div>
 
-    <accordion close-others="false" is-open="true">
-        <accordion-group data-ng-repeat="application in environment.applications">
+    <accordion close-others="false">
+        <accordion-group data-ng-repeat="application in environment.applications" is-open="application.opened">
             <accordion-heading>
                 <span id="{{application.id}}-app">{{application.description}}</span>
                 <span data-ng-show="application.buildStatus.building"> - <a href="" translate="BUILDING_IMAGE">Building Image...</a></span>
