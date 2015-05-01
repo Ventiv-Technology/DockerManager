@@ -49,10 +49,13 @@ class DockerService {
 
     public DockerClient getDockerClient(String hostName) {
         TimingUtils.time("getDockerClient") {
-            String apiVersion = props["docker.client.${hostName}.apiVersion"]
-            String uri = props["docker.client.${hostName}.uri"] ?: "https://${hostName}:2376"
+            // Get the Certs path
             String certs = props["docker.client.${hostName}.certPath"] ?: "./config/certs/${hostName}"
             certs = certs.replaceAll('~', System.getProperty('user.home'))
+            boolean certsExist = new File(certs).exists()
+
+            String apiVersion = props["docker.client.${hostName}.apiVersion"]
+            String uri = props["docker.client.${hostName}.uri"] ?: certsExist ? "https://${hostName}:2376" : "http://${hostName}:2375"
 
             if (!apiVersion)
                 apiVersion = getApiVersion(hostName, uri, certs);
@@ -63,7 +66,7 @@ class DockerService {
                     .withVersion(apiVersion)
                     .withUri(uri);
 
-            if (new File(certs).exists())
+            if (certsExist)
                 builder.withDockerCertPath(certs)
             else
                 builder.withSSLConfig(null);
