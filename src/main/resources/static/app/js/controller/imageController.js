@@ -23,10 +23,40 @@ define(['jquery', 'angular'], function ($, angular) {
         .controller("ImageController", function ($scope, $stateParams, $http) {
             $scope.hostName = $stateParams.hostName;
 
-            $scope.asyncExecutionPromise = $http.get("/api/image/" + $stateParams.hostName)
-                .then(function(response) {
-                    $scope.images = response.data;
+            $scope.refreshImages = function() {
+                $scope.asyncExecutionPromise = $http.get("/api/image/" + $stateParams.hostName)
+                    .then(function (response) {
+                        $scope.images = response.data;
+                    });
+            };
+
+            $scope.deleteImages = function() {
+                var selectedImages = _.filter($scope.images, function(image) {
+                    return image.selected;
                 });
+
+                var selectedImageIds = _.map(selectedImages, function(image) {
+                    return image.id;
+                });
+
+                $scope.asyncExecutionPromise = $http({
+                    url: "/api/image/" + $stateParams.hostName,
+                    method: "DELETE",
+                    data: selectedImageIds,
+                    headers: { "Content-Type": "application/json" }
+                }).success(function(data) {
+                    var errorMessages = _.filter(_.values(data), function(message) {
+                        return message != "Successful";
+                    });
+
+                    if (errorMessages && errorMessages.length > 0)
+                        alert(errorMessages);
+
+                    $scope.refreshImages();
+                });
+            };
+
+            $scope.refreshImages();
         })
 
         .controller("ImageDetailsController", function($scope, $stateParams, $http) {
@@ -61,5 +91,5 @@ define(['jquery', 'angular'], function ($, angular) {
                     number = Math.floor(Math.log(bytes) / Math.log(1000));
                 return (bytes / Math.pow(1000, Math.floor(number))).toFixed(precision) +  ' ' + units[number];
             }
-        });;
+        });
 });

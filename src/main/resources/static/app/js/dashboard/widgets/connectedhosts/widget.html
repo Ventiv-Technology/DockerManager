@@ -15,6 +15,17 @@
     the License.
 
 -->
-<div class="row" data-ng-repeat="host in hostData.hostDetails">
-    <input type="checkbox" data-ng-model="host.selected"> {{host.description}}
-</div>
+<table class="table table-striped table-condensed">
+    <thead>
+    <th></th>
+    <th>Host Name</th>
+    </thead>
+    <tbody>
+    <tr data-ng-repeat="host in hostData.hostDetails">
+        <td>
+            <input type="checkbox" id="{{host.id}}-selected" name="{{host.id}}-selected" data-ng-model="host.selected"/>
+        </td>
+        <td><a ui-sref="images({ hostName: host.hostname })">{{host.description}}</a></td>
+    </tr>
+    </tbody>
+</table>

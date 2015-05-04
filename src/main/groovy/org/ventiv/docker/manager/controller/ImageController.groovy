@@ -19,7 +19,9 @@ import com.github.dockerjava.api.model.Image
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmd
 import org.ventiv.docker.manager.model.ImageDetails
@@ -29,7 +31,7 @@ import org.ventiv.docker.manager.service.ServiceInstanceService
 import javax.annotation.Resource
 
 /**
- * Created by jcrygier on 5/1/15.
+ * Methods to deal with Images
  */
 @Slf4j
 @RequestMapping("/api/image")
@@ -83,6 +85,23 @@ class ImageController {
         }
 
         return answer;
+    }
+
+    @RequestMapping(value = "/{hostName}/{imageId:.*}", method = RequestMethod.DELETE)
+    public void removeImage(@PathVariable String hostName, @PathVariable String imageId) {
+        dockerService.getDockerClient(hostName).removeImageCmd(imageId).exec()
+    }
+
+    @RequestMapping(value = "/{hostName:.*}", method = RequestMethod.DELETE)
+    public Map<String, String> removeImages(@PathVariable String hostName, @RequestBody List<String> imagesToDelete) {
+        imagesToDelete.collectEntries { String imageToDelete ->
+            try {
+                removeImage(hostName, imageToDelete);
+                return [imageToDelete, "Successful"]
+            } catch (Exception e) {
+                return [imageToDelete, e.getMessage()]
+            }
+        }
     }
 
 }

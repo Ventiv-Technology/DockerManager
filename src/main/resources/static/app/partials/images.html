@@ -19,7 +19,17 @@
 
     <table class="table table-striped">
         <thead>
-            <th></th>
+            <th>
+                <div class="dropdown">
+                    <button class="btn btn-default dropdown-toggle btn-xs" type="button" id="dropdownMenu1" aria-expanded="true">
+                        Action
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu" aria-labelledby="dropdownMenu1">
+                        <li role="presentation"><a role="menuitem" tabindex="-1" data-ng-click="deleteImages()">Delete Image(s)</a></li>
+                    </ul>
+                </div>
+            </th>
             <th>Image Tag</th>
             <th>Virutal Size</th>
             <th>Service Instance Count</th>
