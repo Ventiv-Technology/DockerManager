@@ -48,14 +48,14 @@ class SimpleTemplateServiceTest extends Specification {
     def "template with complex object (BuildContext)"() {
         setup:
         Authentication dummyAuth = new UsernamePasswordAuthenticationToken("jcrygier", "mypassword");
-        BuildContext buildContext = new BuildContext(userAuthentication: dummyAuth, buildingVersion: "b1234", outputDockerImage: new DockerTag("ventivtech/docker_manager:latest"))
+        BuildContext buildContext = new BuildContext(userAuthentication: dummyAuth, buildingVersion: "b1234", requestedBuildVersion: 12345, outputDockerImage: new DockerTag("ventivtech/docker_manager:latest"))
 
         when:
-        String template = "This is a build kicked off by #{buildContext.userAuthentication.principal} with a variable that is not found: #{buildContext.noVariableExists}";
+        String template = "This is a build kicked off by #{buildContext.userAuthentication.principal} with a variable that is not found: #{buildContext.noVariableExists}.  Building b#{buildContext.requestedBuildVersion}";
         String filledTemplate = templateService.fillTemplate(template, [buildContext: buildContext]);
 
         then:
-        filledTemplate == "This is a build kicked off by jcrygier with a variable that is not found: #{buildContext.noVariableExists}"
+        filledTemplate == "This is a build kicked off by jcrygier with a variable that is not found: #{buildContext.noVariableExists}.  Building b12345"
     }
 
     def "template with complex object that doesn't ignore missing"() {

@@ -63,7 +63,7 @@ class ServiceInstanceService implements Runnable {
     @Resource private DockerServiceConfiguration dockerServiceConfiguration;
     @Resource ServiceInstanceThumbnailRepository serviceInstanceThumbnailRepository;
 
-    private final Map<String, List<ServiceInstance>> allServiceInstances = [:]
+    private Map<String, List<ServiceInstance>> allServiceInstances = [:]
     private final Map<String, ExecutorService> eventExecutors = [:];
     private final Map<String, DockerEventCallback> eventCallbacks = [:];
     private ScheduledFuture scheduledTask;

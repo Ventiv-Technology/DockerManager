@@ -43,7 +43,7 @@ class SimpleTemplateService {
 
     public void fillTemplate(File templateFile, Map<String, Object> bindings, String backupFileExtension = null) {
         String template = templateFile.getText();
-        String filledTemplate = fillTemplate(template, bindings);
+        def filledTemplate = fillTemplate(template, bindings);
 
         if (backupFileExtension)
             FileUtils.copyFile(templateFile, new File(templateFile.getAbsolutePath() + backupFileExtension));
@@ -52,9 +52,11 @@ class SimpleTemplateService {
         templateFile.write(filledTemplate);
     }
 
-    public String fillTemplate(String template, Map<String, Object> bindings) {
-        template.replaceAll(compiledPattern) { List<String> match ->
-            def currentObject = bindings;
+    public def fillTemplate(String template, Map<String, Object> bindings) {
+        def currentObject = bindings;
+
+        String filledTemplate = template.replaceAll(compiledPattern) { List<String> match ->
+            currentObject = bindings;
 
             try {
                 match[1].split('\\.').each { String nextAccessor ->
@@ -73,6 +75,12 @@ class SimpleTemplateService {
 
             return currentObject;
         }
+
+        // If we've just come down to one variable, return the actual instance, so we keep the type
+        if (filledTemplate == currentObject.toString())
+            return currentObject;
+        else
+            return filledTemplate;
     }
 
 }

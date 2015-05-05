@@ -23,6 +23,7 @@ import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.controller.ProcessController
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
+import org.ventiv.docker.manager.service.SimpleTemplateService
 
 /**
  * Base abstract class for custom Activiti tasks for Docker Manager
@@ -31,12 +32,30 @@ abstract class AbstractDockerManagerTask implements JavaDelegate {
 
     protected ApplicationContext applicationContext = DockerManagerApplication.getApplicationContext();
 
+    // Cached versions (or overriadable for testing)
+    protected EnvironmentConfigurationService environmentConfigurationService;
+    protected ServiceInstanceService serviceInstanceService;
+    protected SimpleTemplateService simpleTemplateService;
+
     protected EnvironmentConfigurationService getEnvironmentConfigurationService() {
-        applicationContext.getBean(EnvironmentConfigurationService);
+        if (environmentConfigurationService == null)
+            environmentConfigurationService = applicationContext.getBean(EnvironmentConfigurationService);
+
+        return environmentConfigurationService
     }
 
     protected ServiceInstanceService getServiceInstanceService() {
-        applicationContext.getBean(ServiceInstanceService);
+        if (serviceInstanceService == null)
+            serviceInstanceService = applicationContext.getBean(ServiceInstanceService);
+
+        return serviceInstanceService;
+    }
+
+    protected SimpleTemplateService getSimpleTemplateService() {
+        if (simpleTemplateService == null)
+            simpleTemplateService = applicationContext.getBean(SimpleTemplateService);
+
+        return simpleTemplateService;
     }
 
     protected String getTierName(DelegateExecution execution) {

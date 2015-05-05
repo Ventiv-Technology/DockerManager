@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.process
 
+import groovy.util.logging.Slf4j
 import org.activiti.engine.delegate.DelegateExecution
 import org.activiti.engine.impl.el.Expression
 import org.springframework.http.client.ClientHttpRequestInterceptor
@@ -30,6 +31,7 @@ import javax.validation.constraints.NotNull
  * be flattened (via groovy's Collection.flatten) and stored into the 'outputVariable' variable for use in subsequent
  * steps of the workflow.
  */
+@Slf4j
 class RestCallTask extends AbstractDockerManagerTask {
 
     /**
@@ -74,6 +76,22 @@ class RestCallTask extends AbstractDockerManagerTask {
     @Nullable
     private Expression password;
 
+    /**
+     * If the value's from the response need to be extracted (like a JSONPath) it can go here.  This will use SimpleTemplateService
+     * to do the extraction
+     */
+    @Nullable
+    private Expression variableExtractionTemplate;
+
+    /**
+     * If the results need to be aggregated before putting the results into outputVariable, you may specify one here.  Valid values:
+     * COUNT, MIN, MAX, SUM, AVG
+     */
+    private Expression aggregationType;
+
+    // For Testing, so we can mock REST calls
+    protected RestTemplate restTemplate;
+
     @Override
     void execute(DelegateExecution execution) throws Exception {
         if (applicationId == null || serviceInstanceType == null || url == null)
@@ -89,10 +107,47 @@ class RestCallTask extends AbstractDockerManagerTask {
         }
 
         Collection<Object> instanceResponses = serviceInstances.collect {
-            getRestTemplate(execution).getForObject(it.getUrl() + url.getValue(execution).toString(), Object);
+            Object response = getRestTemplate(execution).getForObject(it.getUrl() + url.getValue(execution).toString(), Object);
+
+            if (response && variableExtractionTemplate) {
+                String template = "#{data." + variableExtractionTemplate.getValue(execution) + "}"
+
+                if (response instanceof Collection)
+                    return response.collect { getSimpleTemplateService().fillTemplate(template, [data: it]) }
+                else
+                    return getSimpleTemplateService().fillTemplate(template, [data: response]);
+            }
+
+            return response;
         }
 
-        execution.setVariable(outputVariable.getValue(execution).toString(), instanceResponses.flatten());
+        if (outputVariable) {
+            Collection<Object> flattenedResponse = instanceResponses.flatten();
+
+            def variableValue;
+            if (aggregationType)
+                variableValue = aggregateResponse(flattenedResponse, aggregationType.getValue(execution).toString());
+            else
+                variableValue = flattenedResponse;
+
+            execution.setVariable(outputVariable.getValue(execution).toString(), variableValue);
+            log.debug("Extracted Variable (${outputVariable.getValue(execution)}) from RestCallTask to be (${variableValue?.getClass()}): $variableValue");
+        }
+    }
+
+    private Object aggregateResponse(Collection<Object> responses, String aggregationType) {
+        if (aggregationType == 'COUNT')
+            return responses.size();
+        else if (aggregationType == 'MIN')
+            return responses.min();
+        else if (aggregationType == 'MAX')
+            return responses.max();
+        else if (aggregationType == 'SUM')
+            return responses.sum();
+        else if (aggregationType == 'AVG')
+            return responses.sum() / responses.size();
+
+        return responses;
     }
 
     RestTemplate getRestTemplate(DelegateExecution execution) {
@@ -102,7 +157,7 @@ class RestCallTask extends AbstractDockerManagerTask {
                 password: password?.getValue(execution)?.toString()
         ]
 
-        RestTemplate restTemplate = new RestTemplate();
+        RestTemplate restTemplate = this.restTemplate ?: new RestTemplate();
         restTemplate.setInterceptors(Arrays.asList((ClientHttpRequestInterceptor) new AuthenticationRequestInterceptor(settings, getInitiatorAuthentication(execution))));
 
         return restTemplate;
