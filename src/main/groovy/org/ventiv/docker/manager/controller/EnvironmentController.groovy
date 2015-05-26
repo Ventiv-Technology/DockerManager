@@ -22,6 +22,7 @@ import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.HostConfig
+import com.github.dockerjava.api.model.Link
 import com.github.dockerjava.api.model.PortBinding
 import com.github.dockerjava.api.model.Ports
 import com.github.dockerjava.api.model.Volume
@@ -52,6 +53,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
+import org.ventiv.docker.manager.model.configuration.LinkConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
@@ -186,7 +188,7 @@ class EnvironmentController {
 
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'DEPLOY')")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/{version}", method = RequestMethod.POST)
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/{version:.*}", method = RequestMethod.POST)
     public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("version") String version) {
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
         ApplicationConfiguration appConfiguration = envConfiguration.getApplications().find { it.getId() == applicationId };
@@ -414,6 +416,15 @@ class EnvironmentController {
         // Plugin Hook!
         pluginService.getCreateContainerPlugins()?.each { it.doWithServiceInstance(instance) }
 
+        // Resolve the links - TODO: Ambassador Pattern (https://docs.docker.com/articles/ambassador_pattern_linking/)
+        Link[] links = serviceConfiguration.getLinks().collect() { LinkConfiguration linkConfiguration ->
+            // First, determine the container - must be part of the same application
+            ServiceInstance foreignServiceInstance = applicationDetails.getServiceInstances().find { it.getName() == linkConfiguration.getContainer() }
+
+            return new Link(foreignServiceInstance.toString(), linkConfiguration.getAlias())
+        } as Link[]
+        hostConfig.setLinks(links)
+
         // Create the actual container
         log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
                 "with image: '${instance.getContainerImage().toString()}', " +
@@ -424,6 +435,7 @@ class EnvironmentController {
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
                 .withVolumes(serviceConfiguration.getContainerVolumes().collect { new Volume(it.getPath()) } as Volume[])
                 .withExposedPorts(serviceConfiguration.getContainerPorts().collect { new ExposedPort(it.getPort()) } as ExposedPort[])
+                .withLinks(links)
                 .withHostConfig(hostConfig)
                 .exec();
         //eventPublisher.publishEvent(new CreateContainerEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id), env));

@@ -101,6 +101,14 @@ class ServiceConfiguration {
     @Nullable
     List<AdditionalMetricsConfiguration> additionalMetrics;
 
+    /**
+     * Links between containers.  Currently, it's very simple and will error if a container is linked to a container on
+     * a different docker host.  In the future, Docker Manager might automatically implement the ambassador pattern:
+     * https://docs.docker.com/articles/ambassador_pattern_linking/
+     */
+    @Nullable
+    List<LinkConfiguration> links;
+
     public List<String> getPossibleVersions(String query = null) {
         List<String> answer = [];
 

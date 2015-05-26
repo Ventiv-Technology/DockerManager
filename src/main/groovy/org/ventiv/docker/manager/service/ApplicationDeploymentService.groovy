@@ -27,6 +27,7 @@ import org.springframework.context.ApplicationListener
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
+import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.controller.EnvironmentController
 import org.ventiv.docker.manager.controller.HostsController
 import org.ventiv.docker.manager.event.DeploymentFinishedEvent
@@ -36,6 +37,7 @@ import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 import org.ventiv.docker.manager.utils.TimingUtils
 
@@ -54,6 +56,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource DockerRegistryApiService registryApiService;
     @Resource ServiceInstanceService serviceInstanceService;
+    @Resource DockerServiceConfiguration dockerServiceConfiguration;
 
     private Map<String, Promise<ApplicationDetails, ApplicationException, String>> runningDeployments = [:]
 
@@ -81,7 +84,20 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                 try {
                     Collection<ServiceInstance> createdServiceInstances = environmentController.getServiceInstances(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
 
-                    // First, let's find any missing services
+                    // First, lets sort the missing services, so we can adhere to bottom-up building (along with linking dependencies)
+                    applicationDetails.getMissingServiceInstances().sort(true) { MissingService a, MissingService b ->
+                        ServiceConfiguration aConfiguration = dockerServiceConfiguration.getServiceConfiguration(a.getServiceName());
+                        ServiceConfiguration bConfiguration = dockerServiceConfiguration.getServiceConfiguration(b.getServiceName());
+
+                        if (aConfiguration.getLinks()?.find { it.getContainer() == b.getServiceName() })
+                            return 1;
+                        else if (bConfiguration.getLinks()?.find { it.getContainer() == a.getServiceName() })
+                            return -1;
+                        else
+                            return applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { a.getServiceName() } <=> applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { b.getServiceName() };
+                    }
+
+                    // Now, let's find any missing services
                     applicationDetails.getMissingServiceInstances().each { MissingService missingService ->
                         // Find an 'Available' Service Instance
                         ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), createdServiceInstances, applicationDetails);
