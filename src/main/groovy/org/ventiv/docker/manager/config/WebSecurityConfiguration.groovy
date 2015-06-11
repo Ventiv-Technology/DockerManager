@@ -57,6 +57,7 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                     .antMatchers("/webjars/**/*").permitAll()
                     .antMatchers("/app/css/*").permitAll()
                     .antMatchers("/health").permitAll()
+                    .antMatchers("/api/feed.rss").permitAll()
                     .expressionHandler(expressionHandler)
                     .anyRequest()
                         .fullyAuthenticated()

@@ -28,6 +28,10 @@ import org.ventiv.docker.manager.model.UserAudit;
  */
 public interface UserAuditRepository extends JpaRepository<UserAudit, Long> {
 
+    @Override
+    //@PostFilter("hasPermission(filterObject.tierName + '.' + filterObject.environmentName + '.' + filterObject.applicationId, 'READ_USER_AUDIT')")
+    Page<UserAudit> findAll(Pageable pageable);
+
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'READ_USER_AUDIT')")
     @Query("from UserAudit ua where ua.applicationThumbnail.tierName = :tierName and ua.applicationThumbnail.environmentName = :environmentName and ua.applicationThumbnail.applicationId = :applicationId")
     public Page<UserAudit> findUserAuditsForApplication(@Param("tierName") String tierName,
