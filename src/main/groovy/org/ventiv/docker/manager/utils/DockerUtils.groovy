@@ -72,4 +72,22 @@ class DockerUtils {
         return dateTime.minus(Period."$periodType"(scalar)).toDate();
     }
 
+    public static Long convertToBytes(String str) {
+        String lowerCase = str.toLowerCase().trim()
+        long value = Long.parseLong(lowerCase.substring(0, lowerCase.length() - 1));
+
+        if (lowerCase.endsWith("b"))
+            return value;
+        else if (lowerCase.endsWith('k'))
+            return value * 1024;
+        else if (lowerCase.endsWith('m'))
+            return value * 1024 * 1024;
+        else if (lowerCase.endsWith('g'))
+            return value * 1024 * 1024 * 1024;
+        else if (lowerCase.endsWith('t'))
+            return value * 1024 * 1024 * 1024 * 1024;
+        else
+            return null;
+    }
+
 }

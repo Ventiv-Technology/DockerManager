@@ -109,6 +109,19 @@ class ServiceConfiguration {
     @Nullable
     List<LinkConfiguration> links;
 
+    /**
+     * Sets the maximum memory that the container may have.  Format: <number><optional unit>, where unit = b, k, m or g
+     */
+    @Nullable
+    String memoryLimit;
+
+    /**
+     * Sets the total memory limit that the container may have (memory + swap).  Format: <number><optional unit>, where unit = b, k, m or g.
+     * If this is specified, you MUST specify memoryLimit, and this value MUST be larger than memoryLimit.
+     */
+    @Nullable
+    String memorySwapLimit;
+
     public List<String> getPossibleVersions(String query = null) {
         List<String> answer = [];
 

@@ -64,6 +64,7 @@ import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.PluginService
 import org.ventiv.docker.manager.service.ServiceInstanceService
+import org.ventiv.docker.manager.utils.DockerUtils
 import org.ventiv.docker.manager.utils.UserAuditFilter
 
 import javax.annotation.Resource
@@ -413,6 +414,22 @@ class EnvironmentController {
             log.warn("Pull of image $toDeploy was unsuccessful, is this pointing to a real registry?");
         }
 
+        // Determine the memory limits
+        long memoryLimit = 0;
+        long memorySwapLimit = 0;
+        if (serviceInstanceConfiguration.getMemoryLimit())
+            memoryLimit = DockerUtils.convertToBytes(serviceInstanceConfiguration.getMemoryLimit())
+        else if (serviceConfiguration.getMemoryLimit())
+            memoryLimit = DockerUtils.convertToBytes(serviceConfiguration.getMemoryLimit())
+
+        if (serviceInstanceConfiguration.getMemorySwapLimit())
+            memorySwapLimit = DockerUtils.convertToBytes(serviceInstanceConfiguration.getMemorySwapLimit())
+        else if (serviceConfiguration.getMemorySwapLimit())
+            memorySwapLimit = DockerUtils.convertToBytes(serviceConfiguration.getMemorySwapLimit())
+
+        if (memorySwapLimit < memoryLimit)
+            memorySwapLimit = memoryLimit
+
         // Plugin Hook!
         pluginService.getCreateContainerPlugins()?.each { it.doWithServiceInstance(instance) }
 
@@ -429,7 +446,8 @@ class EnvironmentController {
         log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
                 "with image: '${instance.getContainerImage().toString()}', " +
                 "name: '${instance.toString()}', " +
-                "env: ${instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"}}")
+                "env: ${instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"}}, " +
+                "memoryLimit: $memoryLimit, memorySwapLimit: $memorySwapLimit")
         CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
@@ -437,6 +455,8 @@ class EnvironmentController {
                 .withExposedPorts(serviceConfiguration.getContainerPorts().collect { new ExposedPort(it.getPort()) } as ExposedPort[])
                 .withLinks(links)
                 .withHostConfig(hostConfig)
+                .withMemoryLimit(memoryLimit)
+                .withMemorySwap(memorySwapLimit)
                 .exec();
         //eventPublisher.publishEvent(new CreateContainerEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id), env));
 
