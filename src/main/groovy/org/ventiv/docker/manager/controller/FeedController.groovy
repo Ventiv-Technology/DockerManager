@@ -70,10 +70,17 @@ class FeedController {
         protected List<Item> buildFeedItems(Map<String, Object> model, HttpServletRequest request, HttpServletResponse response) throws Exception {
             Collection<UserAudit> userAudits = (Collection<UserAudit>) model.userAudits;
 
-            return userAudits.collect {
+            return userAudits.findAll {
+                it && it.getApplicationThumbnail()
+            }.collect {
                 Item item = new Item();
                 item.setAuthor(it.getPrincipal())
-                item.setTitle("${it.getPermission()} on ${it.getApplicationThumbnail().getTierName()}.${it.getApplicationThumbnail().getEnvironmentName()}.${it.getApplicationThumbnail().getApplicationId()}.${it.getServiceInstanceThumbnail().getName()}.${it.getServiceInstanceThumbnail().getInstanceNumber()}")
+
+                if (it.getServiceInstanceThumbnail())
+                    item.setTitle("${it?.getPermission()} on ${it.getApplicationThumbnail().getTierName()}.${it.getApplicationThumbnail().getEnvironmentName()}.${it.getApplicationThumbnail().getApplicationId()}.${it.getServiceInstanceThumbnail().getName()}.${it.getServiceInstanceThumbnail().getInstanceNumber()}")
+                else
+                    item.setTitle("${it?.getPermission()} on ${it.getApplicationThumbnail().getTierName()}.${it.getApplicationThumbnail().getEnvironmentName()}.${it.getApplicationThumbnail().getApplicationId()}")
+
                 item.setPubDate(it.getPermissionEvaluated())
                 item.setLink(request.getRequestURL().replaceAll("/api/feed.rss", "").toString() + "/#/env/" + it.getApplicationThumbnail().getTierName() + "/" + it.getApplicationThumbnail().getEnvironmentName() + "/" + it.getApplicationThumbnail().getApplicationId())
 
