@@ -28,8 +28,11 @@ import com.github.dockerjava.api.model.Ports
 import com.github.dockerjava.api.model.Volume
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.apache.commons.io.IOUtils
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.core.io.FileSystemResource
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
@@ -68,6 +71,7 @@ import org.ventiv.docker.manager.utils.DockerUtils
 import org.ventiv.docker.manager.utils.UserAuditFilter
 
 import javax.annotation.Resource
+import javax.servlet.http.HttpServletResponse
 
 /**
  * Created by jcrygier on 2/27/15.
@@ -302,6 +306,21 @@ class EnvironmentController {
         }
 
         return application;
+    }
+
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'READ')")
+    @CompileStatic
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/extraInformation", method = RequestMethod.GET)
+    public void getApplicationExtraInformation(@PathVariable String tierName, @PathVariable String environmentName, @PathVariable String applicationId, HttpServletResponse response) {
+        ApplicationDetails application = getEnvironmentDetails(tierName, environmentName).find { it.getId() == applicationId }
+        String extraInformationPartial = application.getApplicationConfiguration().getExtraInformationPartial();
+
+        if (extraInformationPartial) {
+            response.setContentType(MediaType.TEXT_HTML_VALUE);
+
+            org.springframework.core.io.Resource resource = new FileSystemResource(extraInformationPartial)
+            IOUtils.copy(resource.getInputStream(), response.getOutputStream());
+        }
     }
 
     @CompileStatic

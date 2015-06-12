@@ -41,6 +41,8 @@
                     <div class="col-md-10">{{application.version}}</div>
                 </div>
 
+                <div data-ng-include="'/api/environment/' + environment.tierName + '/' + environment.id + '/app/' + application.id + '/extraInformation'"></div>
+
                 <hr>
 
                 <div class="row">

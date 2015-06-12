@@ -70,6 +70,12 @@ class ApplicationConfiguration {
     @NotNull
     String environmentId;
 
+    /**
+     * Location of an optional Partial that will display extra UI elements just below the deployed build
+     */
+    @Nullable
+    String extraInformationPartial;
+
     @JsonIgnore
     public ObjectIdentity getObjectIdentity() {
         return new ObjectIdentityImpl(this.getClass(), "${tierName}.${environmentId}.${id}".toString())
