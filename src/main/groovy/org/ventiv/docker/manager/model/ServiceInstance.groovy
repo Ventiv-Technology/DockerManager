@@ -117,7 +117,8 @@ class ServiceInstance {
     }
 
     public ServiceInstance withDockerContainer(Container dockerContainer) {
-        this.setDockerName(dockerContainer.getNames()[0])
+        String dockerContainerName = dockerContainer.getNames().sort { it.count("/") }.first()      // Get the name w/ the least number of slashes (to coutneract aliases into linked containers)
+        this.setDockerName(dockerContainerName)
         this.status = dockerContainer.getStatus().startsWith("Up") ? Status.Running : Status.Stopped;
         //this.containerStatus = dockerContainer.getStatus();
         this.containerStatusTime = DockerUtils.convertPsStatusToDate(dockerContainer.getStatus());
