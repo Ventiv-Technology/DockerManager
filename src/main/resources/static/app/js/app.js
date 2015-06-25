@@ -325,14 +325,14 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
 
             $scope.getStdOut = function(tail) {
                 if (tail === undefined)
-                    tail = 0;
+                    tail = 100;
 
                 $window.open(rootHostsUrl + "/stdout?tail=" + tail, '_blank');
             };
 
             $scope.getStdErr = function(tail) {
                 if (tail === undefined)
-                    tail = 0;
+                    tail = 100;
 
                 $window.open(rootHostsUrl + "/stderr?tail=" + tail, '_blank');
             };
