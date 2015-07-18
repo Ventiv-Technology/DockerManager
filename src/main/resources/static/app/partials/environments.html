@@ -47,7 +47,7 @@
 
                 <div class="row">
                     <div class="col-md-2 col-md-offset-1">
-                        <select class="version-selection form-control" data-application="application"></select>
+                        <select ng-model="selectedVersion" class="version-selection form-control" data-application="application"></select>
                     </div>
                     <div class="col-md-1"><button class="btn btn-primary btn-block" data-ng-show="!application.deploymentInProgress && !application.buildStatus.building && isPermissionGranted(application, 'DEPLOY')" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-show="isPermissionGranted(application, 'STOP')" data-ng-click="statusChangeApplication(application, 'stop')" translate="STOP">Stop</button></div>
