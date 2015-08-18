@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.controller
 
 import com.github.dockerjava.api.DockerClient
+import com.github.dockerjava.api.command.CreateContainerCmd
 import com.github.dockerjava.api.command.CreateContainerResponse
 import com.github.dockerjava.api.command.StartContainerCmd
 import com.github.dockerjava.api.model.Bind
@@ -461,23 +462,36 @@ class EnvironmentController {
         } as Link[]
         hostConfig.setLinks(links)
 
+        // Port Bindings
+        Ports portBindings = new Ports();
+        instance.getPortDefinitions().each {
+            portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding(it.getHostPort()));
+        }
+
         // Create the actual container
         log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
                 "with image: '${instance.getContainerImage().toString()}', " +
                 "name: '${instance.toString()}', " +
                 "env: ${instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"}}, " +
                 "memoryLimit: $memoryLimit, memorySwapLimit: $memorySwapLimit")
-        CreateContainerResponse resp = docker.createContainerCmd(toDeploy.toString())
+        CreateContainerCmd createContainerCmd = docker.createContainerCmd(toDeploy.toString())
+                .withHostConfig(hostConfig)
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
                 .withVolumes(serviceConfiguration.getContainerVolumes().collect { new Volume(it.getPath()) } as Volume[])
                 .withExposedPorts(serviceConfiguration.getContainerPorts().collect { new ExposedPort(it.getPort()) } as ExposedPort[])
+                .withPortBindings(portBindings)
                 .withLinks(links)
-                .withHostConfig(hostConfig)
                 .withMemoryLimit(memoryLimit)
-                .withMemorySwap(memorySwapLimit)
-                .exec();
-        //eventPublisher.publishEvent(new CreateContainerEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id), env));
+                .withMemorySwap(memorySwapLimit);
+
+        if (serviceInstanceConfiguration.getVolumeMappings())
+            createContainerCmd.withBinds(serviceInstanceConfiguration.getVolumeMappings()?.collect { volumeMapping -> new Bind(volumeMapping.getPath(), new Volume(serviceConfiguration.getContainerVolumes().find { it.getType() == volumeMapping.getType() }.getPath())) } as Bind[])
+
+        if (hostConfig.getExtraHosts())
+            createContainerCmd.withExtraHosts(hostConfig.getExtraHosts());
+
+        CreateContainerResponse resp = createContainerCmd.exec();
 
         // Lets get an updated port mapping, just in case it was lost because the container was stopped
         instance.setPortsFromConfiguration();
@@ -486,16 +500,7 @@ class EnvironmentController {
         log.info("Starting container '${resp.id}' with " +
                 "ports: ${instance.getPortDefinitions().collect { '0.0.0.0:' + it.getHostPort() + '->' + it.getContainerPort() } }, " +
                 "volumes: ${serviceInstanceConfiguration.getVolumeMappings()?.collect { volumeMapping -> volumeMapping.getPath() + '->' + serviceConfiguration.getContainerVolumes()?.find { it.getType() == volumeMapping.getType() }?.getPath() } }")
-        StartContainerCmd startCmd = docker.startContainerCmd(resp.id)
-                .withPortBindings(instance.getPortDefinitions().collect { new PortBinding(new Ports.Binding("0.0.0.0", it.getHostPort()), new ExposedPort(it.getContainerPort())) } as PortBinding[])
-
-        if (serviceInstanceConfiguration.getVolumeMappings())
-            startCmd.withBinds(serviceInstanceConfiguration.getVolumeMappings()?.collect { volumeMapping -> new Bind(volumeMapping.getPath(), new Volume(serviceConfiguration.getContainerVolumes().find { it.getType() == volumeMapping.getType() }.getPath())) } as Bind[])
-
-        if (hostConfig.getExtraHosts())
-            startCmd.withExtraHosts(hostConfig.getExtraHosts());
-
-        startCmd.exec();
+        StartContainerCmd startCmd = docker.startContainerCmd(resp.id).exec();
         //eventPublisher.publishEvent(new ContainerStartedEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id)));
 
         // Create a ServiceInstance out of this Container

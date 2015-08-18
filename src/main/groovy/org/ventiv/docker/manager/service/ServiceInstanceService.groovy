@@ -233,7 +233,7 @@ class ServiceInstanceService implements Runnable {
                 ApplicationEvent eventToPublish = null;
                 if (event.getStatus() == "create")
                     eventToPublish = new CreateContainerEvent(serviceInstance, serviceInstance.getResolvedEnvironmentVariables())
-                else if (event.getStatus() == "destroy")
+                else if (event.getStatus() == "destroy" && previousServiceInstance)
                     eventToPublish = new ContainerRemovedEvent(previousServiceInstance);
                 else if (event.getStatus() == "die")
                     eventToPublish = new ContainerStoppedEvent(serviceInstance);

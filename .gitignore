@@ -4,3 +4,7 @@ build/
 *.iml
 .DS_Store
 config/
+/bin/
+.classpath
+.project
+.settings/

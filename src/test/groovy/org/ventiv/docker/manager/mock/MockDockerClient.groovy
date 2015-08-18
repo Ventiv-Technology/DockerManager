@@ -53,6 +53,8 @@ import com.github.dockerjava.api.command.RestartContainerCmd
 import com.github.dockerjava.api.command.SaveImageCmd
 import com.github.dockerjava.api.command.SearchImagesCmd
 import com.github.dockerjava.api.command.StartContainerCmd
+import com.github.dockerjava.api.command.StatsCallback;
+import com.github.dockerjava.api.command.StatsCmd;
 import com.github.dockerjava.api.command.StopContainerCmd
 import com.github.dockerjava.api.command.TagImageCmd
 import com.github.dockerjava.api.command.TopContainerCmd
@@ -98,6 +100,7 @@ import com.github.dockerjava.core.command.RestartContainerCmdImpl
 import com.github.dockerjava.core.command.SaveImageCmdImpl
 import com.github.dockerjava.core.command.SearchImagesCmdImpl
 import com.github.dockerjava.core.command.StartContainerCmdImpl
+import com.github.dockerjava.core.command.StatsCmdImpl
 import com.github.dockerjava.core.command.StopContainerCmdImpl
 import com.github.dockerjava.core.command.TagImageCmdImpl
 import com.github.dockerjava.core.command.TopContainerCmdImpl
@@ -553,4 +556,15 @@ class MockDockerClient extends Specification implements DockerClient {
     void close() throws IOException {
 
     }
+
+	@Override
+	public StatsCmd statsCmd(StatsCallback statsCallback) {
+		StatsCmd.Exec mockExec = new StatsCmd.Exec() {
+            @Override
+            ExecutorService exec(StatsCmd command) {
+                return execResponses[StatsCmd];
+            }
+        }
+        return new StatsCmdImpl(mockExec, statsCallback)
+	}
 }
