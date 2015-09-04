@@ -66,7 +66,7 @@ class DockerUtils {
             periodType = approxMatcher[0][1].toLowerCase() + 's';
         }
 
-        if (periodType == null) return null
+        if (periodType == null) return new Date(0L)
            // throw new IllegalArgumentException("DockerUtils doesn't know how to translate ps status of '${psStatus}' to a date.  Please add to DockerUtilsTest.\"can convert 'docker ps' status to status date\".")
 
         return dateTime.minus(Period."$periodType"(scalar)).toDate();
