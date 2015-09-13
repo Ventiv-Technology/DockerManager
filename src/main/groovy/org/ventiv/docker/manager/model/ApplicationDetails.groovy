@@ -30,6 +30,7 @@ class ApplicationDetails {
     String tierName;
     String environmentName;
     String version;
+    List<String> branches;
     Collection<String> availableVersions;                           // TODO: Remove From here, it's innefficient
     Collection<ServiceInstance> serviceInstances;
     List<MissingService> missingServiceInstances;

@@ -133,10 +133,13 @@ class EnvironmentController {
             }
             Collection<String> versionsDeployed = nonPinnedVersions*.getContainerImage()*.getTag().unique();
 
+            List<String> branches = applicationConfiguration.getBranches()
+
             return new ApplicationDetails([
                     tierName: tierName,
                     environmentName: environmentName,
                     url: url,
+                    branches: branches,
                     serviceInstances: applicationInstances,
                     missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) },
                     buildStatus: buildingApplications.get("$tierName.$environmentName.${applicationConfiguration.getId()}")?.getBuildStatus(),
@@ -147,13 +150,18 @@ class EnvironmentController {
     }
 
     @RequestMapping("/{tierName}/{environmentName}/app/{applicationId}/versions")
-    public Collection<Map<String, String>> getApplicationVersions(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @RequestParam(value = 'q', required = false) String query) {
+    public Collection<Map<String, String>> getApplicationVersions(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId,  @RequestParam(value = 'q', required = false) String query) {
+        return getApplicationVersions(tierName, environmentName, applicationId, null, query)
+    }
+
+    @RequestMapping("/{tierName}/{environmentName}/app/{applicationId}/versions/{branch}")
+    public Collection<Map<String, String>> getApplicationVersions(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("branch") String branch, @RequestParam(value = 'q', required = false) String query) {
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
         ApplicationConfiguration appConfiguration = envConfiguration.getApplications().find { it.getId() == applicationId };
         Collection<ServiceConfiguration> allServiceConfigurations = appConfiguration.getServiceInstances()*.getType().unique().collect { dockerServiceConfiguration.getServiceConfiguration(it); }
         Collection<ServiceConfiguration> nonPinnedServices = allServiceConfigurations.findAll { it.getPinnedVersion() == null };
 
-        Collection<List<String>> versions = nonPinnedServices.collect { it.getPossibleVersions(query) }.unique()
+        Collection<List<String>> versions = nonPinnedServices.collect { it.getPossibleVersions(branch, query) }.unique()
 
         // Create an option for the new build - if applicable
         Map<String, String> newBuildOption = nonPinnedServices.any { it.isNewBuildPossible() } ? [id: "BuildNewVersion", text: "New Build"] : [:]
@@ -186,16 +194,23 @@ class EnvironmentController {
         }
 
         // First, Build the application
-        buildApplication(applicationDetails, deployRequest.getServiceVersions()).onSuccessfulBuild { ApplicationDetails builtApplication ->
+        buildApplication(applicationDetails, deployRequest.branch, deployRequest.getServiceVersions()).onSuccessfulBuild { ApplicationDetails builtApplication ->
             // The following does 2 things: 1.) Sends a message to the UI that a deployment is now going, and 2.) Gets Picked up by ApplicationDeploymentService to do the actual deployment
-            eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, builtApplication.getBuildServiceVersionsTemplate()));
+            eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, deployRequest.branch, builtApplication.getBuildServiceVersionsTemplate()));
         }
     }
 
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'DEPLOY')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/{version:.*}", method = RequestMethod.POST)
-    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("version") String version) {
+    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId,  @PathVariable("version") String version) {
+        deployApplication(tierName, environmentName, applicationId, null, version)
+    }
+
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'DEPLOY')")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/{branch}/{version:.*}", method = RequestMethod.POST)
+    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("branch") String branch,  @PathVariable("version") String version) {
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
         ApplicationConfiguration appConfiguration = envConfiguration.getApplications().find { it.getId() == applicationId };
         Collection<ServiceConfiguration> allServiceConfigurations = appConfiguration.getServiceInstances()*.getType().unique().collect { dockerServiceConfiguration.getServiceConfiguration(it); }
@@ -212,7 +227,7 @@ class EnvironmentController {
         }
 
         // Finally, call the deploy
-        deployApplication(tierName, environmentName, new DeployApplicationRequest(name: applicationId, serviceVersions: serviceVersions));
+        deployApplication(tierName, environmentName, new DeployApplicationRequest(name: applicationId, branch: branch, serviceVersions: serviceVersions));
     }
 
     /**
@@ -352,7 +367,7 @@ class EnvironmentController {
         }
     }
 
-    public BuildApplicationInfo buildApplication(ApplicationDetails applicationDetails, Map<String, String> versionToBuild) {
+    public BuildApplicationInfo buildApplication(ApplicationDetails applicationDetails, String branch, Map<String, String> versionToBuild) {
         String applicationKey = "${applicationDetails.tierName}.${applicationDetails.environmentName}.${applicationDetails.id}";
         if (!buildingApplications.containsKey(applicationKey) || !buildingApplications[applicationKey].isBuilding()) {
             BuildApplicationInfo buildApplicationInfo = new BuildApplicationInfo(applicationDetails);
@@ -364,7 +379,7 @@ class EnvironmentController {
                 // Let's make sure that this service can be built - TODO: Ensure that this service isn't being built from another application
                 if (serviceConfiguration.getBuild()) {
                     log.debug("Scheduling build for service: ${serviceConfiguration.getName()}");
-                    serviceBuildInfo.setPromise(serviceConfiguration.getBuild().execute(applicationDetails, serviceConfiguration, versionToBuild[serviceConfiguration.getName()]));
+                    serviceBuildInfo.setPromise(serviceConfiguration.getBuild().execute(applicationDetails, serviceConfiguration, branch, versionToBuild[serviceConfiguration.getName()]));
                 }
             }
         }
@@ -376,7 +391,7 @@ class EnvironmentController {
         return environmentConfigurationService.getAllEnvironments().groupBy { it.getTierName() }
     }
 
-    public String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String desiredVersion) {
+    public String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String branch, String desiredVersion) {
         log.info("Creating Container for Application ($applicationDetails), Service ($instance), version ($desiredVersion)")
         EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
         ServerConfiguration serverConfiguration = environmentConfiguration.getServers().find { it.getHostname() == instance.getServerName() }
@@ -387,7 +402,8 @@ class EnvironmentController {
         // Get the image name, so we can build out a DockerTag with the proper version
         String imageName = serviceConfiguration.image
         DockerTag toDeploy = new DockerTag(imageName)
-        toDeploy.setTag(desiredVersion);
+        String tagStr = serviceConfiguration.buildPossible && branch ? branch + "-" + desiredVersion : desiredVersion
+        toDeploy.setTag(tagStr);
         instance.setContainerImage(toDeploy);
 
         // Build a host config, just in case we need to resolve the host name

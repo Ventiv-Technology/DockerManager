@@ -23,6 +23,7 @@ import org.ventiv.docker.manager.model.ApplicationDetails
 class DeploymentStartedEvent extends AbstractApplicationEvent {
 
     ApplicationDetails applicationDetails;
+    String branch;
     Map<String, String> serviceVersions;
     DeploymentStatus status = DeploymentStatus.None;
 
@@ -30,10 +31,11 @@ class DeploymentStartedEvent extends AbstractApplicationEvent {
      * Create a new ApplicationEvent.
      * @param source the component that published the event (never {@code null})
      */
-    DeploymentStartedEvent(ApplicationDetails applicationDetails, Map<String, String> serviceVersions) {
+    DeploymentStartedEvent(ApplicationDetails applicationDetails, String branch, Map<String, String> serviceVersions) {
         super(applicationDetails.getTierName(), applicationDetails.getEnvironmentName(), applicationDetails.getId())
 
         this.applicationDetails = applicationDetails;
+        this.branch = branch;
         this.serviceVersions = serviceVersions;
     }
 

@@ -30,12 +30,13 @@ class VersionSelectionConfiguration {
     String jsonPath;
     Collection<VersionSelectionFilterConfiguration> filters;
 
-    public List<String> getPossibleVersions() {
+    public List<String> getPossibleVersions(String branch = null) {
         List<String> versions = [];
 
         if (getUri() && getJsonPath()) {
-            log.debug("Reading Versions from ${getUri()}");
-            versions = (List<String>) JsonPath.read(new URL(getUri()), getJsonPath())
+            String uri = branch ? "${getUri()}${branch}" : uri
+            log.debug("Reading Versions from ${uri}");
+            versions = (List<String>) JsonPath.read(new URL(uri), getJsonPath())
         }
 
         if (getFilters()) {

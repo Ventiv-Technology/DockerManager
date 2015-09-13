@@ -25,6 +25,12 @@ class DeployApplicationRequest {
      */
     String name;
 
+
+    /**
+     * Branch associated with versions of un-pinned services
+     */
+    String branch;
+
     /**
      * A map of ServiceName -> Versions that are being requested.
      * For example: [
@@ -35,6 +41,6 @@ class DeployApplicationRequest {
      * Will request that all 'rabbit' service instances in this application be on v3.4.3-management and all logstash
      * service instances be on 1.4.2.
      */
-    Map<String, String> serviceVersions;
+    Map<String, Map<String, String>> serviceVersions;
 
 }

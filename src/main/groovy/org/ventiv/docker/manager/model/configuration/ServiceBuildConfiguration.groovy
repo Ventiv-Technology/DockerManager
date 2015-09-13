@@ -39,16 +39,18 @@ class ServiceBuildConfiguration {
     List<ServiceBuildStageConfiguration> stages;
     VersionSelectionConfiguration versionSelection;
 
-    public Promise<BuildContext, Exception, String> execute(ApplicationDetails applicationDetails, ServiceConfiguration serviceConfiguration, String requestedBuildVersion) {
+    public Promise<BuildContext, Exception, String> execute(ApplicationDetails applicationDetails, ServiceConfiguration serviceConfiguration, String branch, String requestedBuildVersion) {
         Authentication buildRequestor = SecurityContextHolder.getContext().getAuthentication();
         DeferredObject<BuildContext, Exception, String> deferred = new DeferredObject<>();
 
         // The tag of the desired docker image after the build is done
         DockerTag tag = new DockerTag(serviceConfiguration.getImage());
-        tag.setTag(requestedBuildVersion);
+        String tagStr = serviceConfiguration.buildPossible && branch ? branch + "-" + requestedBuildVersion : requestedBuildVersion
+        tag.setTag(tagStr);
 
         BuildContext buildContext = new BuildContext([
                 userAuthentication: SecurityContextHolder.getContext().getAuthentication(),
+                requestedBranch: branch,
                 requestedBuildVersion: requestedBuildVersion,
                 outputDockerImage: tag,
                 applicationDetails: applicationDetails
@@ -58,7 +60,7 @@ class ServiceBuildConfiguration {
         String registryImageId = null;
         if (requestedBuildVersion != BUILD_NEW_VERSION) {
             try {
-                registryImageId = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[requestedBuildVersion];
+                registryImageId = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[tagStr];
             } catch (Exception ignored) {}     // This can happen if the registry has never seen this image type before
         }
 
@@ -95,7 +97,7 @@ class ServiceBuildConfiguration {
             }
         } else {
             // We found an image id in the registry, let's use that one.
-            log.debug("Build not needed for ${serviceConfiguration.getName()}.  Image found in registry: ${registryImageId}");
+            log.info("Build not needed for ${serviceConfiguration.getName()}.  Image found in registry: ${registryImageId}");
             buildContext.setBuildingVersion(requestedBuildVersion);
             deferred.resolve(buildContext);
         }

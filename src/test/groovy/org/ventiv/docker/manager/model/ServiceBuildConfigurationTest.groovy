@@ -71,7 +71,7 @@ class ServiceBuildConfigurationTest extends Specification {
 
         when:
         ApplicationDetails details = new ApplicationDetails(tierName: "localhost", environmentName: "boot2docker")
-        Promise<Map<String, Object>, Exception, String> buildContext = config.getBuild().execute(details, config, ServiceBuildConfiguration.BUILD_NEW_VERSION)
+        Promise<Map<String, Object>, Exception, String> buildContext = config.getBuild().execute(details, config, "develop", ServiceBuildConfiguration.BUILD_NEW_VERSION)
 
         then:
         buildContext

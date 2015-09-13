@@ -55,6 +55,9 @@ class ApplicationConfiguration {
     @Nullable
     Class<? extends ServiceSelectionAlgorithm> serviceSelectionAlgorithm;
 
+    @Nullable
+    List<String> branches;
+
     @NotNull
     List<ServiceInstanceConfiguration> serviceInstances;
 

@@ -66,7 +66,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
         if (isRunning(event.getTierName(), event.getEnvironmentName(), event.getApplicationId())) {
             event.setStatus(DeploymentStartedEvent.DeploymentStatus.AlreadyRunning);
         } else {
-            runningDeployments[key] = startDeployment(event.getApplicationDetails(), event.getServiceVersions());
+            runningDeployments[key] = startDeployment(event.getApplicationDetails(), event.getBranch(), event.getServiceVersions());
             event.setStatus(DeploymentStartedEvent.DeploymentStatus.Started);
 
             runningDeployments[key].done(this.&onDeploymentFinished as DoneCallback<ApplicationDetails>)
@@ -74,7 +74,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
         }
     }
 
-    Promise<ApplicationDetails, ApplicationException, String> startDeployment(ApplicationDetails applicationDetails, Map<String, String> serviceVersions) {
+    Promise<ApplicationDetails, ApplicationException, String> startDeployment(ApplicationDetails applicationDetails, String branch, Map<String, String> serviceVersions) {
         Authentication deploymentRequestor = SecurityContextHolder.getContext().getAuthentication();
         Deferred<ApplicationDetails, ApplicationException, String> deferred = new DeferredObject<>();
 
@@ -103,8 +103,9 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                         ServiceInstance toUse = ServiceSelectionAlgorithm.Util.getAvailableServiceInstance(missingService.getServiceName(), createdServiceInstances, applicationDetails);
                         toUse.setApplicationId(applicationDetails.getId());
 
+
                         // Create (and start) the container
-                        environmentController.createDockerContainer(applicationDetails, toUse, serviceVersions.get(missingService.getServiceName()));
+                        environmentController.createDockerContainer(applicationDetails, toUse, branch, serviceVersions.get(missingService.getServiceName()));
 
                         // Mark this service instance as 'Running' so it won't get used again
                         toUse.setStatus(ServiceInstance.Status.Running);
@@ -130,7 +131,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                                     applicationDetails.getServiceInstances().remove(anInstance);
 
                                     // Now, create a new one
-                                    environmentController.createDockerContainer(applicationDetails, anInstance, serviceVersions.get(anInstance.getName()));
+                                    environmentController.createDockerContainer(applicationDetails, anInstance, branch, serviceVersions.get(anInstance.getName()));
                                 } else {
                                     log.info("Not modifying container ${anInstance.getContainerId()} as it's already on the proper image: ${expectedImageId}")
                                 }
@@ -143,6 +144,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
 
                     deferred.resolve(applicationDetails);
                 } catch (Exception e) {
+                    e.printStackTrace()
                     ApplicationException wrapped = new ApplicationException(applicationDetails)
                     wrapped.initCause(e);
 

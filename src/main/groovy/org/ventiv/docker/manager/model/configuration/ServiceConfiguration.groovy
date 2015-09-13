@@ -122,11 +122,11 @@ class ServiceConfiguration {
     @Nullable
     String memorySwapLimit;
 
-    public List<String> getPossibleVersions(String query = null) {
+    public List<String> getPossibleVersions(String branch, String query = null) {
         List<String> answer = [];
 
         if (getBuild()?.getVersionSelection())  // We know how to build an image
-            answer = getBuild().getVersionSelection().getPossibleVersions();
+            answer = getBuild().getVersionSelection().getPossibleVersions(branch);
         else if (getImage()) {             // We already have a docker images
             DockerTag tag = new DockerTag(getImage());
 

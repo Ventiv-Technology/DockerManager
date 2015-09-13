@@ -241,8 +241,12 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             };
 
             $scope.deployApplication = function(applicationDetails) {
-                console.log("Deploying build:", applicationDetails.selectedVersion);
-                $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all(applicationDetails.selectedVersion).post()
+                console.log("Deploying build:", applicationDetails.selectedVersion + " branch: " + applicationDetails.selectedBranch);
+                if(applicationDetails.selectedBranch) {
+                    $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).one(applicationDetails.selectedBranch).all(applicationDetails.selectedVersion).post()
+                } else {
+                    $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all(applicationDetails.selectedVersion).post()
+                }
             };
 
             $scope.statusChangeApplication = function(applicationDetails, status) {
@@ -423,18 +427,20 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     var url = "/api/environment/" + application.tierName + "/" + application.environmentName + "/app/" + application.id + "/versions";
                     var el = $(element);
 
-                    el.select2({
-                        ajax: {
-                            url: url,
-                            dataType: 'json',
-                            delay: 250,
-                            processResults: function (data, page) {
-                                return {
-                                    results: data
-                                };
-                            },
-                            cache: true
-                        }
+                    scope.$watch("application.selectedBranch", function() {
+                        el.select2({
+                            ajax: {
+                                url: application.selectedBranch ? url + "/" + application.selectedBranch : url,
+                                dataType: 'json',
+                                delay: 250,
+                                processResults: function (data, page) {
+                                    return {
+                                        results: data
+                                    };
+                                },
+                                cache: true
+                            }
+                        });
                     });
 
                     el.on('select2:select', function(e) {

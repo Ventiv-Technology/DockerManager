@@ -26,9 +26,9 @@ class BuildContext {
 
     Authentication userAuthentication;
     String buildingVersion;
+    String requestedBranch;
     String requestedBuildVersion;
     DockerTag outputDockerImage;
     ApplicationDetails applicationDetails;
     Map<String, Object> extraParameters = [:]
-
 }
