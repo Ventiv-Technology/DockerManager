@@ -38,6 +38,7 @@ import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 import org.ventiv.docker.manager.utils.TimingUtils
 
@@ -93,8 +94,15 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                             return 1;
                         else if (bConfiguration.getLinks()?.find { it.getContainer() == a.getServiceName() })
                             return -1;
-                        else
-                            return applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { a.getServiceName() } <=> applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { b.getServiceName() };
+                        else {
+                            int index1 = applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { ServiceInstanceConfiguration sic ->
+                                sic.type ==  a.getServiceName()
+                            }
+                            int index2 = applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { ServiceInstanceConfiguration sic ->
+                                sic.type ==  b.getServiceName()
+                            }
+                            return index1 <=> index2
+                        }
                     }
 
                     // Now, let's find any missing services
