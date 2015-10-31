@@ -74,4 +74,14 @@ class ServiceInstanceConfiguration {
     @Nullable
     String memorySwapLimit;
 
+    /**
+     * Option to pin service instance to a particular server
+     */
+    String server
+
+    /**
+     * Option to pin service instance to a particular port
+     */
+    @Nullable
+    List<Map<String, Object>> ports;
 }

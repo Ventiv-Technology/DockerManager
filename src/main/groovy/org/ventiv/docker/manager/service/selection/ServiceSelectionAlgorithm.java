@@ -26,11 +26,11 @@ import java.util.Collection;
  */
 public interface ServiceSelectionAlgorithm {
 
-    public ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, String applicationId);
+    public ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, ApplicationDetails applicationDetails);
 
     public static class Util {
 
-        private static ServiceSelectionAlgorithm defaultImplementation = new DistributedServerServiceSelectionAlgorithm();
+        private static ServiceSelectionAlgorithm defaultImplementation = new OverridableDistributedServerServiceSelectionAlgorithm();
 
         public static ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, ApplicationDetails applicationDetails) {
             ServiceSelectionAlgorithm instance = defaultImplementation;
@@ -44,7 +44,7 @@ public interface ServiceSelectionAlgorithm {
                 }
             }
 
-            ServiceInstance answer = instance.getAvailableServiceInstance(serviceName, allServiceInstances, applicationDetails.getId());
+            ServiceInstance answer = instance.getAvailableServiceInstance(serviceName, allServiceInstances, applicationDetails);
             if (answer == null)
                 throw new NoAvailableServiceException(serviceName, applicationDetails);
 

@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.service.selection
 
+import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.ServiceInstance
 
 /**
@@ -23,7 +24,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
 class DistributedServerServiceSelectionAlgorithm implements ServiceSelectionAlgorithm {
 
     @Override
-    ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, String applicationId) {
+    ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, ApplicationDetails applicationDetails) {
         // First, lets group the service instances by server
         Map<String, List<ServiceInstance>> groupedByServer = allServiceInstances.groupBy { it.getServerName() }
 

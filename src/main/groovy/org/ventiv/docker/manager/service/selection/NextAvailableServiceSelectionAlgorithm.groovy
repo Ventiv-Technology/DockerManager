@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.service.selection
 
 import org.ventiv.docker.manager.exception.NoAvailableServiceException
+import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.ServiceInstance
 
 /**
@@ -24,7 +25,7 @@ import org.ventiv.docker.manager.model.ServiceInstance
 class NextAvailableServiceSelectionAlgorithm implements ServiceSelectionAlgorithm {
 
     @Override
-    ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, String applicationId) throws NoAvailableServiceException {
+    ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, ApplicationDetails applicationDetails) throws NoAvailableServiceException {
         return allServiceInstances.find { it.getName() == serviceName && it.getStatus() == ServiceInstance.Status.Available }
     }
 
