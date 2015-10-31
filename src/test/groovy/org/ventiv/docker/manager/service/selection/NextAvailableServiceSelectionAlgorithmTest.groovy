@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.service.selection
 
+import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.ServiceInstance
 import spock.lang.Specification
 
@@ -22,6 +23,9 @@ import spock.lang.Specification
  * Created by jcrygier on 3/20/15.
  */
 class NextAvailableServiceSelectionAlgorithmTest extends Specification {
+
+    ApplicationDetails applicationDetails = new ApplicationDetails([id: "TestApplication"])
+
 
     def "will select next available instance"() {
         setup:
@@ -35,7 +39,7 @@ class NextAvailableServiceSelectionAlgorithmTest extends Specification {
         ]
 
         when:
-        ServiceInstance selectedInstance = new NextAvailableServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, "TestApplication");
+        ServiceInstance selectedInstance = new NextAvailableServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, applicationDetails);
 
         then:
         selectedInstance.getInstanceNumber() == 2
@@ -53,7 +57,7 @@ class NextAvailableServiceSelectionAlgorithmTest extends Specification {
         ]
 
         when:
-        ServiceInstance selectedInstance = new NextAvailableServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, "TestApplication");
+        ServiceInstance selectedInstance = new NextAvailableServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, applicationDetails);
 
         then:
         selectedInstance == null

@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.service.selection
 
+import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.ServiceInstance
 import spock.lang.Specification
 
@@ -22,6 +23,8 @@ import spock.lang.Specification
  * Created by jcrygier on 3/20/15.
  */
 class DistributedServerServiceSelectionAlgorithmTest extends Specification {
+    
+    ApplicationDetails applicationDetails = new ApplicationDetails([id: "TestApplication"])
 
     def "heavy loading on server1"() {
         setup:
@@ -38,7 +41,7 @@ class DistributedServerServiceSelectionAlgorithmTest extends Specification {
         ]
 
         when:
-        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, "TestApplication");
+        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, applicationDetails);
 
         then:
         selectedInstance.getInstanceNumber() == 4
@@ -59,7 +62,7 @@ class DistributedServerServiceSelectionAlgorithmTest extends Specification {
         ]
 
         when:
-        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, "TestApplication");
+        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, applicationDetails);
 
         then:
         selectedInstance.getInstanceNumber() == 2
@@ -76,7 +79,7 @@ class DistributedServerServiceSelectionAlgorithmTest extends Specification {
         ]
 
         when:
-        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, "TestApplication");
+        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, applicationDetails);
 
         then:
         selectedInstance == null;
@@ -93,7 +96,7 @@ class DistributedServerServiceSelectionAlgorithmTest extends Specification {
         ]
 
         when:
-        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, "TestApplication");
+        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, applicationDetails);
 
         then:
         selectedInstance == null;
@@ -120,7 +123,7 @@ class DistributedServerServiceSelectionAlgorithmTest extends Specification {
         ]
 
         when:
-        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, "TestApplication");
+        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, applicationDetails);
 
         then:
         selectedInstance.getInstanceNumber() == 7
@@ -147,7 +150,7 @@ class DistributedServerServiceSelectionAlgorithmTest extends Specification {
         ]
 
         when:
-        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, "TestApplication");
+        ServiceInstance selectedInstance = new DistributedServerServiceSelectionAlgorithm().getAvailableServiceInstance("AwesomeService", allServiceInstances, applicationDetails);
 
         then:
         selectedInstance.getInstanceNumber() == 5

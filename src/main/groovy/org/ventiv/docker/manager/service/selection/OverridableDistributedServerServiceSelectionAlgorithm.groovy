@@ -1,13 +1,3 @@
-package org.ventiv.docker.manager.service.selection
-
-import org.ventiv.docker.manager.controller.EnvironmentController
-import org.ventiv.docker.manager.model.ApplicationDetails
-import org.ventiv.docker.manager.model.PortDefinition
-import org.ventiv.docker.manager.model.ServiceInstance
-import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
-
-import javax.annotation.Resource
-
 /*
  * Copyright (c) 2014 - 2015 Ventiv Technology
  *
@@ -23,6 +13,16 @@ import javax.annotation.Resource
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+package org.ventiv.docker.manager.service.selection
+
+import org.ventiv.docker.manager.controller.EnvironmentController
+import org.ventiv.docker.manager.model.ApplicationDetails
+import org.ventiv.docker.manager.model.PortDefinition
+import org.ventiv.docker.manager.model.ServiceInstance
+import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
+
+import javax.annotation.Resource
+
 class OverridableDistributedServerServiceSelectionAlgorithm extends DistributedServerServiceSelectionAlgorithm {
 
     @Resource
