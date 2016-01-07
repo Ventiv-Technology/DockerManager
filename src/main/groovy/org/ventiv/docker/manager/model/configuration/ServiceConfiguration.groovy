@@ -53,7 +53,7 @@ class ServiceConfiguration {
      * then each service must be selected manually.
      */
     @Nullable
-    Integer maxPossibleVersions = 20;
+    Integer maxPossibleVersions = 200;
 
     /**
      * Url to get to this Service, to be populated with variables from a ServiceInstance at runtime.
