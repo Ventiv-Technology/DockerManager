@@ -60,6 +60,8 @@ class DockerBuild implements AsyncBuildStage {
     // Should we pull the base image before building?  Default is to Always pull, set this to false to override
     public static final String CONFIG_PULL =                           'pull'
 
+    private static final Map<String, String> lockMap = [:]
+
     @Resource DockerService dockerService;
     @Resource DockerManagerConfiguration props;
     @Resource SimpleTemplateService templateService;
@@ -75,54 +77,61 @@ class DockerBuild implements AsyncBuildStage {
         boolean skipPush = buildSettings[CONFIG_SKIP_PUSH] ? Boolean.parseBoolean(buildSettings[CONFIG_SKIP_PUSH]) : false;
         boolean pull = buildSettings[CONFIG_PULL] ? Boolean.parseBoolean(buildSettings[CONFIG_PULL]) : true;
 
-        // Treat the Dockerfile as a template, and replace variables
-        File dockerFile = new File(buildDirectory, "Dockerfile");
-        templateService.fillTemplate(dockerFile, [buildContext: buildContext, buildSettings: buildSettings], ".orig");
-
         Thread.start {
-            try {
-                deferred.notify("Building docker image from directory: ${buildDirectory.getAbsolutePath()}".toString())
-                log.debug("DockerBuild building from ${buildDirectory.getAbsolutePath()}");
+            synchronized (aquireLock(buildDirectory.getAbsolutePath())) {
+                log.info("#### Start to build dir: ${buildDirectory.getAbsolutePath()}")
 
-                // Build the Image
-                BuildImageCmd.Response buildResponse = docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).withPull(pull).exec();
-                deserializeStream(buildResponse, EventStreamItem) { EventStreamItem event ->
-                    if (event?.getStream()?.trim())
-                        deferred.notify(event?.getStream()?.trim());
+                // Treat the Dockerfile as a template, and replace variables
+                File dockerFileTemplate = new File(buildDirectory, "Dockerfile.template");
+                File dockerFile = new File(buildDirectory, "Dockerfile")
+
+                if(dockerFileTemplate.exists()) {
+                    FileUtils.copyFile(dockerFileTemplate, dockerFile);
+                    templateService.fillTemplate(dockerFile, [buildContext: buildContext, buildSettings: buildSettings]);
                 }
 
-                if (!skipPush) {
-                    deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
+                try {
+                    deferred.notify("Building docker image from directory: ${buildDirectory.getAbsolutePath()}".toString())
+                    log.debug("DockerBuild building from ${buildDirectory.getAbsolutePath()}");
 
-                    // Push the Image
-                    PushImageCmd pushCmd = docker.pushImageCmd(buildContext.getOutputDockerImage().getName()).withTag(buildContext.getOutputDockerImage().getTag())
-
-                    // Set the auth, if needed
-                    if (props.config.registry && props.config.registry.server == buildContext.getOutputDockerImage().getRegistry()) {
-                        AuthConfig authConfig = pushCmd.getAuthConfig() ?: new AuthConfig();
-                        authConfig.setServerAddress(props.config.registry.server)
-                        authConfig.setUsername(props.config.registry.username)
-                        authConfig.setPassword(props.config.registry.password)
-                        authConfig.setEmail(props.config.registry.email)
-                        pushCmd.withAuthConfig(authConfig);
+                    // Build the Image
+                    BuildImageCmd.Response buildResponse = docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).withPull(pull).exec();
+                    deserializeStream(buildResponse, EventStreamItem) { EventStreamItem event ->
+                        if (event?.getStream()?.trim())
+                            deferred.notify(event?.getStream()?.trim());
                     }
 
-                    PushImageCmd.Response pushResponse = pushCmd.exec();
-                    deserializeStream(pushResponse, PushEventStreamItem) { PushEventStreamItem event ->
-                        if (event?.getStatus())
-                            deferred.notify((event?.getProgress() ? event?.getProgress() + ": " : "") + event?.getStatus())
+                    if (!skipPush) {
+                        deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
+
+                        // Push the Image
+                        PushImageCmd pushCmd = docker.pushImageCmd(buildContext.getOutputDockerImage().getName()).withTag(buildContext.getOutputDockerImage().getTag())
+
+                        // Set the auth, if needed
+                        if (props.config.registry && props.config.registry.server == buildContext.getOutputDockerImage().getRegistry()) {
+                            AuthConfig authConfig = pushCmd.getAuthConfig() ?: new AuthConfig();
+                            authConfig.setServerAddress(props.config.registry.server)
+                            authConfig.setUsername(props.config.registry.username)
+                            authConfig.setPassword(props.config.registry.password)
+                            authConfig.setEmail(props.config.registry.email)
+                            pushCmd.withAuthConfig(authConfig);
+                        }
+
+                        PushImageCmd.Response pushResponse = pushCmd.exec();
+                        deserializeStream(pushResponse, PushEventStreamItem) { PushEventStreamItem event ->
+                            if (event?.getStatus())
+                                deferred.notify((event?.getProgress() ? event?.getProgress() + ": " : "") + event?.getStatus())
+                        }
                     }
+
+                    buildContext.setBuildingVersion(buildContext.getRequestedBuildVersion());
+                    deferred.resolve(buildContext);
+                } catch (Exception e) {
+                    deferred.reject(e);
+                } finally {
+                    if(dockerFileTemplate.exists()) dockerFile.delete();
+                    log.info("#### Finished build dir: ${buildDirectory.getAbsolutePath()}")
                 }
-
-                buildContext.setBuildingVersion(buildContext.getRequestedBuildVersion());
-                deferred.resolve(buildContext);
-            } catch (Exception e) {
-                deferred.reject(e);
-            } finally {
-                File backupOriginalFile = new File(dockerFile.getAbsolutePath() + ".orig")
-                dockerFile.delete();
-                FileUtils.copyFile(backupOriginalFile, dockerFile);
-                backupOriginalFile.delete();
             }
         }
 
@@ -132,6 +141,15 @@ class DockerBuild implements AsyncBuildStage {
     private String getBuildHost(BuildContext buildContext) {
         EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(buildContext.getApplicationDetails().getTierName(), buildContext.getApplicationDetails().getEnvironmentName());
         return environmentConfiguration?.getServers()?.find { it.getBuildEnabled() }?.getHostname()
+    }
+
+    private synchronized static String aquireLock(String buildDirectoryPath) {
+        String lock = lockMap[buildDirectoryPath]
+        if(!lock) {
+            lockMap[buildDirectoryPath] = buildDirectoryPath
+            lock = lockMap[buildDirectoryPath]
+        }
+        return lock
     }
 
     public <T> void deserializeStream(InputStream inputStream, Class<T> serializedType, Closure<?> callback) {
