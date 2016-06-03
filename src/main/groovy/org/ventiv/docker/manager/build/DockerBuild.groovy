@@ -18,11 +18,12 @@ package org.ventiv.docker.manager.build
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.ObjectReader
 import com.github.dockerjava.api.DockerClient
-import com.github.dockerjava.api.command.BuildImageCmd
 import com.github.dockerjava.api.command.PushImageCmd
 import com.github.dockerjava.api.model.AuthConfig
-import com.github.dockerjava.api.model.EventStreamItem
-import com.github.dockerjava.api.model.PushEventStreamItem
+import com.github.dockerjava.api.model.BuildResponseItem
+import com.github.dockerjava.api.model.PushResponseItem
+import com.github.dockerjava.core.command.BuildImageResultCallback
+import com.github.dockerjava.core.command.PushImageResultCallback
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.apache.commons.io.FileUtils
@@ -95,11 +96,17 @@ class DockerBuild implements AsyncBuildStage {
                     log.debug("DockerBuild building from ${buildDirectory.getAbsolutePath()}");
 
                     // Build the Image
-                    BuildImageCmd.Response buildResponse = docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).withPull(pull).exec();
-                    deserializeStream(buildResponse, EventStreamItem) { EventStreamItem event ->
-                        if (event?.getStream()?.trim())
-                            deferred.notify(event?.getStream()?.trim());
-                    }
+                    BuildImageResultCallback callback = new BuildImageResultCallback() {
+                        @Override
+                        void onNext(BuildResponseItem item) {
+                            super.onNext(item);
+
+                            // Alert the Promise of status
+                            deferred.notify(item.getStream());
+                        }
+                    };
+                    docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).withPull(pull).exec(callback);
+                    BuildImageResultCallback buildResponse = callback.awaitCompletion();
 
                     if (!skipPush) {
                         deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
@@ -110,18 +117,24 @@ class DockerBuild implements AsyncBuildStage {
                         // Set the auth, if needed
                         if (props.config.registry && props.config.registry.server == buildContext.getOutputDockerImage().getRegistry()) {
                             AuthConfig authConfig = pushCmd.getAuthConfig() ?: new AuthConfig();
-                            authConfig.setServerAddress(props.config.registry.server)
-                            authConfig.setUsername(props.config.registry.username)
-                            authConfig.setPassword(props.config.registry.password)
-                            authConfig.setEmail(props.config.registry.email)
+                            authConfig.withRegistryAddress(props.config.registry.server)
+                            authConfig.withUsername(props.config.registry.username)
+                            authConfig.withPassword(props.config.registry.password)
+                            authConfig.withEmail(props.config.registry.email)
                             pushCmd.withAuthConfig(authConfig);
                         }
 
-                        PushImageCmd.Response pushResponse = pushCmd.exec();
-                        deserializeStream(pushResponse, PushEventStreamItem) { PushEventStreamItem event ->
-                            if (event?.getStatus())
-                                deferred.notify((event?.getProgress() ? event?.getProgress() + ": " : "") + event?.getStatus())
-                        }
+                        PushImageResultCallback pushCallback = new PushImageResultCallback() {
+                            @Override
+                            void onNext(PushResponseItem item) {
+                                super.onNext(item)
+
+                                deferred.notify(item.getStatus());
+                            }
+                        };
+
+                        pushCmd.exec(pushCallback);
+                        pushCallback.awaitCompletion();
                     }
 
                     buildContext.setBuildingVersion(buildContext.getRequestedBuildVersion());

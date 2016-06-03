@@ -15,11 +15,11 @@
  */
 package org.ventiv.docker.manager.service
 
-import com.github.dockerjava.api.NotFoundException
-import com.github.dockerjava.api.command.EventCallback
 import com.github.dockerjava.api.command.InspectContainerResponse
+import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.Event
+import com.github.dockerjava.core.command.EventsResultCallback
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
@@ -63,15 +63,14 @@ class ServiceInstanceService implements Runnable {
     @Resource private DockerServiceConfiguration dockerServiceConfiguration;
     @Resource ServiceInstanceThumbnailRepository serviceInstanceThumbnailRepository;
 
-    private Map<String, List<ServiceInstance>> allServiceInstances = [:]
-    private final Map<String, ExecutorService> eventExecutors = [:];
+    private final Map<String, List<ServiceInstance>> allServiceInstances = [:]
     private final Map<String, DockerEventCallback> eventCallbacks = [:];
     private ScheduledFuture scheduledTask;
 
     @PostConstruct
     public void initialize() {
-        if (eventExecutors)
-            eventExecutors.each { k, v -> v.shutdownNow() }
+        if (eventCallbacks)
+            eventCallbacks.each { k, v -> v.close() }
 
         // Get the active server configurations from environmentConfigurationService, and initialize them
         getAllHosts().each(this.&initializeServerConfiguration);
@@ -126,11 +125,6 @@ class ServiceInstanceService implements Runnable {
                 eventCallbacks.remove(serverConfigurationKey);
             }
 
-            if (eventExecutors.containsKey(serverConfigurationKey)) {
-                eventExecutors[serverConfigurationKey]?.shutdownNow();
-                eventExecutors.remove(serverConfigurationKey)
-            }
-
             if (allServiceInstances.containsKey(serverConfigurationKey))
                 allServiceInstances.remove(serverConfigurationKey);
 
@@ -142,7 +136,7 @@ class ServiceInstanceService implements Runnable {
 
             // Now, lets hook up to the Docker Events API
             DockerEventCallback callback = new DockerEventCallback(serverConfiguration, this)
-            eventExecutors.put(serverConfigurationKey, dockerService.getDockerClient(serverConfiguration.getHostname()).eventsCmd(callback).exec());
+            dockerService.getDockerClient(serverConfiguration.getHostname()).eventsCmd().exec(callback);
             eventCallbacks.put(serverConfigurationKey, callback);
         }
     }
@@ -182,7 +176,7 @@ class ServiceInstanceService implements Runnable {
         getAllHosts().each(this.&initializeServerConfiguration);
     }
 
-    public static final class DockerEventCallback implements EventCallback {
+    public static final class DockerEventCallback extends EventsResultCallback {
 
         boolean running = true;
         ServerConfiguration serverConfiguration;
@@ -194,7 +188,7 @@ class ServiceInstanceService implements Runnable {
         }
 
         @Override
-        void onEvent(Event event) {
+        void onNext(Event event) {
             log.debug("Received Docker Event: $event");
 
             // We don't care about Image Events
@@ -217,7 +211,7 @@ class ServiceInstanceService implements Runnable {
                 allServiceInstances.remove(previousServiceInstance);
 
                 // Add the new one back
-                if (event.getStatus() != "destroy") {
+                if (event.getStatus() != "destroy" && event.getId()) {
                     try {
                         InspectContainerResponse inspectContainerResponse = serviceInstanceService.dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(event.getId()).exec()
                         serviceInstance = serviceInstanceService.createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse);
@@ -246,19 +240,14 @@ class ServiceInstanceService implements Runnable {
         }
 
         @Override
-        void onException(Throwable throwable) {
+        public void onError(Throwable throwable) {
             log.error("Error from Docker Event Listener, attempting reconnect", throwable)
             serviceInstanceService.initializeServerConfiguration(serverConfiguration);
         }
 
         @Override
-        void onCompletion(int numEvents) {
-            log.debug("Finished listening for events.  Received $numEvents events");
-        }
-
-        @Override
-        boolean isReceiving() {
-            return running
+        public void onComplete() {
+            log.debug("Finished listening for events.");
         }
 
         void stop() {

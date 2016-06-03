@@ -20,8 +20,12 @@ import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
 import groovyx.net.http.HttpResponseDecorator
 import groovyx.net.http.RESTClient
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
+import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.RestTemplate
 import org.ventiv.docker.manager.api.DockerRegistry
+import org.ventiv.docker.manager.api.DockerRegistryV2
 import org.ventiv.docker.manager.api.HeaderRequestInterceptor
 import org.ventiv.docker.manager.model.DockerTag
 
@@ -40,6 +44,14 @@ class DockerRegistryApiService {
         } else {
             return getPrivateRegistry(tag.getRegistry());
         }
+    }
+
+    public List<String> getTagsForImage(DockerTag tag) {
+        DockerRegistry registry = getRegistry(tag);
+        if (registry instanceof DockerRegistryV2)
+            return registry.listRepositoryTags(tag.repository).tags as List<String>;
+        else
+            return registry.listRepositoryTags(tag.namespace, tag.repository).keySet() as List<String>;
     }
 
     private DockerRegistry getDockerHubRegistry(DockerTag tag) {
@@ -81,11 +93,23 @@ class DockerRegistryApiService {
                     Feign.builder()
                             .decoder(new JacksonDecoder())
                             .encoder(new JacksonEncoder())
-                            .target(DockerRegistry, "https://$registryName")
+                            .target(getDockerRegistryClass(registryName), "https://$registryName")
             )
         }
 
         return privateRegistryMap[registryName];
+    }
+
+    private Class<DockerRegistry> getDockerRegistryClass(String registryName) {
+        RestTemplate restTemplate = new RestTemplate();
+
+        // Try making an HTTPS call to the registry /v2/.  If this comes back fine, it's a V2 Registry, otherwise it's a V1
+        try {
+            restTemplate.getForEntity("https://$registryName/v2/", Map);
+            return DockerRegistryV2
+        } catch (HttpClientErrorException ignored) {
+            return DockerRegistry
+        }
     }
 
 }

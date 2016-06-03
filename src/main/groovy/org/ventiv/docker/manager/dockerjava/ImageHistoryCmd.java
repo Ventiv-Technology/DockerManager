@@ -16,10 +16,8 @@
 package org.ventiv.docker.manager.dockerjava;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.github.dockerjava.api.ConflictException;
-import com.github.dockerjava.api.NotFoundException;
-import com.github.dockerjava.api.command.DockerCmd;
-import com.github.dockerjava.api.command.DockerCmdExec;
+import com.github.dockerjava.api.command.DockerCmdSyncExec;
+import com.github.dockerjava.api.command.SyncDockerCmd;
 import org.apache.commons.lang.builder.ToStringBuilder;
 
 import java.util.List;
@@ -27,16 +25,16 @@ import java.util.List;
 /**
  * Created by jcrygier on 5/1/15.
  */
-public interface ImageHistoryCmd extends DockerCmd<List<ImageHistoryCmd.ImageHistory>> {
+public interface ImageHistoryCmd extends SyncDockerCmd<List<ImageHistoryCmd.ImageHistory>> {
 
     @Override
-    public List<ImageHistoryCmd.ImageHistory> exec() throws NotFoundException, ConflictException;
+    public List<ImageHistoryCmd.ImageHistory> exec();
 
     public String getImageName();
 
     public ImageHistoryCmd withImageName(String imageName);
 
-    public static interface Exec extends DockerCmdExec<ImageHistoryCmd, List<ImageHistoryCmd.ImageHistory>> {
+    public static interface Exec extends DockerCmdSyncExec<ImageHistoryCmd, List<ImageHistory>> {
     }
 
     public static final class ImageHistory {
@@ -54,6 +52,9 @@ public interface ImageHistoryCmd extends DockerCmd<List<ImageHistoryCmd.ImageHis
 
         @JsonProperty("Tags")
         private String[] tags;
+
+        @JsonProperty("Comment")
+        private String comment;
 
         public long getCreated() {
             return created;
@@ -73,6 +74,10 @@ public interface ImageHistoryCmd extends DockerCmd<List<ImageHistoryCmd.ImageHis
 
         public String[] getTags() {
             return tags;
+        }
+
+        public String getComment() {
+            return comment;
         }
 
         @Override

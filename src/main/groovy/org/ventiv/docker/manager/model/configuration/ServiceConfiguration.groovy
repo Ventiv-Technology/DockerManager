@@ -133,7 +133,7 @@ class ServiceConfiguration {
             if (tag.getTag())  // We've specified a version in the config
                 answer = [ tag.getTag() ]
             else if (tag.getRegistry())                  // We need to query the Docker Remote API to get the list of versions
-                answer = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.namespace, tag.repository).keySet() as List<String>;
+                answer = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getTagsForImage(tag);
         }
 
         if (query) {

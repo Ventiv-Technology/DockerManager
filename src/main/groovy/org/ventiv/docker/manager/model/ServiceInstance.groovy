@@ -18,6 +18,7 @@ package org.ventiv.docker.manager.model
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.github.dockerjava.api.command.InspectContainerResponse
 import com.github.dockerjava.api.model.Container
+import com.github.dockerjava.api.model.ContainerPort
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.Ports
 import groovy.transform.CompileStatic
@@ -131,7 +132,7 @@ class ServiceInstance {
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
         // Determine the Port Definitions
-        this.portDefinitions = dockerContainer.getPorts().collect { Container.Port port ->
+        this.portDefinitions = dockerContainer.getPorts().collect { ContainerPort port ->
             return new PortDefinition([
                     portType: serviceConfig?.containerPorts?.find { it.port == port.getPrivatePort() }?.type,
                     hostPort: port.getPublicPort(),
@@ -145,9 +146,10 @@ class ServiceInstance {
         return this;
     }
 
+    @CompileStatic
     public ServiceInstance withDockerContainer(InspectContainerResponse inspectContainerResponse) {
         this.setDockerName(inspectContainerResponse.getName());
-        this.status = inspectContainerResponse.getState().isRunning() ? Status.Running : Status.Stopped
+        this.status = inspectContainerResponse.getState().getRunning() ? Status.Running : Status.Stopped
         this.containerStatusTime = this.status == Status.Running ? DockerUtils.convertDockerDate(inspectContainerResponse.getState().getStartedAt()) : DockerUtils.convertDockerDate(inspectContainerResponse.getState().getFinishedAt());
         //this.containerStatus = this.status == Status.Running ? DockerUtils.getStatusTime(inspectContainerResponse.getState().getStartedAt()) : "Exited (${inspectContainerResponse.getState().getExitCode()}) " + DockerUtils.getStatusTime(inspectContainerResponse.getState().getFinishedAt())
         this.containerId = inspectContainerResponse.getId();

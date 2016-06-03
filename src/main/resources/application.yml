@@ -14,6 +14,7 @@ server.session-timeout: 86400
 
 plugins:
   - org.ventiv.docker.manager.plugin.DynatracePlugin
+  - org.ventiv.docker.manager.plugin.JavaDebugPlugin
 
 auth.permissionsToAudit: START, STOP, RESTART, DEPLOY, REMOVE
 

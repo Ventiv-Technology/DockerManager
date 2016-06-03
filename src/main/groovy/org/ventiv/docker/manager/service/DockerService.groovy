@@ -25,9 +25,7 @@ import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmd
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmdExec
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmdImpl
-import org.ventiv.docker.manager.dockerjava.RenameContainerCmd
-import org.ventiv.docker.manager.dockerjava.RenameContainerCmdExec
-import org.ventiv.docker.manager.dockerjava.RenameContainerCmdImpl
+
 import org.ventiv.docker.manager.utils.TimingUtils
 
 import javax.annotation.Resource
@@ -58,7 +56,7 @@ class DockerService {
             boolean certsExist = new File(certs).exists()
 
             String apiVersion = props["docker.client.${hostName}.apiVersion"]
-            String uri = props["docker.client.${hostName}.uri"] ?: certsExist ? "https://${hostName}:2376" : "http://${hostName}:2375"
+            String uri = props["docker.client.${hostName}.uri"] ?: certsExist ? "tcp://${hostName}:2376" : "tcp://${hostName}:2375"
 
             if (!apiVersion)
                 apiVersion = getApiVersion(hostName, uri, certs);
@@ -66,26 +64,34 @@ class DockerService {
                 hostToApiVersionName.put(hostName, apiVersion);
 
             DockerClientConfig.DockerClientConfigBuilder builder = DockerClientConfig.createDefaultConfigBuilder()
-                    .withVersion(apiVersion)
-                    .withUri(uri);
+                    .withApiVersion(apiVersion)
+                    .withDockerHost(uri);
 
-            if (certsExist)
+            if (certsExist) {
                 builder.withDockerCertPath(certs)
-            else
-                builder.withSSLConfig(null);
+                    .withDockerTlsVerify(true);
+            } else
+                builder.withDockerTlsVerify(false);
 
             return DockerClientBuilder.getInstance(builder.build()).build();
         }
     }
 
     private String getApiVersion(String hostName, String uri, String certs) {
-        if (!hostToApiVersionName.containsKey(hostName)) {
-            DockerClientConfig config = DockerClientConfig.createDefaultConfigBuilder()
-                .withUri(uri)
-                .withDockerCertPath(certs)
-                .build()
+        boolean certsExist = new File(certs).exists()
 
-            Version ver = DockerClientBuilder.getInstance(config).build().versionCmd().exec();
+        if (!hostToApiVersionName.containsKey(hostName)) {
+            DockerClientConfig.DockerClientConfigBuilder configBuilder = DockerClientConfig.createDefaultConfigBuilder()
+                .withDockerHost(uri)
+
+            if (certsExist) {
+                configBuilder.withDockerCertPath(certs)
+                configBuilder.withDockerTlsVerify(true);
+            } else
+                configBuilder.withDockerTlsVerify(false);
+
+
+            Version ver = DockerClientBuilder.getInstance(configBuilder.build()).build().versionCmd().exec();
             hostToApiVersionName.put(hostName, ver.getApiVersion());
         }
 
@@ -104,12 +110,12 @@ class DockerService {
         return getDockerClient(hostName).getDockerCmdExecFactory().getBaseResource()
     }
 
-    RenameContainerCmd getRenameContainerCmd(String hostName, String containerId, String newName) {
-        return new RenameContainerCmdImpl(new RenameContainerCmdExec(getBaseResource(hostName)), containerId, newName);
+    DockerClientConfig getDockerClientConfig(String hostName) {
+        return getDockerClient(hostName).dockerClientConfig;
     }
 
     ImageHistoryCmd getImageHistoryCmd(String hostName, String imageName) {
-        return new ImageHistoryCmdImpl(new ImageHistoryCmdExec(getBaseResource(hostName)), imageName);
+        return new ImageHistoryCmdImpl(new ImageHistoryCmdExec(getBaseResource(hostName), getDockerClientConfig(hostName)), imageName);
     }
 
 }

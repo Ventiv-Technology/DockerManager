@@ -18,15 +18,18 @@ package org.ventiv.docker.manager.controller
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.CreateContainerCmd
 import com.github.dockerjava.api.command.CreateContainerResponse
+import com.github.dockerjava.api.command.PullImageCmd
 import com.github.dockerjava.api.command.StartContainerCmd
 import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.Link
+import com.github.dockerjava.api.model.Links
 import com.github.dockerjava.api.model.PortBinding
 import com.github.dockerjava.api.model.Ports
 import com.github.dockerjava.api.model.Volume
+import com.github.dockerjava.core.command.PullImageResultCallback
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.apache.commons.io.IOUtils
@@ -358,12 +361,19 @@ class EnvironmentController {
 
         serviceInstances1.each { ServiceInstance serviceInstance ->
             serviceInstance.setApplicationId(applicationId2);       // Rename the instance
-            dockerService.getRenameContainerCmd(serviceInstance.getServerName(), serviceInstance.getContainerId(), serviceInstance.toString()).exec()
+            dockerService.getDockerClient(serviceInstance.getServerName())
+                    .renameContainerCmd(serviceInstance.getContainerId()).withName(serviceInstance.toString())
+                    .exec();
+            //dockerService.getRenameContainerCmd(serviceInstance.getServerName(), serviceInstance.getContainerId(), serviceInstance.toString()).exec()
         }
 
         serviceInstances2.each { ServiceInstance serviceInstance ->
             serviceInstance.setApplicationId(applicationId1);       // Rename the instance
-            dockerService.getRenameContainerCmd(serviceInstance.getServerName(), serviceInstance.getContainerId(), serviceInstance.toString()).exec()
+            dockerService.getDockerClient(serviceInstance.getServerName())
+                    .renameContainerCmd(serviceInstance.getContainerId()).withName(serviceInstance.toString())
+                    .exec();
+
+            //dockerService.getRenameContainerCmd(serviceInstance.getServerName(), serviceInstance.getContainerId(), serviceInstance.toString()).exec()
         }
     }
 
@@ -410,7 +420,7 @@ class EnvironmentController {
         HostConfig hostConfig = new HostConfig();
         if (serverConfiguration.getResolveHostname()) {
             InetAddress address = InetAddress.getByName(instance.getServerName());
-            hostConfig.setExtraHosts(["${address.getHostName()}:${address.getHostAddress()}"] as String[]);
+            hostConfig.withExtraHosts(["${address.getHostName()}:${address.getHostAddress()}"] as String[]);
         }
 
         // Get the environment variables
@@ -438,14 +448,12 @@ class EnvironmentController {
 
         instance.setResolvedEnvironmentVariables(env);
 
+        PullImageResultCallback pullCallback = new PullImageResultCallback();
         try {
             // Do a docker pull, just to ensure we have the image locally
             eventPublisher.publishEvent(new PullImageEvent(instance));
             log.info("Pulling image: ${toDeploy.toString()}")
-            InputStream pullIn = docker.pullImageCmd(toDeploy.toString()).exec();
-            pullIn.eachLine {
-                log.debug(it);
-            }
+            docker.pullImageCmd(toDeploy.toString()).exec(pullCallback);
         } catch (Exception ignored) {
             log.warn("Pull of image $toDeploy was unsuccessful, is this pointing to a real registry?");
         }
@@ -476,7 +484,7 @@ class EnvironmentController {
 
             return new Link(foreignServiceInstance.toString(), linkConfiguration.getAlias())
         } as Link[]
-        hostConfig.setLinks(links)
+        hostConfig.withLinks(new Links(links));
 
         // Port Bindings
         Ports portBindings = new Ports();
@@ -491,14 +499,14 @@ class EnvironmentController {
                 "env: ${instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"}}, " +
                 "memoryLimit: $memoryLimit, memorySwapLimit: $memorySwapLimit")
         CreateContainerCmd createContainerCmd = docker.createContainerCmd(toDeploy.toString())
-                .withHostConfig(hostConfig)
+                //.withHostConfig(hostConfig)
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
                 .withVolumes(serviceConfiguration.getContainerVolumes().collect { new Volume(it.getPath()) } as Volume[])
-                .withExposedPorts(serviceConfiguration.getContainerPorts().collect { new ExposedPort(it.getPort()) } as ExposedPort[])
+                .withExposedPorts(instance.getPortDefinitions().collect { new ExposedPort(it.getHostPort()) } as ExposedPort[])
                 .withPortBindings(portBindings)
                 .withLinks(links)
-                .withMemoryLimit(memoryLimit)
+                .withMemory(memoryLimit)
                 .withMemorySwap(memorySwapLimit);
 
         if (serviceInstanceConfiguration.getVolumeMappings())
@@ -507,6 +515,8 @@ class EnvironmentController {
         if (hostConfig.getExtraHosts())
             createContainerCmd.withExtraHosts(hostConfig.getExtraHosts());
 
+        // Now, create the container - Waiting for the pull to finish first
+        pullCallback.awaitCompletion();
         CreateContainerResponse resp = createContainerCmd.exec();
 
         // Lets get an updated port mapping, just in case it was lost because the container was stopped

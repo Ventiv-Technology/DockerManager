@@ -15,9 +15,9 @@
  */
 package org.ventiv.docker.manager.controller
 
-import com.github.dockerjava.api.NotFoundException
-import com.github.dockerjava.api.NotModifiedException
 import com.github.dockerjava.api.command.LogContainerCmd
+import com.github.dockerjava.api.exception.NotFoundException
+import com.github.dockerjava.api.exception.NotModifiedException
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.apache.commons.io.IOUtils
@@ -39,6 +39,7 @@ import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
 import org.ventiv.docker.manager.utils.DockerLogsOutputStream
+import org.ventiv.docker.manager.utils.LogContainerToStreamCallback
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
@@ -90,31 +91,40 @@ class HostsController {
     @PreAuthorize("hasPermission(#containerId, 'LOGS')")
     @RequestMapping("/{hostName}/{containerId}/stdout")
     public void getStdOutLog(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
-        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdOut()
+        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdOut(true)
         if (tail)
             cmd.withTail(tail);
 
-        IOUtils.copy(cmd.exec(), new DockerLogsOutputStream(response.getOutputStream()));
+        LogContainerToStreamCallback callback = new LogContainerToStreamCallback(response.getOutputStream());
+        cmd.exec(callback);
+
+        callback.awaitCompletion();
     }
 
     @PreAuthorize("hasPermission(#containerId, 'LOGS')")
     @RequestMapping("/{hostName}/{containerId}/stderr")
     public void getStdErrLog(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
-        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdErr()
+        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdErr(true)
         if (tail)
             cmd.withTail(tail);
 
-        IOUtils.copy(cmd.exec(), new DockerLogsOutputStream(response.getOutputStream()));
+        LogContainerToStreamCallback callback = new LogContainerToStreamCallback(response.getOutputStream());
+        cmd.exec(callback);
+
+        callback.awaitCompletion();
     }
 
     @PreAuthorize("hasPermission(#containerId, 'LOGS')")
     @RequestMapping("/{hostName}/{containerId}/logs")
     public void getLogs(@PathVariable String hostName, @PathVariable String containerId, @RequestParam(defaultValue = "0") Integer tail, HttpServletResponse response) {
-        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdOut().withStdErr()
+        LogContainerCmd cmd = dockerService.getDockerClient(hostName).logContainerCmd(containerId).withStdOut(true).withStdErr(true)
         if (tail)
             cmd.withTail(tail);
 
-        IOUtils.copy(cmd.exec(), new DockerLogsOutputStream(response.getOutputStream(), true));
+        LogContainerToStreamCallback callback = new LogContainerToStreamCallback(response.getOutputStream());
+        cmd.exec(callback);
+
+        callback.awaitCompletion();
     }
 
     /**
@@ -173,7 +183,7 @@ class HostsController {
         } catch (NotModifiedException ignored) {}       // This happens if the container is already stopped
 
         log.info("Removing container: ${containerId} on ${hostName}")
-        dockerService.getDockerClient(hostName).removeContainerCmd(containerId).withForce().exec();
+        dockerService.getDockerClient(hostName).removeContainerCmd(containerId).withForce(true).exec();
     }
 
     public ServiceInstance getServiceInstance(String hostName, String containerId) {

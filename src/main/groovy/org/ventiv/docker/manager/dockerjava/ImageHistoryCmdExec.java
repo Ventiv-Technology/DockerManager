@@ -15,7 +15,9 @@
  */
 package org.ventiv.docker.manager.dockerjava;
 
+import com.github.dockerjava.core.DockerClientConfig;
 import com.github.dockerjava.jaxrs.AbstrDockerCmdExec;
+import com.github.dockerjava.jaxrs.AbstrSyncDockerCmdExec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,12 +29,12 @@ import java.util.List;
 /**
  * Created by jcrygier on 4/24/15.
  */
-public class ImageHistoryCmdExec extends AbstrDockerCmdExec<ImageHistoryCmd, List<ImageHistoryCmd.ImageHistory>> implements ImageHistoryCmd.Exec {
+public class ImageHistoryCmdExec extends AbstrSyncDockerCmdExec<ImageHistoryCmd, List<ImageHistoryCmd.ImageHistory>> implements ImageHistoryCmd.Exec {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ImageHistoryCmdExec.class);
 
-    public ImageHistoryCmdExec(WebTarget baseResource) {
-        super(baseResource);
+    public ImageHistoryCmdExec(WebTarget baseResource, DockerClientConfig dockerClientConfig) {
+        super(baseResource, dockerClientConfig);
     }
 
     @Override
