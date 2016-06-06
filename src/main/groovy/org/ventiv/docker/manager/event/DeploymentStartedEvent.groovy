@@ -26,17 +26,19 @@ class DeploymentStartedEvent extends AbstractApplicationEvent {
     String branch;
     Map<String, String> serviceVersions;
     DeploymentStatus status = DeploymentStatus.None;
+    String requestedVersion;
 
     /**
      * Create a new ApplicationEvent.
      * @param source the component that published the event (never {@code null})
      */
-    DeploymentStartedEvent(ApplicationDetails applicationDetails, String branch, Map<String, String> serviceVersions) {
+    DeploymentStartedEvent(ApplicationDetails applicationDetails, String branch, Map<String, String> serviceVersions, String requestedVersion) {
         super(applicationDetails.getTierName(), applicationDetails.getEnvironmentName(), applicationDetails.getId())
 
         this.applicationDetails = applicationDetails;
         this.branch = branch;
         this.serviceVersions = serviceVersions;
+        this.requestedVersion = requestedVersion;
     }
 
     public static enum DeploymentStatus {

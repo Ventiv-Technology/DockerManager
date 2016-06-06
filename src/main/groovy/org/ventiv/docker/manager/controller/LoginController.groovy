@@ -18,9 +18,11 @@ package org.ventiv.docker.manager.controller
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.servlet.ModelAndView
+import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 
 import javax.annotation.Resource
+import javax.servlet.http.HttpServletRequest
 
 /**
  * Created by jcrygier on 3/11/15.
@@ -31,7 +33,8 @@ class LoginController {
     @Resource DockerManagerConfiguration props;
 
     @RequestMapping("/login")
-    def loginTest() {
+    def loginTest(HttpServletRequest request) {
+        DockerManagerApplication.setApplicationUrl(request.getRequestURL().replaceAll('/login', '').toString());
         return new ModelAndView("login", [props: props])
     }
 

@@ -43,4 +43,9 @@ class DeployApplicationRequest {
      */
     Map<String, Map<String, String>> serviceVersions;
 
+    /**
+     * When just requesting one version, it goes here
+     */
+    String requestedVersion;
+
 }

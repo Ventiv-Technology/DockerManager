@@ -141,6 +141,7 @@ class EnvironmentController {
             return new ApplicationDetails([
                     tierName: tierName,
                     environmentName: environmentName,
+                    environmentDescription: envConfiguration.getDescription(),
                     url: url,
                     branches: branches,
                     serviceInstances: applicationInstances,
@@ -199,7 +200,7 @@ class EnvironmentController {
         // First, Build the application
         buildApplication(applicationDetails, deployRequest.branch, deployRequest.getServiceVersions()).onSuccessfulBuild { ApplicationDetails builtApplication ->
             // The following does 2 things: 1.) Sends a message to the UI that a deployment is now going, and 2.) Gets Picked up by ApplicationDeploymentService to do the actual deployment
-            eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, deployRequest.branch, builtApplication.getBuildServiceVersionsTemplate()));
+            eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, deployRequest.branch, builtApplication.getBuildServiceVersionsTemplate(), deployRequest.requestedVersion));
         }
     }
 
@@ -230,7 +231,7 @@ class EnvironmentController {
         }
 
         // Finally, call the deploy
-        deployApplication(tierName, environmentName, new DeployApplicationRequest(name: applicationId, branch: branch, serviceVersions: serviceVersions));
+        deployApplication(tierName, environmentName, new DeployApplicationRequest(name: applicationId, branch: branch, serviceVersions: serviceVersions, requestedVersion: version));
     }
 
     /**

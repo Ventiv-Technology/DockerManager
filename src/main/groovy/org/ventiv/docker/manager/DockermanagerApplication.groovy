@@ -43,10 +43,16 @@ class DockerManagerApplication {
 
     static ApplicationContext applicationContext;
     static DockerManagerConfiguration props;
+    static String applicationUrl;
 
     static void main(String[] args) {
         applicationContext = SpringApplication.run DockerManagerApplication, args
         props = applicationContext.getBean(DockerManagerConfiguration)
+    }
+
+    static void setApplicationUrl(String url) {
+        if (applicationUrl == null)
+            applicationUrl = url;
     }
 
     @Primary

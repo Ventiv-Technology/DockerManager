@@ -29,6 +29,7 @@ class ApplicationDetails {
     String url;
     String tierName;
     String environmentName;
+    String environmentDescription;
     String version;
     List<String> branches;
     Collection<String> availableVersions;                           // TODO: Remove From here, it's innefficient
