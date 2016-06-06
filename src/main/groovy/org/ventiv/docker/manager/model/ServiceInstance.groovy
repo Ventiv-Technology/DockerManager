@@ -168,7 +168,7 @@ class ServiceInstance {
         this.portDefinitions = inspectContainerResponse.getHostConfig()?.getPortBindings()?.getBindings()?.collect { ExposedPort containerPort, Ports.Binding[] bindings ->
             return new PortDefinition([
                     portType: serviceConfig?.containerPorts?.find { it.port == containerPort.getPort() }?.type,
-                    hostPort: bindings[0].getHostPort(),
+                    hostPort: bindings[0].getHostPortSpec() as Integer,
                     containerPort: containerPort.getPort()
             ])
         }

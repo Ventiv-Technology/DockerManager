@@ -51,7 +51,7 @@ dependencies {
     compile 'com.jayway.jsonpath:json-path:1.2.0'
     compile 'com.netflix.feign:feign-core:8.0.0-rc.1'
     compile 'com.netflix.feign:feign-jackson:8.0.0-rc.1'
-    compile 'com.github.docker-java:docker-java:3.0.0-RC5'
+    compile 'com.github.docker-java:docker-java:3.0.0'
     compile 'org.eclipse.jgit:org.eclipse.jgit:3.7.0.201502260915-r'
     compile 'org.jdeferred:jdeferred-core:1.2.3'
     compile 'joda-time:joda-time:2.7'

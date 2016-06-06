@@ -59,7 +59,7 @@ class DockerTag {
         if (registry)
             sb.append(registry).append("/")
 
-        if (namespace != "library")
+        if (isNamespaced())
             sb.append(namespace).append("/")
 
         sb.append(repository).append(":").append(tag);
@@ -78,11 +78,15 @@ class DockerTag {
         if (registry)
             sb.append(registry).append("/")
 
-        if (namespace != "library")
+        if (isNamespaced())
             sb.append(namespace).append("/")
 
         sb.append(repository)
 
         return sb.toString();
+    }
+
+    public boolean isNamespaced() {
+        return namespace != "library"
     }
 }

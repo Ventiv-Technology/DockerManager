@@ -36,9 +36,34 @@ public interface DockerRegistryV2 extends DockerRegistry {
     @RequestLine("GET /v2/{repository}/tags/list")
     public RepositoryTagList listRepositoryTags(@Param("repository") String repository);
 
+    /**
+     * Gets the manifest for a particular image tag.
+     *
+     * @param namespace
+     * @param reference
+     */
+    @RequestLine("GET /v2/{namespace}/{repository}/manifests/{reference}")
+    public ImageManifest getImageManifest(@Param("namespace") String namespace, @Param("repository") String repository, @Param("reference") String reference);
+
+    /**
+     * Gets the manifest for a particular image tag.
+     *
+     * @param reference
+     */
+    @RequestLine("GET /v2/{repository}/manifests/{reference}")
+    public ImageManifest getImageManifest(@Param("repository") String repository, @Param("reference") String reference);
+
     public static final class RepositoryTagList {
         public String name;
         public List<String> tags;
+    }
+
+    public static final class ImageManifest {
+        public Integer schemaVersion;
+        public String name;
+        public String tag;
+        public List<Map<String, String>> fsLayers;
+        public List<Map<String, String>> history;
     }
 
 }

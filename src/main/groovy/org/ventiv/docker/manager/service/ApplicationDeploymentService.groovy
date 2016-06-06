@@ -116,16 +116,12 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                     new ArrayList<ServiceInstance>(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
                         if (anInstance.getStatus() != ServiceInstance.Status.Available && anInstance.getContainerImage() != null) {
                             DockerTag tag = anInstance.getContainerImage();
-                            String expectedVersion = serviceVersions[anInstance.getName()];
+                            String requestedVersion = serviceVersions.get(anInstance.getName());
 
                             try {
-                                // Get the image id's for both expected as well as what's running, since images can be tagged with multiple versions (e.g. mysql:5 = mysql:5.2)
-                                String expectedImageId = registryApiService.getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[expectedVersion];
-                                String runningImageId = hostsController.getServiceInstance(anInstance.getServerName(), anInstance.getContainerId()).getContainerImageId()
-
                                 // We have a version mismatch...destroy the container and rebuild it
-                                if (expectedImageId != runningImageId) {
-                                    log.info("Redeploying container ${anInstance.getContainerId()} from image ${runningImageId} to ${expectedImageId}")
+                                 if (!serviceInstanceService.isImageDeployedMatchRegistry(anInstance, requestedVersion)) {
+                                    log.info("Redeploying container ${anInstance.getContainerId()} as the running image does not match the one in the registry")
 
                                     // First, let's destroy the container
                                     hostsController.removeContainer(anInstance.getServerName(), anInstance.getContainerId());
@@ -134,7 +130,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                                     // Now, create a new one
                                     environmentController.createDockerContainer(applicationDetails, anInstance, branch, serviceVersions.get(anInstance.getName()));
                                 } else {
-                                    log.info("Not modifying container ${anInstance.getContainerId()} as it's already on the proper image: ${expectedImageId}")
+                                    log.info("Not modifying container ${anInstance.getContainerId()} as it's already on the proper image")
                                 }
                             } catch (Exception e) {
                                 // This is okay, likely means that this image only exists locally

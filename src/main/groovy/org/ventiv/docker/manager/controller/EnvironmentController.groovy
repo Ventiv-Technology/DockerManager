@@ -489,8 +489,11 @@ class EnvironmentController {
         // Port Bindings
         Ports portBindings = new Ports();
         instance.getPortDefinitions().each {
-            portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding(it.getHostPort()));
+            portBindings.bind(new ExposedPort(it.getContainerPort()), new Ports.Binding('0.0.0.0', it.getHostPort().toString()));
         }
+
+        // Now, create the container - Waiting for the pull to finish first
+        pullCallback.awaitCompletion();
 
         // Create the actual container
         log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
@@ -503,7 +506,7 @@ class EnvironmentController {
                 .withName(instance.toString())
                 .withEnv(instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"} as String[])
                 .withVolumes(serviceConfiguration.getContainerVolumes().collect { new Volume(it.getPath()) } as Volume[])
-                .withExposedPorts(instance.getPortDefinitions().collect { new ExposedPort(it.getHostPort()) } as ExposedPort[])
+                .withExposedPorts(instance.getPortDefinitions().findAll { it.getHostPort() }.collect { new ExposedPort(it.getHostPort()) } as ExposedPort[])
                 .withPortBindings(portBindings)
                 .withLinks(links)
                 .withMemory(memoryLimit)
@@ -515,8 +518,6 @@ class EnvironmentController {
         if (hostConfig.getExtraHosts())
             createContainerCmd.withExtraHosts(hostConfig.getExtraHosts());
 
-        // Now, create the container - Waiting for the pull to finish first
-        pullCallback.awaitCompletion();
         CreateContainerResponse resp = createContainerCmd.exec();
 
         // Lets get an updated port mapping, just in case it was lost because the container was stopped

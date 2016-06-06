@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.api.DockerRegistry
+import org.ventiv.docker.manager.api.DockerRegistryV1
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.configuration.AdditionalMetricsConfiguration
@@ -72,7 +73,8 @@ class DockerServiceController {
         DockerTag tag = new DockerTag(serviceConfig.image);
         tag.tag = versionNumber;
 
-        DockerRegistry dockerRegistry = dockerRegistryApiService.getRegistry(tag);
+        // TODO: What if this is a v2 Registry?
+        DockerRegistryV1 dockerRegistry = (DockerRegistryV1) dockerRegistryApiService.getRegistry(tag);
 
         String imageHash = null;
         try {

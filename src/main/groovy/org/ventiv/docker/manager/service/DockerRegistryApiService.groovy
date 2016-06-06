@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import feign.Feign
 import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
@@ -25,7 +26,9 @@ import org.springframework.stereotype.Service
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 import org.ventiv.docker.manager.api.DockerRegistry
+import org.ventiv.docker.manager.api.DockerRegistryV1
 import org.ventiv.docker.manager.api.DockerRegistryV2
+import org.ventiv.docker.manager.api.DockerRegistryV2.ImageManifest
 import org.ventiv.docker.manager.api.HeaderRequestInterceptor
 import org.ventiv.docker.manager.model.DockerTag
 
@@ -40,7 +43,7 @@ class DockerRegistryApiService {
 
     public DockerRegistry getRegistry(DockerTag tag) {
         if (tag.isDockerHub()) {
-            return getDockerHubRegistry(tag);
+            return getDockerHubRegistryV2(tag);
         } else {
             return getPrivateRegistry(tag.getRegistry());
         }
@@ -50,11 +53,11 @@ class DockerRegistryApiService {
         DockerRegistry registry = getRegistry(tag);
         if (registry instanceof DockerRegistryV2)
             return registry.listRepositoryTags(tag.repository).tags as List<String>;
-        else
+        else if (registry instanceof DockerRegistryV1)
             return registry.listRepositoryTags(tag.namespace, tag.repository).keySet() as List<String>;
     }
 
-    private DockerRegistry getDockerHubRegistry(DockerTag tag) {
+    private DockerRegistryV1 getDockerHubRegistry(DockerTag tag) {
         String key = tag.getNamespace() + "/" + tag.getRepository();
         if (!dockerHubMap.containsKey(key)) {
             // Make our restful call to the docker hub to get the registry server + token
@@ -72,11 +75,31 @@ class DockerRegistryApiService {
                             .decoder(new JacksonDecoder())
                             .encoder(new JacksonEncoder())
                             .requestInterceptor(new HeaderRequestInterceptor([Authorization: "Token " + dockerToken]))
-                            .target(DockerRegistry, "https://$registryEndpoint")
+                            .target(DockerRegistryV1, "https://$registryEndpoint")
             )
         }
 
         return dockerHubMap[key];
+    }
+
+    private DockerRegistryV2 getDockerHubRegistryV2(DockerTag tag) {
+        // Make our restful call to the docker hub to get the registry server + token
+        final RESTClient client =  new RESTClient("https://auth.docker.io/")
+        HttpResponseDecorator response = client.get([
+                path: "token",
+                query: [
+                        service: 'registry.docker.io',
+                        scope: "repository:$tag.namespace/$tag.repository:pull"
+                ]
+        ])
+
+        String dockerToken = response.getData().token;
+
+        return Feign.builder()
+                        .decoder(new JacksonDecoder())
+                        .encoder(new JacksonEncoder())
+                        .requestInterceptor(new HeaderRequestInterceptor([Authorization: "Bearer " + dockerToken]))
+                        .target(DockerRegistryV2, "https://index.docker.io")
     }
 
     /**
@@ -108,7 +131,7 @@ class DockerRegistryApiService {
             restTemplate.getForEntity("https://$registryName/v2/", Map);
             return DockerRegistryV2
         } catch (HttpClientErrorException ignored) {
-            return DockerRegistry
+            return DockerRegistryV1
         }
     }
 

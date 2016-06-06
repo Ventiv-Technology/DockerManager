@@ -15,7 +15,9 @@
  */
 package org.ventiv.docker.manager.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.github.dockerjava.api.command.InspectContainerResponse
+import com.github.dockerjava.api.command.InspectImageResponse
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.Event
@@ -27,6 +29,9 @@ import org.springframework.context.ApplicationEvent
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.TaskScheduler
 import org.springframework.stereotype.Service
+import org.ventiv.docker.manager.api.DockerRegistry
+import org.ventiv.docker.manager.api.DockerRegistryV1
+import org.ventiv.docker.manager.api.DockerRegistryV2
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.event.ContainerRemovedEvent
@@ -34,6 +39,7 @@ import org.ventiv.docker.manager.event.ContainerStartedEvent
 import org.ventiv.docker.manager.event.ContainerStoppedEvent
 import org.ventiv.docker.manager.event.CreateContainerEvent
 import org.ventiv.docker.manager.model.ApplicationThumbnail
+import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.ServiceInstanceThumbnail
 import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
@@ -62,6 +68,7 @@ class ServiceInstanceService implements Runnable {
     @Resource DockerManagerConfiguration props;
     @Resource private DockerServiceConfiguration dockerServiceConfiguration;
     @Resource ServiceInstanceThumbnailRepository serviceInstanceThumbnailRepository;
+    @Resource DockerRegistryApiService registryApiService;
 
     private final Map<String, List<ServiceInstance>> allServiceInstances = [:]
     private final Map<String, DockerEventCallback> eventCallbacks = [:];
@@ -174,6 +181,47 @@ class ServiceInstanceService implements Runnable {
     @Override
     void run() {
         getAllHosts().each(this.&initializeServerConfiguration);
+    }
+
+    /**
+     * Determines if the service instance that is passed in is using the image (by tag) that is currently deployed in
+     * the corresponding registry.  This is helpful if an image is overwriten in the registry.  This commonly occurs with
+     * 'latest' images.
+     *
+     * @param serviceInstance
+     * @return
+     */
+    boolean isImageDeployedMatchRegistry(ServiceInstance serviceInstance, String expectedTag) {
+        DockerTag tag = serviceInstance.getContainerImage();
+        String host = serviceInstance.getServerName();
+
+        serviceInstance = createServiceInstance().withDockerContainer(dockerService.getDockerClient(host).inspectContainerCmd(serviceInstance.getContainerId()).exec());
+        serviceInstance.setServerName(host);
+
+        String runningImageId = serviceInstance.getContainerImageId();
+
+        DockerRegistry registry = registryApiService.getRegistry(tag);
+        if (registry instanceof DockerRegistryV1) {
+            String registryImageId = registry.listRepositoryTags(tag.namespace, tag.repository)[tag.tag];
+            return registryImageId == runningImageId;
+        } else if (registry instanceof DockerRegistryV2) {
+            InspectImageResponse imageDetails = dockerService.getDockerClient(host).inspectImageCmd(runningImageId).exec();
+
+            DockerRegistryV2.ImageManifest registryImageManifest;
+            try {
+                registryImageManifest = registry.getImageManifest(tag.namespace, tag.repository, expectedTag);
+            } catch (def ignored) {
+                // Artifactory v2 requires no namespace, but Docker Hub requires namespace.....ugh
+                registryImageManifest = registry.getImageManifest(tag.repository, expectedTag);
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> v1History = mapper.readValue(registryImageManifest.history[0].v1Compatibility.toString(), Map);
+
+            return imageDetails.container == v1History.container
+        }
+
+        return false
     }
 
     public static final class DockerEventCallback extends EventsResultCallback {

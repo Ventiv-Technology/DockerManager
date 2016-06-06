@@ -6,6 +6,8 @@ docker:
   client:
     boot2docker:
       certPath: ~/.boot2docker/certs/boot2docker-vm/
+    192.168.99.100:
+      certPath: ~//.docker/machine/machines/default/
 
 spring.thymeleaf.mode: LEGACYHTML5
 
