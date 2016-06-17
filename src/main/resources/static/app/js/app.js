@@ -429,6 +429,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
 
                     scope.$watch("application.selectedBranch", function() {
                         el.select2({
+                            placeholder: 'Select a Version',
                             ajax: {
                                 url: application.selectedBranch ? url + "/" + application.selectedBranch : url,
                                 dataType: 'json',

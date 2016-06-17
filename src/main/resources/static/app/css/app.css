@@ -61,3 +61,11 @@ body {
 .env-missing-service-instance {
     margin-bottom: 5px;
 }
+
+.select2-container {
+    width: 100% !important;
+}
+
+.selected-branch {
+    width: 100%;
+}

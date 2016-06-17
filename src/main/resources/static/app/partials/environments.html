@@ -47,9 +47,9 @@
 
                 <div class="row">
                     <div class="col-md-2 col-md-offset-1" ng-if="application.branches">
-                        <select ng-model="application.selectedBranch" ng-options="o as o for o in application.branches" ng-init="application.selectedBranch = application.branches[0]"></select>
+                        <select class="selected-branch" ng-model="application.selectedBranch" ng-options="o as o for o in application.branches" ng-init="application.selectedBranch = application.branches[0]"></select>
                     </div>
-                    <div class="col-md-2 col-md-offset-1">
+                    <div class="col-md-2" ng-class="{'col-md-offset-1': !application.branches}">
                         <select ng-model="selectedVersion" class="version-selection form-control" data-application="application"></select>
                     </div>
                     <div class="col-md-1"><button class="btn btn-primary btn-block" data-ng-show="!application.deploymentInProgress && !application.buildStatus.building && isPermissionGranted(application, 'DEPLOY')" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
