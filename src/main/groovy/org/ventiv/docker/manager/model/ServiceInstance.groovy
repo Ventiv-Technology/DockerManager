@@ -181,7 +181,7 @@ class ServiceInstance {
 
     public void setPortsFromConfiguration() {
         ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(getName());
-        EligibleServiceConfiguration eligibleServiceConfiguration = environmentConfigurationService.getEligibleServiceConfiguration(this);
+        EligibleServiceConfiguration eligibleServiceConfiguration = environmentConfigurationService?.getEligibleServiceConfiguration(this);
         if (eligibleServiceConfiguration) {
             this.portDefinitions = eligibleServiceConfiguration.portMappings.collect { portMapping ->
                 return new PortDefinition([
@@ -205,9 +205,7 @@ class ServiceInstance {
                     [portDefinition.getPortType(), portDefinition.getHostPort()]
                 }
 
-                Binding b = new Binding([server: getServerName(), port: ports]);
-                GroovyShell sh = new GroovyShell(b);
-                setUrl(sh.evaluate('"' + serviceConfig.getUrl() + '"').toString());
+                setUrl(serviceConfig.getCachingGroovyShellForUrl().eval([server: getServerName(), port: ports]).toString())
             } else if (getStatus() == Status.Stopped)
                 setUrl(getServiceDescription() + " is Stopped")
             else

@@ -15,6 +15,9 @@
  */
 package org.ventiv.docker.manager.model.configuration
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import org.ventiv.docker.manager.utils.CachingGroovyShell
+
 import javax.annotation.Nullable
 import javax.validation.constraints.NotNull
 
@@ -84,4 +87,20 @@ class ServiceInstanceConfiguration {
      */
     @Nullable
     List<Map<String, Object>> ports;
+
+    @JsonIgnore
+    private Map<String, Object> environmentWithGroovyShells;
+
+    public Map<String, Object> getEnvironmentWithGroovyShells() {
+        if (environmentWithGroovyShells == null) {
+            environmentWithGroovyShells = getEnvironment().collectEntries { k, v ->
+                if (v.contains('$'))
+                    return [k, new CachingGroovyShell('"' + v + '"')]
+                else
+                    return [k, v]
+            }
+        }
+
+        return environmentWithGroovyShells;
+    }
 }

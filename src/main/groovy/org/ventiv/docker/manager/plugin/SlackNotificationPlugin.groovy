@@ -13,19 +13,19 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.ventiv.docker.manager.plugin;
+package org.ventiv.docker.manager.plugin
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude
 import com.fasterxml.jackson.annotation.JsonProperty
 import groovy.util.logging.Slf4j
 import org.springframework.context.ApplicationContext
-import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEvent
 import org.springframework.core.env.Environment
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.client.RestTemplate
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.service.SimpleTemplateService
-
+import org.ventiv.docker.manager.utils.CachingGroovyShell
 
 /**
  * Created by jcrygier on 6/6/16.
@@ -46,9 +46,7 @@ public class SlackNotificationPlugin implements EventPlugin {
         configurations
                 .findAll { it.eventType.isAssignableFrom(event.getClass()) }
                 .findAll {
-                    Map<String, Object> bindings = [event: event];
-                    it.criteria.setBinding(new Binding(bindings));
-                    return it.criteria.run();
+                    return it.cachingGroovyShell.eval([event: event]);
                 }
                 .each { this.sendMessage(it, event) }
     }
@@ -92,8 +90,7 @@ public class SlackNotificationPlugin implements EventPlugin {
             config.color = env.getProperty("plugin.slack[$i].color");
 
             // Parse the criteria
-            GroovyShell shell = new GroovyShell(this.class.classLoader, new Binding([:]));
-            config.criteria = shell.parse(env.getProperty("plugin.slack[$i].criteria"));
+            config.cachingGroovyShell = new CachingGroovyShell(env.getProperty("plugin.slack[$i].criteria"));
 
             // Get the fields
             String includedFields = env.getProperty("plugin.slack[$i].includedFields");
@@ -122,7 +119,7 @@ public class SlackNotificationPlugin implements EventPlugin {
         String channel;
         String textTemplate;
         String color;
-        Script criteria;
+        CachingGroovyShell cachingGroovyShell;
         List<EventConfigurationField> fields;
     }
 

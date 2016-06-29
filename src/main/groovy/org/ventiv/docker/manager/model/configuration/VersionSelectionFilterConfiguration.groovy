@@ -15,19 +15,31 @@
  */
 package org.ventiv.docker.manager.model.configuration
 
+import org.ventiv.docker.manager.utils.CachingGroovyShell
+
+
 /**
  * Created by jcrygier on 3/4/15.
  */
 class VersionSelectionFilterConfiguration {
 
     String groovy;
+    private CachingGroovyShell sh;
 
     String filter(String versionNumber) {
         // Groovy Filter
         if (getGroovy()) {
-            return Eval.me('versionNumber', versionNumber, getGroovy())
+            return getCachingGroovyShell().eval([versionNumber: versionNumber]);
         }
 
         return versionNumber;
     }
+
+    private CachingGroovyShell getCachingGroovyShell() {
+        if (sh == null)
+            sh = new CachingGroovyShell(getGroovy())
+
+        return sh;
+    }
+
 }

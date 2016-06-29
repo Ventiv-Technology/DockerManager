@@ -18,7 +18,6 @@ package org.ventiv.docker.manager.controller
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.CreateContainerCmd
 import com.github.dockerjava.api.command.CreateContainerResponse
-import com.github.dockerjava.api.command.PullImageCmd
 import com.github.dockerjava.api.command.StartContainerCmd
 import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.Container
@@ -26,7 +25,6 @@ import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.Link
 import com.github.dockerjava.api.model.Links
-import com.github.dockerjava.api.model.PortBinding
 import com.github.dockerjava.api.model.Ports
 import com.github.dockerjava.api.model.Volume
 import com.github.dockerjava.core.command.PullImageResultCallback
@@ -76,12 +74,12 @@ import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.PluginService
 import org.ventiv.docker.manager.service.ServiceInstanceService
+import org.ventiv.docker.manager.utils.CachingGroovyShell
 import org.ventiv.docker.manager.utils.DockerUtils
 import org.ventiv.docker.manager.utils.UserAuditFilter
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ScheduledFuture
 
 /**
@@ -475,11 +473,11 @@ class EnvironmentController {
         }
 
         // Get the environment variables
-        Map<String, String> env = [:]
+        Map<String, Object> env = [:]
         if (serviceConfiguration.getEnvironment())
-            env.putAll(serviceConfiguration.getEnvironment())
+            env.putAll(serviceConfiguration.getEnvironmentWithGroovyShells())
         if (applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() }.getEnvironment())
-            env.putAll(applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() }.getEnvironment())
+            env.putAll(applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == instance.getName() }.getEnvironmentWithGroovyShells())
 
         // Resolve them
         def resolutionVariables = [
@@ -490,11 +488,10 @@ class EnvironmentController {
                 }
         ]
 
-        Binding b = new Binding(resolutionVariables);
-        GroovyShell sh = new GroovyShell(b);
+        // Convert the ones that came back as CachingGroovyShell instances
         env.each { k, v ->
-            if (v.contains('$'))
-                env.put(k, sh.evaluate('"' + v + '"').toString())
+            if (v instanceof CachingGroovyShell)
+                env.put(k, v.eval(resolutionVariables))
         }
 
         instance.setResolvedEnvironmentVariables(env);

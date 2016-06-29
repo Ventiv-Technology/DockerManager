@@ -15,9 +15,11 @@
  */
 package org.ventiv.docker.manager.model.configuration
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.service.DockerRegistryApiService
+import org.ventiv.docker.manager.utils.CachingGroovyShell
 
 import javax.annotation.Nullable
 import javax.validation.constraints.NotNull
@@ -122,6 +124,12 @@ class ServiceConfiguration {
     @Nullable
     String memorySwapLimit;
 
+    @JsonIgnore
+    private CachingGroovyShell cachingGroovyShell;
+
+    @JsonIgnore
+    private Map<String, Object> environmentWithGroovyShells;
+
     public List<String> getPossibleVersions(String branch, String query = null) {
         List<String> answer = [];
 
@@ -187,6 +195,26 @@ class ServiceConfiguration {
             return Long.parseLong(strippedAlphas);
         else
             return Long.MAX_VALUE;
+    }
+
+    public CachingGroovyShell getCachingGroovyShellForUrl() {
+        if (cachingGroovyShell == null)
+            cachingGroovyShell = new CachingGroovyShell('"' + getUrl() + '"');
+
+        return cachingGroovyShell;
+    }
+
+    public Map<String, Object> getEnvironmentWithGroovyShells() {
+        if (environmentWithGroovyShells == null) {
+            environmentWithGroovyShells = getEnvironment().collectEntries { k, v ->
+                if (v.contains('$'))
+                    return [k, new CachingGroovyShell('"' + v + '"')]
+                else
+                    return [k, v]
+            }
+        }
+
+        return environmentWithGroovyShells;
     }
 
 }
