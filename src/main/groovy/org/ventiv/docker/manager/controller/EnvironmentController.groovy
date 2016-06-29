@@ -37,7 +37,10 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.scheduling.TaskScheduler
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.Authentication
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -47,6 +50,8 @@ import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.event.DeploymentCancelledEvent
+import org.ventiv.docker.manager.event.DeploymentScheduledEvent
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.event.PullImageEvent
 import org.ventiv.docker.manager.model.ApplicationDetails
@@ -76,6 +81,8 @@ import org.ventiv.docker.manager.utils.UserAuditFilter
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ScheduledFuture
 
 /**
  * Created by jcrygier on 2/27/15.
@@ -95,6 +102,7 @@ class EnvironmentController {
     @Resource PluginService pluginService;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
     @Resource ServiceInstanceService serviceInstanceService;
+    @Resource TaskScheduler taskScheduler;
 
     Map<String, BuildApplicationInfo> buildingApplications = [:]
 
@@ -148,7 +156,8 @@ class EnvironmentController {
                     missingServiceInstances: missingServices.collect { new MissingService([serviceName: it, serviceDescription: dockerServiceConfiguration.getServiceConfiguration(it).getDescription()]) },
                     buildStatus: buildingApplications.get("$tierName.$environmentName.${applicationConfiguration.getId()}")?.getBuildStatus(),
                     deploymentInProgress: deploymentService.isRunning(tierName, environmentName, applicationConfiguration.getId()),
-                    version: versionsDeployed.join(", ")
+                    version: versionsDeployed.join(", "),
+                    scheduledDeployment: deploymentService.getScheduledDeployment(tierName, environmentName, applicationConfiguration.getId())
             ]).withApplicationConfiguration(applicationConfiguration)
         }, DockerManagerPermission.READ)
     }
@@ -179,6 +188,14 @@ class EnvironmentController {
         return [ newBuildOption ];
     }
 
+    @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/cancelScheduledDeployment", method = RequestMethod.DELETE)
+    public DeploymentScheduledEvent cancelScheduledDeployment(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId) {
+        DeploymentScheduledEvent deploymentScheduledEvent = deploymentService.removeScheduledDeployment(tierName, environmentName, applicationId, true);
+        eventPublisher.publishEvent(new DeploymentCancelledEvent(tierName, environmentName, applicationId, deploymentScheduledEvent));
+
+        return deploymentScheduledEvent;
+    }
+
     /**
      * Builds out an application.  Ensures the docker environment of two things:
      * 1.) Any missingServiceInstances (see getEnvironmentDetails) will be built out according to the requested versions
@@ -207,14 +224,14 @@ class EnvironmentController {
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'DEPLOY')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/{version:.*}", method = RequestMethod.POST)
-    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId,  @PathVariable("version") String version) {
-        deployApplication(tierName, environmentName, applicationId, null, version)
+    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId,  @PathVariable("version") String version, @RequestBody Map<String, Object> variables) {
+        deployApplication(tierName, environmentName, applicationId, null, version, variables)
     }
 
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'DEPLOY')")
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/{branch}/{version:.*}", method = RequestMethod.POST)
-    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("branch") String branch,  @PathVariable("version") String version) {
+    public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("branch") String branch,  @PathVariable("version") String version, @RequestBody Map<String, Object> variables) {
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
         ApplicationConfiguration appConfiguration = envConfiguration.getApplications().find { it.getId() == applicationId };
         Collection<ServiceConfiguration> allServiceConfigurations = appConfiguration.getServiceInstances()*.getType().unique().collect { dockerServiceConfiguration.getServiceConfiguration(it); }
@@ -230,8 +247,41 @@ class EnvironmentController {
             serviceVersions.put(it.getName(), version);
         }
 
+        List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
+        ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == applicationId }
+
+        // Throw an error if we've already scheduled a deployment for this app
+        if (deploymentService.isDeploymentScheduled(applicationDetails))
+            throw new IllegalArgumentException("A deployment has already been scheduled for: ${applicationDetails.getDescription()}");
+
+
         // Finally, call the deploy
-        deployApplication(tierName, environmentName, new DeployApplicationRequest(name: applicationId, branch: branch, serviceVersions: serviceVersions, requestedVersion: version));
+        if (variables?.delay) {
+            Calendar delayedDeployTime = Calendar.getInstance();
+            delayedDeployTime.setTimeInMillis(System.currentTimeMillis());
+            delayedDeployTime.add(Calendar.MINUTE, (Integer) variables.delay);
+
+            // Get some details we'll need for the delayed deployment
+            Authentication requestor = SecurityContextHolder.getContext().getAuthentication();
+
+            // Schedule the deployment
+            ScheduledFuture scheduledDeploy = taskScheduler.schedule({
+                SecurityContextHolder.getContext().setAuthentication(requestor);
+                deploymentService.removeScheduledDeployment(applicationDetails);
+                deployApplication(tierName, environmentName, new DeployApplicationRequest(tierName: tierName, environmentName: environmentName, name: applicationId, branch: branch, serviceVersions: serviceVersions, requestedVersion: version));
+                SecurityContextHolder.getContext().setAuthentication(null);
+            } as Runnable, new Date(delayedDeployTime.getTimeInMillis()));
+
+            // Keep track of the deployment event, so we can cancel it later if need be
+            DeploymentScheduledEvent deploymentEvent = new DeploymentScheduledEvent(applicationDetails, branch, serviceVersions, version, new Date(delayedDeployTime.getTimeInMillis()), scheduledDeploy)
+            deploymentService.scheduleDeployment(applicationDetails, deploymentEvent);
+
+            // Let the world know we've scheduled a deployment
+            eventPublisher.publishEvent(deploymentEvent);
+        } else {
+            deployApplication(tierName, environmentName, new DeployApplicationRequest(tierName: tierName, environmentName: environmentName, name: applicationId, branch: branch, serviceVersions: serviceVersions, requestedVersion: version));
+        }
+
     }
 
     /**

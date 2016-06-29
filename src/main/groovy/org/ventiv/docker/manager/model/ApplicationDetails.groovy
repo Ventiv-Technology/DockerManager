@@ -16,12 +16,15 @@
 package org.ventiv.docker.manager.model
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import groovy.transform.EqualsAndHashCode
+import org.ventiv.docker.manager.event.DeploymentScheduledEvent
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 
 /**
  * The instantiated, running version of an ApplicationConfiguration.  Much of the information is copied from an
  * ApplicationConfiguration object.
  */
+@EqualsAndHashCode(includes = ['id', 'tierName', 'environmentName'])
 class ApplicationDetails {
 
     String id;
@@ -40,6 +43,7 @@ class ApplicationDetails {
     boolean buildPossible = false;
     boolean newBuildPossible = false;
     boolean deploymentInProgress = false;
+    DeploymentScheduledEvent scheduledDeployment;
 
     @JsonIgnore
     ApplicationConfiguration applicationConfiguration;

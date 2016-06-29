@@ -90,6 +90,13 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 return grantingPermissionIdx !== -1;
             };
 
+            $scope.isDeploymentScheduled = function(applicationDetails) {
+                if (applicationDetails == null || applicationDetails.scheduledDeployment == null)
+                    return false;
+
+                return new Date(applicationDetails.scheduledDeployment.requestedDeploymentDate) > new Date();
+            }
+
             $scope.isMultipleTiers = function() {
                 if ($scope.tiers)
                     return Object.keys($scope.tiers).length > 1;
@@ -240,13 +247,22 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                 return $scope.asyncExecutionPromise;
             };
 
-            $scope.deployApplication = function(applicationDetails) {
-                console.log("Deploying build:", applicationDetails.selectedVersion + " branch: " + applicationDetails.selectedBranch);
+            $scope.deployApplication = function(applicationDetails, delay) {
+                console.log("Deploying build:", applicationDetails.selectedVersion + " branch: " + applicationDetails.selectedBranch + " with delay: " + delay);
+                var params = { delay: delay };
                 if(applicationDetails.selectedBranch) {
-                    $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).one(applicationDetails.selectedBranch).all(applicationDetails.selectedVersion).post()
+                    $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).one(applicationDetails.selectedBranch).all(applicationDetails.selectedVersion).post(params)
                 } else {
-                    $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all(applicationDetails.selectedVersion).post()
+                    $scope.asyncExecutionPromise = Restangular.one('environment', $stateParams.tierName).one($stateParams.environmentId).one("app", applicationDetails.id).all(applicationDetails.selectedVersion).post(params)
                 }
+            };
+
+            $scope.stopScheduledDeployment = function(applicationDetails) {
+                console.log("Cancelling Deployment for: ", applicationDetails);
+                $http.delete("/api/environment/" + $stateParams.tierName + "/" + $stateParams.environmentId + "/app/" + applicationDetails.id + "/cancelScheduledDeployment")
+                    .then(function() {
+                         applicationDetails.scheduledDeployment = null;
+                    });
             };
 
             $scope.statusChangeApplication = function(applicationDetails, status) {

@@ -28,6 +28,7 @@
                 <span id="{{application.id}}-app">{{application.description}}</span>
                 <span data-ng-show="application.buildStatus.building"> - <a href="" translate="BUILDING_IMAGE">Building Image...</a></span>
                 <span data-ng-show="application.deploymentInProgress"> - <a href="" translate="DEPLOYING">Deploying...</a></span>
+                <span data-ng-show="application.scheduledDeployment"> - <a href="">Deployment @ {{application.scheduledDeployment.requestedDeploymentDate | date : 'short'}}</a></span>
                 <span class="pull-right">(Running: {{getRunning(application).length}}, Stopped: {{getStopped(application).length}}, Missing: {{application.missingServiceInstances.length}})</span>
             </accordion-heading>
             <div id="{{application.id}}-url">
@@ -52,7 +53,26 @@
                     <div class="col-md-2" ng-class="{'col-md-offset-1': !application.branches}">
                         <select ng-model="selectedVersion" class="version-selection form-control" data-application="application"></select>
                     </div>
-                    <div class="col-md-1"><button class="btn btn-primary btn-block" data-ng-show="!application.deploymentInProgress && !application.buildStatus.building && isPermissionGranted(application, 'DEPLOY')" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button></div>
+                    <div class="col-md-2 btn-group" data-ng-show="!application.deploymentInProgress && !application.buildStatus.building && isPermissionGranted(application, 'DEPLOY') && !isDeploymentScheduled(application)">
+                        <button class="btn btn-primary" style="width: 80%" data-ng-click="deployApplication(application)" translate="DEPLOY">Deploy</button>
+                        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <span class="caret"></span>
+                            <span class="sr-only">Toggle Dropdown</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li style="padding-left: 20px;">Deploy In: </li>
+                            <li role="separator" class="divider"></li>
+                            <li><a data-ng-click="deployApplication(application, 5)">5 Minutes</a></li>
+                            <li><a data-ng-click="deployApplication(application, 10)">10 Minutes</a></li>
+                            <li><a data-ng-click="deployApplication(application, 15)">15 Minutes</a></li>
+                            <li><a data-ng-click="deployApplication(application, 20)">20 Minutes</a></li>
+                            <li><a data-ng-click="deployApplication(application, 30)">30 Minutes</a></li>
+                            <li><a data-ng-click="deployApplication(application, 45)">45 Minutes</a></li>
+                            <li><a data-ng-click="deployApplication(application, 60)">60 Minutes</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="col-md-2" data-ng-show="isDeploymentScheduled(application)" ><button class="btn btn-danger btn-block" data-ng-click="stopScheduledDeployment(application)">Cancel Deployment</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-show="isPermissionGranted(application, 'STOP')" data-ng-click="statusChangeApplication(application, 'stop')" translate="STOP">Stop</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-show="isPermissionGranted(application, 'START')" data-ng-click="statusChangeApplication(application, 'start')" translate="START">Start</button></div>
                     <div class="col-md-1"><button class="btn btn-warning btn-block" data-ng-show="isPermissionGranted(application, 'RESTART')" data-ng-click="statusChangeApplication(application, 'restart')" translate="RESTART">Restart</button></div>

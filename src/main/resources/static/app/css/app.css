@@ -69,3 +69,7 @@ body {
 .selected-branch {
     width: 100%;
 }
+
+.panel-group .panel {
+    overflow: visible;
+}

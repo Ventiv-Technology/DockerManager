@@ -31,6 +31,7 @@ import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.controller.EnvironmentController
 import org.ventiv.docker.manager.controller.HostsController
 import org.ventiv.docker.manager.event.DeploymentFinishedEvent
+import org.ventiv.docker.manager.event.DeploymentScheduledEvent
 import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.exception.ApplicationException
 import org.ventiv.docker.manager.model.ApplicationDetails
@@ -43,6 +44,7 @@ import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 import org.ventiv.docker.manager.utils.TimingUtils
 
 import javax.annotation.Resource
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Service to handle Application Deployments
@@ -60,6 +62,7 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
 
     private Map<String, Promise<ApplicationDetails, ApplicationException, String>> runningDeployments = [:]
+    private Map<ApplicationDetails, DeploymentScheduledEvent> scheduledDeployments = new ConcurrentHashMap<>();
 
     @Override
     void onApplicationEvent(DeploymentStartedEvent event) {
@@ -168,6 +171,38 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
             return runningDeployments[key].isPending();
         else
             return false;
+    }
+
+    public void scheduleDeployment(ApplicationDetails applicationDetails, DeploymentScheduledEvent deploymentEvent) {
+        scheduledDeployments.put(applicationDetails, deploymentEvent);
+    }
+
+    public boolean isDeploymentScheduled(ApplicationDetails applicationDetails) {
+        return scheduledDeployments.containsKey(applicationDetails);
+    }
+
+    public boolean isDeploymentScheduled(String tierName, String environmentName, String applicationId) {
+        return isDeploymentScheduled(new ApplicationDetails(tierName: tierName, environmentName: environmentName, id: applicationId));
+    }
+
+    public DeploymentScheduledEvent getScheduledDeployment(ApplicationDetails applicationDetails) {
+        return scheduledDeployments.get(applicationDetails);
+    }
+
+    public DeploymentScheduledEvent getScheduledDeployment(String tierName, String environmentName, String applicationId) {
+        return getScheduledDeployment(new ApplicationDetails(tierName: tierName, environmentName: environmentName, id: applicationId));
+    }
+
+    public DeploymentScheduledEvent removeScheduledDeployment(ApplicationDetails applicationDetails, boolean stop = false) {
+        DeploymentScheduledEvent event = scheduledDeployments.remove(applicationDetails);
+        if (stop && event)
+            event.getFuture().cancel(false);
+
+        return event;
+    }
+
+    public DeploymentScheduledEvent removeScheduledDeployment(String tierName, String environmentName, String applicationId, boolean stop = false) {
+        return removeScheduledDeployment(new ApplicationDetails(tierName: tierName, environmentName: environmentName, id: applicationId), stop);
     }
 
     private static String getKey(String tierName, String environmentName, String applicationId) {

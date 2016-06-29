@@ -41,11 +41,16 @@ class DeployApplicationRequest {
      * Will request that all 'rabbit' service instances in this application be on v3.4.3-management and all logstash
      * service instances be on 1.4.2.
      */
-    Map<String, Map<String, String>> serviceVersions;
+    Map<String, String> serviceVersions;
 
     /**
      * When just requesting one version, it goes here
      */
     String requestedVersion;
+
+    //********************* Optional Fields ****************//
+
+    String tierName;
+    String environmentName;
 
 }
