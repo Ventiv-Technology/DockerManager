@@ -49,7 +49,6 @@ import org.ventiv.docker.manager.repository.ServiceInstanceThumbnailRepository
 
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
-import java.util.concurrent.ExecutorService
 import java.util.concurrent.ScheduledFuture
 
 /**
@@ -256,7 +255,6 @@ class ServiceInstanceService implements Runnable {
                 ServiceInstance previousServiceInstance = allServiceInstances.find {
                     it.getContainerId() == event.getId()
                 }
-                allServiceInstances.remove(previousServiceInstance);
 
                 // Add the new one back
                 if (event.getStatus() != "destroy" && event.getId()) {
@@ -264,11 +262,14 @@ class ServiceInstanceService implements Runnable {
                         InspectContainerResponse inspectContainerResponse = serviceInstanceService.dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(event.getId()).exec()
                         serviceInstance = serviceInstanceService.createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse);
 
+                        allServiceInstances.remove(previousServiceInstance);
                         allServiceInstances << serviceInstance;
                     } catch (NotFoundException ignored) {
                         log.info("Event received from container ${event.getId()}, but it must have been destroyed before we could read the status.  Ignoring the container...")
                         return;
                     }
+                } else {
+                    allServiceInstances.remove(previousServiceInstance);
                 }
 
                 // Publish the event

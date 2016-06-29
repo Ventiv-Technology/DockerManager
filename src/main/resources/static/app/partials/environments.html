@@ -28,7 +28,7 @@
                 <span id="{{application.id}}-app">{{application.description}}</span>
                 <span data-ng-show="application.buildStatus.building"> - <a href="" translate="BUILDING_IMAGE">Building Image...</a></span>
                 <span data-ng-show="application.deploymentInProgress"> - <a href="" translate="DEPLOYING">Deploying...</a></span>
-                <span data-ng-show="application.scheduledDeployment"> - <a href="">Deployment @ {{application.scheduledDeployment.requestedDeploymentDate | date : 'short'}}</a></span>
+                <span data-ng-show="application.scheduledDeployment"> - <a href="">Deploying ({{application.scheduledDeployment.requestedVersion}}) @ {{application.scheduledDeployment.requestedDeploymentDate | date : 'short'}}</a></span>
                 <span class="pull-right">(Running: {{getRunning(application).length}}, Stopped: {{getStopped(application).length}}, Missing: {{application.missingServiceInstances.length}})</span>
             </accordion-heading>
             <div id="{{application.id}}-url">

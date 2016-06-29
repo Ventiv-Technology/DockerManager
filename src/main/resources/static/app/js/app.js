@@ -206,7 +206,12 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     var idx = _.lastIndexOf(application.missingServiceInstances, function(missingService) { return missingService.serviceName == eventServiceInstance.name });
                     var removedMissingService = application.missingServiceInstances.splice(idx, 1);
 
-                    application.serviceInstances.push(eventServiceInstance);
+                    var existingContainerIdx = application.serviceInstances.map(function(it) { return it.containerId }).indexOf(eventServiceInstance.containerId);
+
+                    // Only push the new one, if it's not already here
+                    if (existingContainerIdx == -1)
+                        application.serviceInstances.push(eventServiceInstance);
+
                     $scope.$digest();
                 });
 
@@ -217,6 +222,11 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
 
                 StatusService.subscribeForApplication("DeploymentFinishedEvent", $scope.environment.applications, function(application) {
                     application.deploymentInProgress = false;
+                    $scope.$digest();
+                });
+
+                StatusService.subscribeForApplication("DeploymentScheduledEvent", $scope.environment.applications, function(application, deploymentScheduledEvent) {
+                    application.scheduledDeployment = deploymentScheduledEvent;
                     $scope.$digest();
                 });
 
