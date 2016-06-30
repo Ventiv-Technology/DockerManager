@@ -16,6 +16,8 @@
 package org.ventiv.docker.manager.controller
 
 import com.github.dockerjava.api.command.LogContainerCmd
+import com.github.dockerjava.api.model.Frame
+import com.github.dockerjava.api.model.StreamType
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.core.authority.SimpleGrantedAuthority
@@ -40,7 +42,8 @@ class HostsControllerTest extends AbstractIntegrationTest {
 
     def "can get standard out copied to servlet output stream"() {
         setup:
-        mockClient.getExecResponses().put(LogContainerCmd, new StringBufferInputStream("This is a test log"))
+        Frame mockResponse = new Frame(StreamType.STDOUT, "This is a test log".bytes)
+        mockClient.getExecResponses().put(LogContainerCmd, mockResponse)
 
         when:
         MockHttpServletResponse response = new MockHttpServletResponse();

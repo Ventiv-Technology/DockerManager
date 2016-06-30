@@ -69,7 +69,7 @@ import com.github.dockerjava.api.command.RestartContainerCmd
 import com.github.dockerjava.api.command.SaveImageCmd
 import com.github.dockerjava.api.command.SearchImagesCmd
 import com.github.dockerjava.api.command.StartContainerCmd
-import com.github.dockerjava.api.command.StatsCmd;
+import com.github.dockerjava.api.command.StatsCmd
 import com.github.dockerjava.api.command.StopContainerCmd
 import com.github.dockerjava.api.command.TagImageCmd
 import com.github.dockerjava.api.command.TopContainerCmd
@@ -144,7 +144,6 @@ import com.github.dockerjava.core.command.WaitContainerCmdImpl
 import spock.lang.Specification
 
 import javax.annotation.Nonnull
-import java.util.concurrent.ExecutorService
 
 /**
  * Created by jcrygier on 4/13/15.
@@ -427,7 +426,8 @@ class MockDockerClient extends Specification implements DockerClient {
         LogContainerCmd.Exec mockExec = new LogContainerCmd.Exec() {
             @Override
             Void exec(LogContainerCmd command, ResultCallback<Frame> resultCallback) {
-                return execResponses[LogContainerCmd];
+                resultCallback.onNext(execResponses[LogContainerCmd] as Frame);
+                resultCallback.onComplete();
             }
         }
         return new LogContainerCmdImpl(mockExec, containerId)
