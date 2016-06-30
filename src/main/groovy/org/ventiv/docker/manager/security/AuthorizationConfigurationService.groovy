@@ -30,7 +30,7 @@ import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.service.ResourceWatcherService
 import org.ventiv.docker.manager.utils.StringUtils
-import org.yaml.snakeyaml.Yaml
+import org.ventiv.docker.manager.utils.YamlUtils
 
 import javax.annotation.PostConstruct
 
@@ -63,13 +63,11 @@ class AuthorizationConfigurationService {
         resourceExists = resource.exists();
 
         if (resource.exists()) {
-            Yaml yaml = new Yaml()
-
             if (log.isDebugEnabled()) {
                 log.debug("Loading authorization definition from YAML: " + resource);
             }
 
-            def authorizationFile = yaml.loadAs(resource.getInputStream(), Map);
+            def authorizationFile = YamlUtils.loadAs(resource, Map);
 
             // Populate the MutableAclService
             mutableAclService.clearAll();

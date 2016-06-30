@@ -29,11 +29,11 @@ class VersionSelectionConfiguration extends RestCallConfiguration {
     String jsonPath;
     Collection<VersionSelectionFilterConfiguration> filters;
 
-    public List<String> getPossibleVersions(String branch = '') {
+    public List<String> getPossibleVersions(Map<String, Object> variables) {
         List<String> versions = [];
 
         if (getUri() && getJsonPath()) {
-            Object response = makeCall([branch: branch]);
+            Object response = makeCall(variables);
             versions = (List<String>) JsonPath.read(response, getJsonPath());
         }
 
@@ -48,12 +48,4 @@ class VersionSelectionConfiguration extends RestCallConfiguration {
         return versions;
     }
 
-    @Override
-    String getUri() {
-        String uri = super.getUri()
-        if (!uri.contains('{branch}'))
-            return uri + '{branch}'
-
-        return uri;
-    }
 }

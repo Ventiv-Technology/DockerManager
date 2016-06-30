@@ -22,7 +22,7 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.service.ResourceWatcherService
-import org.yaml.snakeyaml.Yaml
+import org.ventiv.docker.manager.utils.YamlUtils
 
 import javax.annotation.PostConstruct
 
@@ -52,13 +52,11 @@ class DockerServiceConfiguration {
     }
 
     public void readConfiguration(Resource resource) {
-        Yaml yaml = new Yaml()
-
         if (log.isDebugEnabled()) {
             log.debug("Loading service definition from YAML: " + resource);
         }
 
-        config = yaml.loadAs(resource.getInputStream(), ServiceConfigurationFile).getServices();
+        config = YamlUtils.loadAs(resource, ServiceConfigurationFile).getServices();
     }
 
     public List<String> getServiceNames() {

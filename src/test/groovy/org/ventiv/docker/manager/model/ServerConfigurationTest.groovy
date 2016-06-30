@@ -17,7 +17,7 @@ package org.ventiv.docker.manager.model
 
 import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
-import org.yaml.snakeyaml.Yaml
+import org.ventiv.docker.manager.utils.YamlUtils
 import spock.lang.Specification
 
 /**
@@ -40,7 +40,7 @@ class ServerConfigurationTest extends Specification {
                     - type: amqp
                       ports: 5672-5681
         """
-        ServerConfiguration serverConfiguration = new Yaml().loadAs(yaml, ServerConfiguration)
+        ServerConfiguration serverConfiguration = YamlUtils.loadAs(yaml, ServerConfiguration)
 
         when:
         List<EligibleServiceConfiguration> services = serverConfiguration.getEligibleServices()
@@ -75,7 +75,7 @@ class ServerConfigurationTest extends Specification {
                     - type: amqp
                       port: 5672
         """
-        ServerConfiguration serverConfiguration = new Yaml().loadAs(yaml, ServerConfiguration)
+        ServerConfiguration serverConfiguration = YamlUtils.loadAs(yaml, ServerConfiguration)
 
         when:
         List<EligibleServiceConfiguration> services = serverConfiguration.getEligibleServices()

@@ -172,7 +172,8 @@ class EnvironmentController {
         Collection<ServiceConfiguration> allServiceConfigurations = appConfiguration.getServiceInstances()*.getType().unique().collect { dockerServiceConfiguration.getServiceConfiguration(it); }
         Collection<ServiceConfiguration> nonPinnedServices = allServiceConfigurations.findAll { it.getPinnedVersion() == null };
 
-        Collection<List<String>> versions = nonPinnedServices.collect { it.getPossibleVersions(branch, query) }.unique()
+        Map<String, Object> versionVariables = [branch: branch, environment: envConfiguration, application: appConfiguration]
+        Collection<List<String>> versions = nonPinnedServices.collect { it.getPossibleVersions(versionVariables, query) }.unique()
 
         // Create an option for the new build - if applicable
         Map<String, String> newBuildOption = nonPinnedServices.any { it.isNewBuildPossible() } ? [id: "BuildNewVersion", text: "New Build"] : [:]

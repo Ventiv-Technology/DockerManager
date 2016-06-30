@@ -27,7 +27,7 @@ import org.ventiv.docker.manager.build.jenkins.BuildStartedResponse
 import org.ventiv.docker.manager.build.jenkins.JenkinsApi
 import org.ventiv.docker.manager.model.configuration.ServiceBuildConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
-import org.yaml.snakeyaml.Yaml
+import org.ventiv.docker.manager.utils.YamlUtils
 import spock.lang.Specification
 
 import javax.annotation.Resource
@@ -65,7 +65,7 @@ class ServiceBuildConfigurationTest extends Specification {
                         user: jcrygier
                         password: NotMyRealPassword
         """
-        ServiceConfiguration config = new Yaml().loadAs(configYaml, ServiceConfiguration);
+        ServiceConfiguration config = YamlUtils.loadAs(configYaml, ServiceConfiguration);
         mockedJenkinsApi.startNewBuild("JohnCTest") >> new BuildStartedResponse([success: true, statusUrl: "https://fake.jenkins.com/jenkins/queue/item/536/", queueId: 536])
         mockedJenkinsApi.getBuildQueueStatus(536) >> new BuildQueueStatus([task: new BuildQueueStatus.TaskInformation([name: "JohnCTest"]), executable: new BuildQueueStatus.ExecutableInformation([number: 56])]);
 

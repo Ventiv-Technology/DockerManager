@@ -46,7 +46,7 @@ class RestCallConfiguration {
 
     public Object makeCall(Map<String, ?> uriVariables) {
         RestTemplate restTemplate = new RestTemplate();
-        HttpEntity request = new HttpEntity(body, httpHeaders);
+        HttpEntity request = new HttpEntity(body, getHttpHeaders());
 
         ResponseEntity<Object> answer = restTemplate.exchange(getUri(), getMethod(), request, Object.class, uriVariables);
         return answer.getBody();
@@ -93,7 +93,7 @@ class RestCallConfiguration {
         }
 
         String getBasicHeader() {
-            return Base64.encodeBase64URLSafeString("${username}:${password}".getBytes());
+            return Base64.encodeBase64URLSafeString("${username}:${password}".getBytes()) + "==";
         }
     }
 

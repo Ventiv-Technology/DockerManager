@@ -130,11 +130,12 @@ class ServiceConfiguration {
     @JsonIgnore
     private Map<String, Object> environmentWithGroovyShells;
 
-    public List<String> getPossibleVersions(String branch, String query = null) {
+    public List<String> getPossibleVersions(Map<String, Object> variables, String query = null) {
         List<String> answer = [];
+        variables.put('service', this);
 
         if (getBuild()?.getVersionSelection())  // We know how to build an image
-            answer = getBuild().getVersionSelection().getPossibleVersions(branch);
+            answer = getBuild().getVersionSelection().getPossibleVersions(variables);
         else if (getImage()) {             // We already have a docker images
             DockerTag tag = new DockerTag(getImage());
 

@@ -28,7 +28,7 @@ import org.ventiv.docker.manager.model.configuration.EligibleServiceConfiguratio
 import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.repository.ApplicationThumbnailRepository
-import org.yaml.snakeyaml.Yaml
+import org.ventiv.docker.manager.utils.YamlUtils
 
 import javax.annotation.PostConstruct
 
@@ -62,8 +62,6 @@ class EnvironmentConfigurationService {
     }
 
     public void readConfiguration(Resource resource) {
-        Yaml yaml = new Yaml()
-
         if (log.isDebugEnabled()) {
             log.debug("Loading environment definition from YAML: " + resource);
         }
@@ -71,7 +69,7 @@ class EnvironmentConfigurationService {
         String tierName = resource.getFile().getParentFile().getName();
         String environmentId = resource.getFilename().replaceAll("\\.yml", "")
 
-        EnvironmentConfiguration environmentConfiguration = yaml.loadAs(resource.getInputStream(), EnvironmentConfiguration)
+        EnvironmentConfiguration environmentConfiguration = YamlUtils.loadAs(resource, EnvironmentConfiguration)
         environmentConfiguration.setTierName(tierName);
         environmentConfiguration.setId(environmentId);
 
