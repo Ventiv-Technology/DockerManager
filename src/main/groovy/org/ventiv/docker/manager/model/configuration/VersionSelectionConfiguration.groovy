@@ -24,19 +24,17 @@ import groovy.util.logging.Slf4j
  */
 @CompileStatic
 @Slf4j
-class VersionSelectionConfiguration {
+class VersionSelectionConfiguration extends RestCallConfiguration {
 
-    String uri;
     String jsonPath;
     Collection<VersionSelectionFilterConfiguration> filters;
 
-    public List<String> getPossibleVersions(String branch = null) {
+    public List<String> getPossibleVersions(String branch = '') {
         List<String> versions = [];
 
         if (getUri() && getJsonPath()) {
-            String uri = branch ? "${getUri()}${branch}" : uri
-            log.debug("Reading Versions from ${uri}");
-            versions = (List<String>) JsonPath.read(new URL(uri), getJsonPath())
+            Object response = makeCall([branch: branch]);
+            versions = (List<String>) JsonPath.read(response, getJsonPath());
         }
 
         if (getFilters()) {
@@ -50,4 +48,12 @@ class VersionSelectionConfiguration {
         return versions;
     }
 
+    @Override
+    String getUri() {
+        String uri = super.getUri()
+        if (!uri.contains('{branch}'))
+            return uri + '{branch}'
+
+        return uri;
+    }
 }
