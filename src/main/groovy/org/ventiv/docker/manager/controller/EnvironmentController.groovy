@@ -173,7 +173,9 @@ class EnvironmentController {
         Collection<ServiceConfiguration> nonPinnedServices = allServiceConfigurations.findAll { it.getPinnedVersion() == null };
 
         Map<String, Object> versionVariables = [branch: branch, environment: envConfiguration, application: appConfiguration]
-        Collection<List<String>> versions = nonPinnedServices.collect { it.getPossibleVersions(versionVariables, query) }.unique()
+        Collection<List<String>> versions = appConfiguration.versionSelection ?
+                [ appConfiguration.versionSelection.getPossibleVersions(versionVariables)] :
+                nonPinnedServices.collect { it.getPossibleVersions(versionVariables, query) }.unique();
 
         // Create an option for the new build - if applicable
         Map<String, String> newBuildOption = nonPinnedServices.any { it.isNewBuildPossible() } ? [id: "BuildNewVersion", text: "New Build"] : [:]

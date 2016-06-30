@@ -79,6 +79,9 @@ class ApplicationConfiguration {
     @Nullable
     String extraInformationPartial;
 
+    @Nullable
+    VersionSelectionConfiguration versionSelection;
+
     @JsonIgnore
     public ObjectIdentity getObjectIdentity() {
         return new ObjectIdentityImpl(this.getClass(), "${tierName}.${environmentId}.${id}".toString())
