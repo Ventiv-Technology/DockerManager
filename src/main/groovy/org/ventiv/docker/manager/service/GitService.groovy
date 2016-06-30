@@ -69,6 +69,7 @@ class GitService implements Runnable {
                         .setDirectory(cloneLocation)
                         .setBare(false)
                         .setCredentialsProvider(credentialsProvider)
+                        .setBranch(props.config.git.branch ?: 'master')
                         .call();
             }
 
