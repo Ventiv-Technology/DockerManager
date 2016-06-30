@@ -60,7 +60,7 @@ class ServiceBuildConfiguration {
         String registryImageId = null;
         if (requestedBuildVersion != BUILD_NEW_VERSION) {
             try {
-                registryImageId = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getRegistry(tag).listRepositoryTags(tag.getNamespace(), tag.getRepository())[tagStr];
+                registryImageId = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getTagsForImage(tag).find { it == tagStr };
             } catch (Exception ignored) {}     // This can happen if the registry has never seen this image type before
         }
 
