@@ -131,8 +131,8 @@ class ServiceInstance {
         ServiceConfiguration serviceConfig = dockerServiceConfiguration.getServiceConfiguration(name)
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
-        // Determine the Port Definitions
-        this.portDefinitions = dockerContainer.getPorts().collect { ContainerPort port ->
+        // Determine the Port Definitions (Filter out ones w/o IP / Port, as this can happen when creating the container)
+        this.portDefinitions = dockerContainer.getPorts().findAll { it.getIp() && it.getPublicPort() }.collect { ContainerPort port ->
             return new PortDefinition([
                     portType: serviceConfig?.containerPorts?.find { it.port == port.getPrivatePort() }?.type,
                     hostPort: port.getPublicPort(),

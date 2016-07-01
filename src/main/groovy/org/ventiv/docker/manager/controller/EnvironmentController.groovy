@@ -551,6 +551,7 @@ class EnvironmentController {
                 "with image: '${instance.getContainerImage().toString()}', " +
                 "name: '${instance.toString()}', " +
                 "env: ${instance.getResolvedEnvironmentVariables()?.collect {k, v -> "$k=$v"}}, " +
+                "ports: ${instance.getPortDefinitions().collect { '0.0.0.0:' + it.getHostPort() + '->' + it.getContainerPort() } }, " +
                 "memoryLimit: $memoryLimit, memorySwapLimit: $memorySwapLimit")
         CreateContainerCmd createContainerCmd = docker.createContainerCmd(toDeploy.toString())
                 //.withHostConfig(hostConfig)
