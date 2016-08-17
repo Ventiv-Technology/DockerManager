@@ -58,6 +58,7 @@ define([], function() {
         AUDIT_DETAILS: "Audit Details",
         WORKFLOW_PROCESSES: "Workflow Processes",
         START_PROCESS: "Start Process",
-        START_FORM: "Start Form"
+        START_FORM: "Start Form",
+        OPEN_SPLUNK: "Open Splunk For Logs"
     }
 });

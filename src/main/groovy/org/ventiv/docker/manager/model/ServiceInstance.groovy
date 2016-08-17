@@ -20,6 +20,7 @@ import com.github.dockerjava.api.command.InspectContainerResponse
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ContainerPort
 import com.github.dockerjava.api.model.ExposedPort
+import com.github.dockerjava.api.model.LogConfig
 import com.github.dockerjava.api.model.Ports
 import groovy.transform.CompileStatic
 import groovy.transform.ToString
@@ -79,6 +80,8 @@ class ServiceInstance {
     Collection<String> availableVersions;
     boolean buildPossible = false;
     boolean newBuildPossible = false;
+    LogConfig.LoggingType loggingType;
+    Map<String, String> loggingConfig;
 
     @Nullable   // Is null if information is received from 'docker ps' (list containers)
     String containerImageId;
@@ -127,7 +130,11 @@ class ServiceInstance {
         this.containerImage = new DockerTag(dockerContainer.getImage());
         this.containerCreatedDate = new Date(dockerContainer.getCreated() * 1000);
 
-        // Get the service configuration
+        // If the container has only been 'created', use that date
+        if ("Created".equals(dockerContainer.getStatus()))
+            this.containerStatusTime = this.containerCreatedDate;
+
+                // Get the service configuration
         ServiceConfiguration serviceConfig = dockerServiceConfiguration.getServiceConfiguration(name)
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
@@ -156,6 +163,15 @@ class ServiceInstance {
         this.containerImage = new DockerTag(inspectContainerResponse.getConfig().getImage());
         this.containerCreatedDate = DockerUtils.convertDockerDate(inspectContainerResponse.getCreated())
         this.containerImageId = inspectContainerResponse.getImageId();
+
+        // If the container has only been 'created', use that date
+        if ("created".equalsIgnoreCase(inspectContainerResponse.getState().getStatus()))
+            this.containerStatusTime = this.containerCreatedDate;
+
+        // Get the Logging Config - So the UI knows how to direct ya!
+        LogConfig logConfig = inspectContainerResponse.getHostConfig().getLogConfig();
+        this.loggingType = logConfig.getType();
+        this.loggingConfig = logConfig.getConfig();
 
         // Get the service configuration
         ServiceConfiguration serviceConfig = dockerServiceConfiguration.getServiceConfiguration(name)

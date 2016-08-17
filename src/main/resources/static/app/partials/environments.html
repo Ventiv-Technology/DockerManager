@@ -92,7 +92,7 @@
 
                 <div class="env-service-instance" data-ng-repeat="serviceInstance in application.serviceInstances">
                     <div data-ng-class="[serviceInstanceButtonSizeClass(application)]">
-                        <div class="btn btn-block" data-ng-click="serviceInstanceDetails(serviceInstance)" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}">
+                        <div class="btn btn-block" data-ng-click="serviceInstanceDetails(serviceInstance, application)" data-ng-class="{'btn-success': serviceInstance.status == 'Running', 'btn-danger': serviceInstance.status == 'Stopped'}">
                             <span>{{serviceInstance.serviceDescription}} on</span>
                             <span>{{serviceInstance.serverName}}</span>
                             <span>[{{serviceInstance.containerImage.tag}} - deployed @ {{serviceInstance.containerCreatedDate | date:'short'}} - {{serviceInstance.containerStatus}}]</span>

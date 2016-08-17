@@ -29,6 +29,7 @@ class DockerManagerConfiguration {
     SecurityConfiguration auth;
     ConfigurationConfig config = new ConfigurationConfig();
     TemplateConfig template = new TemplateConfig();
+    UiConfig ui = new UiConfig();
     List<Class> plugins;
     Long additionalMetricsRefreshDelay = 30 * 1000L;                 // 30 seconds
     Long dockerServerReconnectDelay = 1 * 60 * 60 * 1000L;           // 1 Hour
@@ -117,6 +118,13 @@ class DockerManagerConfiguration {
         String startToken = "#{"
         String endToken = "}";
         boolean ignoreMissingProperties = true;
+
+    }
+
+    @ConfigurationProperties
+    public static class UiConfig {
+
+        String splunkUrlTemplate;
 
     }
 

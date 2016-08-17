@@ -137,7 +137,8 @@ class ServiceInstanceService implements Runnable {
             // First, lets query for all containers that exist on this host
             List<Container> hostContainers = dockerService.getDockerClient(serverConfiguration.getHostname()).listContainersCmd().withShowAll(true).exec()
             allServiceInstances.put(serverConfigurationKey, hostContainers.collect {
-                createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(it)
+                InspectContainerResponse inspectContainerResponse = dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(it.getId()).exec()
+                createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse)
             })
 
             // Now, lets hook up to the Docker Events API

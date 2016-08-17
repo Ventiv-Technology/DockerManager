@@ -18,9 +18,9 @@ package org.ventiv.docker.manager.controller
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.CreateContainerCmd
 import com.github.dockerjava.api.command.CreateContainerResponse
+import com.github.dockerjava.api.command.InspectContainerResponse
 import com.github.dockerjava.api.command.StartContainerCmd
 import com.github.dockerjava.api.model.Bind
-import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.HostConfig
 import com.github.dockerjava.api.model.Link
@@ -116,6 +116,14 @@ class EnvironmentController {
     }
 
     @CompileStatic
+    @RequestMapping("/{tierName}/{environmentName}/ui-settings")
+    public Map<String, String> getEnvironmentUiSettings(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
+        return [
+                splunkUrlTemplate: props.getUi().getSplunkUrlTemplate()?.replace('#{', '${')
+        ]
+    }
+
+    @CompileStatic
     @RequestMapping("/{tierName}/{environmentName}")
     public Collection<ApplicationDetails> getEnvironmentDetails(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName) {
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
@@ -155,7 +163,8 @@ class EnvironmentController {
                     buildStatus: buildingApplications.get("$tierName.$environmentName.${applicationConfiguration.getId()}")?.getBuildStatus(),
                     deploymentInProgress: deploymentService.isRunning(tierName, environmentName, applicationConfiguration.getId()),
                     version: versionsDeployed.join(", "),
-                    scheduledDeployment: deploymentService.getScheduledDeployment(tierName, environmentName, applicationConfiguration.getId())
+                    scheduledDeployment: deploymentService.getScheduledDeployment(tierName, environmentName, applicationConfiguration.getId()),
+                    uiSettings: getEnvironmentUiSettings(tierName, environmentName)
             ]).withApplicationConfiguration(applicationConfiguration)
         }, DockerManagerPermission.READ)
     }
@@ -583,8 +592,8 @@ class EnvironmentController {
         //eventPublisher.publishEvent(new ContainerStartedEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id)));
 
         // Create a ServiceInstance out of this Container
-        Container container = docker.listContainersCmd().withShowAll(true).exec().find { it.getId() == resp.id }
-        if (container) applicationDetails.getServiceInstances() << instance.withDockerContainer(container);
+        InspectContainerResponse inspectContainerResponse = dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(resp.getId()).exec()
+        if (inspectContainerResponse) applicationDetails.getServiceInstances() << instance.withDockerContainer(inspectContainerResponse);
 
         return resp.id;
     }

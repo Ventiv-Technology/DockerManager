@@ -111,7 +111,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     return "inactive";
             };
 
-            $scope.serviceInstanceDetails = function(serviceInstance) {
+            $scope.serviceInstanceDetails = function(serviceInstance, application) {
                 var serviceInstanceDetailsModal = $modal.open({
                     templateUrl: '/app/partials/serviceInstanceDetails.html',
                     controller: 'ServiceInstanceDetailsController',
@@ -119,7 +119,8 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     size: 'lg',
                     resolve: {
                         effectivePermissions: function() { return [] },
-                        serviceInstance: function() { return serviceInstance }
+                        serviceInstance: function() { return serviceInstance },
+                        application: function() { return application }
                     }
                 });
 
@@ -349,7 +350,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             }, true)
         })
 
-        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {
+        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, application, $window, $http) {
             var rootHostsUrl = "/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId;
             $scope.serviceInstance = serviceInstance;
 
@@ -365,6 +366,17 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     tail = 100;
 
                 $window.open(rootHostsUrl + "/stderr?tail=" + tail, '_blank');
+            };
+
+            $scope.openSplunk = function(serviceInstance) {
+                var url = serviceInstance.loggingConfig['splunk-url'];
+
+                if (application && application.uiSettings && application.uiSettings.splunkUrlTemplate) {
+                    var templateFunction = new Function("splunkUrl", "loggingConfig", "serviceInstance", "application", "return `" + application.uiSettings.splunkUrlTemplate + "`;");
+                    url = templateFunction(url, serviceInstance.loggingConfig, serviceInstance, application);
+                }
+
+                $window.open(url, '_blank');
             };
 
             $scope.cancel = function() {

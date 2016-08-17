@@ -44,6 +44,7 @@ class ApplicationDetails {
     boolean newBuildPossible = false;
     boolean deploymentInProgress = false;
     DeploymentScheduledEvent scheduledDeployment;
+    Map<String, String> uiSettings;
 
     @JsonIgnore
     ApplicationConfiguration applicationConfiguration;

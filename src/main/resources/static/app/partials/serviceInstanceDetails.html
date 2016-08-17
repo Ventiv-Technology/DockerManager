@@ -84,8 +84,9 @@
         <button class="btn btn-warning" data-ng-click="postContainerOperation('stop')" translate="STOP" data-ng-show="isServiceInstancePermissionGranted('STOP') && serviceInstance.status == 'Running'">Stop</button>
         <button class="btn btn-warning" data-ng-click="postContainerOperation('start')" translate="START" data-ng-show="isServiceInstancePermissionGranted('START') && serviceInstance.status == 'Stopped'">Start</button>
         <button class="btn btn-warning" data-ng-click="postContainerOperation('restart')" translate="RESTART" data-ng-show="isServiceInstancePermissionGranted('RESTART') && serviceInstance.status == 'Running'">Restart</button>
-        <button class="btn btn-primary" data-ng-show="isServiceInstancePermissionGranted('LOGS')" ng-click="getStdOut()" translate="STD_OUT">Std Out</button>
-        <button class="btn btn-primary" data-ng-show="isServiceInstancePermissionGranted('LOGS')" ng-click="getStdErr()" translate="STD_ERR">Std Err</button>
+        <button class="btn btn-primary" data-ng-show="isServiceInstancePermissionGranted('LOGS') && (serviceInstance.loggingType === 'json-file' || serviceInstance.loggingType === 'journald')" ng-click="getStdOut()" translate="STD_OUT">Std Out</button>
+        <button class="btn btn-primary" data-ng-show="isServiceInstancePermissionGranted('LOGS') && (serviceInstance.loggingType === 'json-file' || serviceInstance.loggingType === 'journald')" ng-click="getStdErr()" translate="STD_ERR">Std Err</button>
+        <button class="btn btn-primary" data-ng-show="isServiceInstancePermissionGranted('LOGS') && serviceInstance.loggingType === 'splunk'" ng-click="openSplunk(serviceInstance)" translate="OPEN_SPLUNK">Open Splunk For Logs</button>
         <button class="btn btn-info" data-ng-click="cancel()" translate="CANCEL">Cancel</button>
     </div>
 
