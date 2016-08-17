@@ -55,6 +55,7 @@ import com.github.dockerjava.api.command.ListImagesCmd
 import com.github.dockerjava.api.command.ListNetworksCmd
 import com.github.dockerjava.api.command.ListVolumesCmd
 import com.github.dockerjava.api.command.ListVolumesResponse
+import com.github.dockerjava.api.command.LoadImageCmd
 import com.github.dockerjava.api.command.LogContainerCmd
 import com.github.dockerjava.api.command.PauseContainerCmd
 import com.github.dockerjava.api.command.PingCmd
@@ -121,6 +122,7 @@ import com.github.dockerjava.core.command.ListContainersCmdImpl
 import com.github.dockerjava.core.command.ListImagesCmdImpl
 import com.github.dockerjava.core.command.ListNetworksCmdImpl
 import com.github.dockerjava.core.command.ListVolumesCmdImpl
+import com.github.dockerjava.core.command.LoadImageCmdImpl
 import com.github.dockerjava.core.command.LogContainerCmdImpl
 import com.github.dockerjava.core.command.PauseContainerCmdImpl
 import com.github.dockerjava.core.command.PingCmdImpl
@@ -254,6 +256,17 @@ class MockDockerClient extends Specification implements DockerClient {
             }
         }
         return new CreateImageCmdImpl(mockExec, repository, imageStream)
+    }
+
+    @Override
+    LoadImageCmd loadImageCmd(@Nonnull InputStream imageStream) {
+        LoadImageCmd.Exec mockExec = new LoadImageCmd.Exec() {
+            @Override
+            Void exec(LoadImageCmd command) {
+                return execResponses[LoadImageCmd];
+            }
+        }
+        return new LoadImageCmdImpl(mockExec, imageStream)
     }
 
     @Override

@@ -17,6 +17,7 @@ package org.ventiv.docker.manager.service
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.model.Version
+import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.core.DockerClientConfig
 import org.springframework.context.annotation.Profile
@@ -25,7 +26,6 @@ import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmd
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmdExec
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmdImpl
-
 import org.ventiv.docker.manager.utils.TimingUtils
 
 import javax.annotation.Resource
@@ -63,7 +63,7 @@ class DockerService {
             else
                 hostToApiVersionName.put(hostName, apiVersion);
 
-            DockerClientConfig.DockerClientConfigBuilder builder = DockerClientConfig.createDefaultConfigBuilder()
+            DefaultDockerClientConfig.Builder builder = DefaultDockerClientConfig.createDefaultConfigBuilder()
                     .withApiVersion(apiVersion)
                     .withDockerHost(uri);
 
@@ -73,7 +73,7 @@ class DockerService {
             } else
                 builder.withDockerTlsVerify(false);
 
-            return DockerClientBuilder.getInstance(builder.build()).build();
+            return DockerClientBuilder.getInstance(builder).build();
         }
     }
 
@@ -81,7 +81,7 @@ class DockerService {
         boolean certsExist = new File(certs).exists()
 
         if (!hostToApiVersionName.containsKey(hostName)) {
-            DockerClientConfig.DockerClientConfigBuilder configBuilder = DockerClientConfig.createDefaultConfigBuilder()
+            DefaultDockerClientConfig.Builder configBuilder = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost(uri)
 
             if (certsExist) {
@@ -91,7 +91,7 @@ class DockerService {
                 configBuilder.withDockerTlsVerify(false);
 
 
-            Version ver = DockerClientBuilder.getInstance(configBuilder.build()).build().versionCmd().exec();
+            Version ver = DockerClientBuilder.getInstance(configBuilder).build().versionCmd().exec();
             hostToApiVersionName.put(hostName, ver.getApiVersion());
         }
 

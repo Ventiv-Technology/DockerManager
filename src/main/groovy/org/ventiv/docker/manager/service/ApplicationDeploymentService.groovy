@@ -39,7 +39,6 @@ import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.MissingService
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
-import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 import org.ventiv.docker.manager.utils.TimingUtils
 
@@ -89,16 +88,18 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                     Collection<ServiceInstance> createdServiceInstances = environmentController.getServiceInstances(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
 
                     // First, lets sort the missing services, so we can adhere to bottom-up building (along with linking dependencies)
-                    applicationDetails.getMissingServiceInstances().sort(true) { MissingService a, MissingService b ->
-                        ServiceConfiguration aConfiguration = dockerServiceConfiguration.getServiceConfiguration(a.getServiceName());
-                        ServiceConfiguration bConfiguration = dockerServiceConfiguration.getServiceConfiguration(b.getServiceName());
+                    synchronized (applicationDetails.getMissingServiceInstances()) {
+                        applicationDetails.getMissingServiceInstances().sort(true) { MissingService a, MissingService b ->
+                            ServiceConfiguration aConfiguration = dockerServiceConfiguration.getServiceConfiguration(a.getServiceName());
+                            ServiceConfiguration bConfiguration = dockerServiceConfiguration.getServiceConfiguration(b.getServiceName());
 
-                        if (aConfiguration.getLinks()?.find { it.getContainer() == b.getServiceName() })
-                            return 1;
-                        else if (bConfiguration.getLinks()?.find { it.getContainer() == a.getServiceName() })
-                            return -1;
-                        else
-                            return applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { a.getServiceName() } <=> applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { b.getServiceName() };
+                            if (aConfiguration.getLinks()?.find { it.getContainer() == b.getServiceName() })
+                                return 1;
+                            else if (bConfiguration.getLinks()?.find { it.getContainer() == a.getServiceName() })
+                                return -1;
+                            else
+                                return applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { a.getServiceName() } <=> applicationDetails.getApplicationConfiguration().getServiceInstances().findIndexOf { b.getServiceName() };
+                        }
                     }
 
                     // Now, let's find any missing services

@@ -106,7 +106,7 @@ class DockerBuild implements AsyncBuildStage {
                         }
                     };
                     docker.buildImageCmd(buildDirectory).withTag(buildContext.getOutputDockerImage().toString()).withPull(pull).exec(callback);
-                    BuildImageResultCallback buildResponse = callback.awaitCompletion();
+                    String imageId = callback.awaitImageId();
 
                     if (!skipPush) {
                         deferred.notify("Pushing Docker Image ${buildContext.getOutputDockerImage().toString()}".toString())
@@ -140,6 +140,7 @@ class DockerBuild implements AsyncBuildStage {
                     buildContext.setBuildingVersion(buildContext.getRequestedBuildVersion());
                     deferred.resolve(buildContext);
                 } catch (Exception e) {
+                    log.error("Error Building Image in dir: ${buildDirectory.getAbsolutePath()}.", e.getMessage());
                     deferred.reject(e);
                 } finally {
                     if(dockerFileTemplate.exists()) dockerFile.delete();
