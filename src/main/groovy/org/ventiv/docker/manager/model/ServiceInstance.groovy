@@ -178,7 +178,7 @@ class ServiceInstance {
         this.serviceDescription = serviceConfig?.description ?: containerImage.getRepository();
 
         // We have environment variables, populate em!
-        this.resolvedEnvironmentVariables = inspectContainerResponse.getConfig().getEnv().collectEntries { String parts = it.split('='); return [ parts[0], parts[1] ] }
+        this.resolvedEnvironmentVariables = inspectContainerResponse.getConfig()?.getEnv()?.collectEntries { String parts = it.split('='); return [ parts[0], parts[1] ] }
 
         // Determine the Port Definitions
         this.portDefinitions = inspectContainerResponse.getHostConfig()?.getPortBindings()?.getBindings()?.collect { ExposedPort containerPort, Ports.Binding[] bindings ->
