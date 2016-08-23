@@ -122,6 +122,10 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                             DockerTag tag = anInstance.getContainerImage();
                             String requestedVersion = serviceVersions.get(anInstance.getName());
 
+                            // If we have a branch (and it's applicable for branches) apply the branch.  TODO: Better Branch Templating
+                            ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(anInstance.getName());
+                            requestedVersion = serviceConfiguration.buildPossible && branch ? branch + "-" + requestedVersion : requestedVersion;
+
                             try {
                                 // We have a version mismatch...destroy the container and rebuild it
                                  if (!serviceInstanceService.isImageDeployedMatchRegistry(anInstance, requestedVersion)) {
