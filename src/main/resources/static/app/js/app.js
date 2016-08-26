@@ -119,8 +119,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     size: 'lg',
                     resolve: {
                         effectivePermissions: function() { return [] },
-                        serviceInstance: function() { return serviceInstance },
-                        application: function() { return application }
+                        serviceInstance: function() { return serviceInstance }
                     }
                 });
 
@@ -350,7 +349,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             }, true)
         })
 
-        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, application, $window, $http) {
+        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {
             var rootHostsUrl = "/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId;
             $scope.serviceInstance = serviceInstance;
 
@@ -371,9 +370,9 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             $scope.openSplunk = function(serviceInstance) {
                 var url = serviceInstance.loggingConfig['splunk-url'];
 
-                if (application && application.uiSettings && application.uiSettings.splunkUrlTemplate) {
-                    var templateFunction = new Function("splunkUrl", "loggingConfig", "serviceInstance", "application", "return `" + application.uiSettings.splunkUrlTemplate + "`;");
-                    url = templateFunction(url, serviceInstance.loggingConfig, serviceInstance, application);
+                if ($scope.userDetails && $scope.userDetails.uiSettings && $scope.userDetails.uiSettings.splunkUrlTemplate) {
+                    var templateFunction = new Function("splunkUrl", "loggingConfig", "serviceInstance", "return `" + $scope.userDetails.uiSettings.splunkUrlTemplate + "`;");
+                    url = templateFunction(url, serviceInstance.loggingConfig, serviceInstance);
                 }
 
                 $window.open(url, '_blank');

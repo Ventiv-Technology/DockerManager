@@ -28,6 +28,7 @@ import org.springframework.security.acls.model.SidRetrievalStrategy
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
+import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.model.configuration.EnvironmentConfiguration
 import org.ventiv.docker.manager.security.DockerManagerPermission
@@ -42,6 +43,7 @@ class UserHealthIndicator extends AbstractHealthIndicator {
 
     @Resource EnvironmentConfigurationService environmentConfigurationService;
     @Resource AclService aclService;
+    @Resource DockerManagerConfiguration props;
 
     private SidRetrievalStrategy sidRetrievalStrategy = new SidRetrievalStrategyImpl();
 
@@ -52,7 +54,10 @@ class UserHealthIndicator extends AbstractHealthIndicator {
             builder.up().withDetail("user", [
                     name: auth.getName(),
                     authorities: auth.getAuthorities(),
-                    effectivePermissions: getEffectivePermissions(auth)
+                    effectivePermissions: getEffectivePermissions(auth),
+                    uiSettings: [
+                            splunkUrlTemplate: props.getUi().getSplunkUrlTemplate()?.replace('#{', '${')
+                    ]
             ]);
         }
     }
