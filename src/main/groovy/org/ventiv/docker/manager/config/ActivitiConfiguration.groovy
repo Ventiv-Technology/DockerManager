@@ -118,8 +118,11 @@ class ActivitiConfiguration implements ApplicationListener<AuthenticationSuccess
             InetOrgPerson person = (InetOrgPerson) authentication.getPrincipal();
             user.setEmail(person.getMail());
             if(person.getDisplayName()) {
-                user.setFirstName(person.getDisplayName().split(" ")[0])
-                user.setLastName(person.getDisplayName().split(" ")[1])
+                String[] tokens = person.getDisplayName().split(" ")
+                if(tokens.length == 2) {
+                    user.setFirstName(tokens[0])
+                    user.setLastName(tokens[1])
+                }
             }
         }
 
