@@ -1,4 +1,4 @@
-FROM java:7-jdk
+FROM java:8-jdk
 MAINTAINER John Crygier <john.crygier@ventivtech.com>
 
 ADD . /opt/DockerManagerBuild
