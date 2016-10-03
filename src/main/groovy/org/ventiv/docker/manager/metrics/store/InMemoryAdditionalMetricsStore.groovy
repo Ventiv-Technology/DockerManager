@@ -43,6 +43,11 @@ class InMemoryAdditionalMetricsStore extends AbstractAdditionalMetricsStore {
         store[getKey(serviceInstance)] << additionalMetricsStorage;
     }
 
+    @Override
+    List<Map<String, Object>> getTimeSeries(String metricName, String serverName, String tierName, String environmentName, String applicationId, String serviceName, Integer instanceNumber, Long fromTimestamp, Long toTimestamp, String last, String groupTimeWindow) {
+        throw new UnsupportedOperationException("Not Implemented");
+    }
+
     private String getKey(ServiceInstance serviceInstance) {
         return serviceInstance.getServerName() + "-" + serviceInstance.toString();
     }

@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager
 
+import org.influxdb.dto.Point
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -23,6 +24,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ApplicationContext
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
+import org.springframework.data.influxdb.InfluxDBTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.scheduling.TaskScheduler
 import org.springframework.scheduling.annotation.EnableScheduling
@@ -30,6 +32,7 @@ import org.springframework.scheduling.concurrent.ConcurrentTaskScheduler
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.metrics.store.AbstractAdditionalMetricsStore
 import org.ventiv.docker.manager.metrics.store.InMemoryAdditionalMetricsStore
+import org.ventiv.docker.manager.metrics.store.InfluxDbAdditionalMetricsStore
 import org.ventiv.docker.manager.metrics.store.JpaAdditionalMetricsStore
 import org.ventiv.webjars.requirejs.EnableWebJarsRequireJs
 
@@ -39,7 +42,8 @@ import org.ventiv.webjars.requirejs.EnableWebJarsRequireJs
 @EnableConfigurationProperties(DockerManagerConfiguration)
 class DockerManagerApplication {
 
-    @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired(required = false) JdbcTemplate jdbcTemplate;
+    @Autowired(required = false) InfluxDBTemplate<Point> influxDBTemplate;
 
     static ApplicationContext applicationContext;
     static DockerManagerConfiguration props;
@@ -63,9 +67,11 @@ class DockerManagerApplication {
 
     @Bean
     public AbstractAdditionalMetricsStore additionalMetricsStore() {
-        if (jdbcTemplate) {
+        if (influxDBTemplate)
+            return new InfluxDbAdditionalMetricsStore(influxDBTemplate);
+        else if (jdbcTemplate)
             return new JpaAdditionalMetricsStore();
-        } else
+        else
             return new InMemoryAdditionalMetricsStore();
     }
 

@@ -20,7 +20,6 @@ import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import org.springframework.jdbc.core.JdbcTemplate
-import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -37,7 +36,6 @@ import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.metrics.AdditionalMetricsStorage
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
-import org.ventiv.docker.manager.utils.StringUtils
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
@@ -173,14 +171,6 @@ class AdditionalMetricsController {
                                                    @RequestParam(value = "last", required = false) String last,
                                                    @RequestParam(value = "groupTimeWindow", required = false) String groupTimeWindow,
                                                    HttpServletResponse response) {
-        // If last is populated, use that
-        if (last) {
-            use (TimeCategory) {
-                if (toTimestamp == Long.MAX_VALUE) toTimestamp = new Date().getTime();
-                fromTimestamp = Eval.me("new Date($toTimestamp) - $last").getTime()
-            }
-        }
-
         Long timeWindow = props.additionalMetricsRefreshDelay;
         if (groupTimeWindow) {
             use (TimeCategory) {
@@ -190,43 +180,7 @@ class AdditionalMetricsController {
 
         response.setHeader("X-Refresh-Period", timeWindow.toString());
 
-        Map<String, ?> serviceInstanceParameters = [serverName: serverName, instanceNumber: instanceNumber];
-        Map<String, ?> applicationParameters = [tierName: tierName, environmentName: environmentName, applicationId: applicationId];
-        Map<String, ?> queryParameters = [metricName: metricName, fromTimestamp: fromTimestamp, toTimestamp: toTimestamp];
-
-        StringBuilder serviceInstanceWhere = new StringBuilder()
-        serviceInstanceParameters.each { k, v ->
-            if (v) {
-                serviceInstanceWhere << " AND SERVICE_INSTANCE."
-                serviceInstanceWhere << StringUtils.toSnakeCase(k)
-                serviceInstanceWhere << " = :"
-                serviceInstanceWhere << k
-            }
-        }
-
-        applicationParameters.each { k, v ->
-            if (v) {
-                serviceInstanceWhere << " AND APPLICATION."
-                serviceInstanceWhere << StringUtils.toSnakeCase(k)
-                serviceInstanceWhere << " = :"
-                serviceInstanceWhere << k
-            }
-        }
-
-        StringBuilder queryText = new StringBuilder("""
-            select TIMESTAMP, MIN(VALUE) as MIN, MAX(VALUE) as MAX, AVG(VALUE) as AVG, SUM(VALUE) as SUM, COUNT(VALUE) as COUNT FROM (
-                SELECT (ADDITIONAL_METRICS_STORAGE.TIMESTAMP/$timeWindow)*$timeWindow AS TIMESTAMP, ADDITIONAL_METRICS_VALUES.VALUE
-                FROM ADDITIONAL_METRICS_VALUES
-                INNER JOIN ADDITIONAL_METRICS_STORAGE on ADDITIONAL_METRICS_STORAGE.ID = ADDITIONAL_METRICS_VALUES.ADDITIONAL_METRICS_STORAGE_ID
-                INNER JOIN SERVICE_INSTANCE on ADDITIONAL_METRICS_STORAGE.SERVICE_INSTANCE_ID = SERVICE_INSTANCE.ID
-                INNER JOIN APPLICATION on APPLICATION.ID = SERVICE_INSTANCE.APPLICATION_ID
-                where ADDITIONAL_METRICS_VALUES.NAME = :metricName
-                AND ADDITIONAL_METRICS_STORAGE.TIMESTAMP BETWEEN :fromTimestamp and :toTimestamp
-                $serviceInstanceWhere
-            ) group by TIMESTAMP order by TIMESTAMP
-        """);
-
-        return new NamedParameterJdbcTemplate(jdbcTemplate).queryForList(queryText.toString(), queryParameters + serviceInstanceParameters + applicationParameters).collect { it.collectEntries { k, v -> return [k.toLowerCase(), v]} };
+        return additionalMetricsStore.getTimeSeries(metricName, serverName, tierName, environmentName, applicationId, serviceName, instanceNumber, fromTimestamp, toTimestamp, last, groupTimeWindow);
     }
 
 }

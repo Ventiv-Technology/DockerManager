@@ -87,4 +87,22 @@ abstract class AbstractAdditionalMetricsStore implements ApplicationListener<Upd
 
     public abstract void storeAdditionalMetrics(ServiceInstance serviceInstance, AdditionalMetricsStorage additionalMetricsStorage);
 
+    /**
+     * Implementation of getting time series data from the store.  For documentation:
+     *
+     * @see org.ventiv.docker.manager.controller.AdditionalMetricsController.getTimeSeries
+     * @return
+     */
+    public abstract List<Map<String, Object>> getTimeSeries(String metricName,
+                                                            String serverName,
+                                                            String tierName,
+                                                            String environmentName,
+                                                            String applicationId,
+                                                            String serviceName,
+                                                            Integer instanceNumber,
+                                                            Long fromTimestamp,
+                                                            Long toTimestamp,
+                                                            String last,
+                                                            String groupTimeWindow);
+
 }
