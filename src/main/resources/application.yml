@@ -2,6 +2,20 @@ auth.bypass: false
 auth.type: AllowAnyone
 auth.realm: Docker Manager (Allow Anyone)
 
+auth:
+  oauth:
+    enabled: true
+    keyStorePath: DockerManager.jks
+    keyStorePassword: Password12
+    keyStoreAlias: DockerManager
+    clients:
+      - clientId: DockerManager
+        accessTokenValiditySeconds: 3600
+        clientSecret: Dock3rMan4g3rS3Cr3t!
+        autoApproveScopes: .*
+        scope: read,write
+        authorizedGrantTypes: password,refresh_token
+
 docker:
   client:
     boot2docker:

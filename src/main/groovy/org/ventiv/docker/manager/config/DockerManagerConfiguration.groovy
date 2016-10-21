@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.security.oauth2.provider.client.BaseClientDetails
 import org.ventiv.docker.manager.security.DockerManagerPermission
 
 /**
@@ -62,6 +63,7 @@ class DockerManagerConfiguration {
         String realm = "Docker Manager";
         List<SecurityUser> users;
         List<String> permissionsToAudit;
+        OAuthConfig oauth;
 
         public Collection<DockerManagerPermission> getAuditablePermissions() {
             if (permissionsToAudit == null)
@@ -75,6 +77,16 @@ class DockerManagerConfiguration {
             String login;
             String password;
             List<String> roles;
+        }
+
+        @ConfigurationProperties
+        public static class OAuthConfig {
+            Boolean enabled;
+            String signingKey;
+            String keyStorePath;
+            String keyStorePassword;
+            String keyStoreAlias;
+            List<BaseClientDetails> clients;
         }
 
         public static enum SecurityType {

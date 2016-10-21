@@ -1,0 +1,15 @@
+/**
+ * styles.css
+ *
+ * App container styles
+ */
+
+html, body, body > div {
+  height: 100%;
+  width: 100%;
+}
+
+.container {
+  display: block;
+  height: 100%;
+}

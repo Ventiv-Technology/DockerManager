@@ -46,7 +46,9 @@ dependencies {
     compile("org.apache.directory.server:apacheds-server-jndi:1.5.5")
     compile("org.springframework.boot:spring-boot-starter-web")
     compile("org.springframework.boot:spring-boot-starter-websocket")
-	compile("org.codehaus.groovy:groovy-all")
+    compile 'org.springframework.security:spring-security-jwt'
+    compile 'org.springframework.security.oauth:spring-security-oauth2:2.0.11.RELEASE'
+    compile("org.codehaus.groovy:groovy-all")
     compile group: 'org.codehaus.groovy.modules.http-builder', name: 'http-builder', version: '0.7'
     compile 'com.jayway.jsonpath:json-path:1.2.0'
     compile 'com.netflix.feign:feign-core:8.0.0-rc.1'
