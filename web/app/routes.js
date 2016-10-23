@@ -5,6 +5,8 @@
 import { getAsyncInjectors } from 'utils/asyncInjectors';
 import React from 'react';
 import { UserIsAuthenticated } from './auth';
+import Login from 'redux-token-auth/dist/containers/Login';
+import LoginReducer from 'redux-token-auth/dist/containers/Login/reducer';
 
 const errorLoading = (err) => {
   console.error('Dynamic page loading failed', err); // eslint-disable-line no-console
@@ -20,36 +22,27 @@ export default function createRoutes(store) {
 
   return [
     {
-      path: '/',
-      name: 'home',
-      getComponent(nextState, cb) {
-        const importModules = Promise.all([
-          System.import('containers/HomePage'),
-        ]);
-
-        const renderRoute = loadModule(cb);
-
-        importModules.then(([component]) => {
-          renderRoute(component);
-        });
-
-        importModules.catch(errorLoading);
-      },
-    }, {
       path: '/login',
       name: 'login',
       getComponent(nextState, cb) {
+        const newComponent = () => (<Login />);
+        cb(null, newComponent);
+        injectReducer('login', LoginReducer);
+      },
+    }, {
+      path: '/',
+      name: 'dashboard',
+      getComponent(nextState, cb) {
         const importModules = Promise.all([
-          System.import('redux-token-auth/dist/containers/Login'),
-          System.import('redux-token-auth/dist/containers/Login/reducer'),
+          System.import('containers/Dashboard/reducer'),
+          System.import('containers/Dashboard'),
         ]);
 
         const renderRoute = loadModule(cb);
 
-        importModules.then(([component, reducer]) => {
-          const newComponent = () => (<component.default username="admin" />);
-          cb(null, newComponent);
-          injectReducer('login', reducer.default);
+        importModules.then(([reducer, component]) => {
+          injectReducer('dashboard', reducer.default);
+          renderRoute(component);
         });
 
         importModules.catch(errorLoading);
