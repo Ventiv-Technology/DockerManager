@@ -30,9 +30,7 @@ export function ConnectedHosts() {
 
 // Dashlet API
 ConnectedHosts.title = messages.title;
-ConnectedHosts.defaultLayout = {
-  height: 1,
-  width: 3,
-  minHeight: 2,
-  minWidth: 3,
+ConnectedHosts.layout = {
+  minH: 2,
+  minW: 3,
 };

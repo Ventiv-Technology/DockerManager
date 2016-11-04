@@ -65,6 +65,10 @@ dependencies {
     compile 'com.rometools:rome:1.5.0'
     compile 'com.github.miwurster:spring-data-influxdb:1.4'
 
+    // Include these in case we connect over unix:// sockets
+    compile 'com.kohlschutter.junixsocket:junixsocket-common:2.0.4'
+    compile 'com.kohlschutter.junixsocket:junixsocket-native-common:2.0.4'
+
     // Web Loading
     compile 'org.webjars:webjars-locator:0.21'
     compile 'org.ventiv:spring-boot-webjars-requirejs:1.1.2'
