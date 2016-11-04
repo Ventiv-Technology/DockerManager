@@ -1,4 +1,4 @@
-import { SET_USER_INFORMATION } from './constants';
+import { SET_USER_INFORMATION, SET_HOST_INFORMATION } from './constants';
 
 /**
  * Changes the input field of the form
@@ -11,5 +11,12 @@ export function setUser(userInfo) {
   return {
     type: SET_USER_INFORMATION,
     userInfo,
+  };
+}
+
+export function setHostInfo(hostInfo) {
+  return {
+    type: SET_HOST_INFORMATION,
+    hostInfo,
   };
 }

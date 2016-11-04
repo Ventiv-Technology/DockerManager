@@ -24,7 +24,13 @@ const selectUserInfo = () => createSelector(
   (globalState) => globalState.get('user')
 );
 
+const selectHostsInfo = () => createSelector(
+  selectGlobal(),
+  (globalState) => (globalState.get('hosts') && globalState.get('hosts').toJS()) || { hostDetails: [] }
+);
+
 export {
   selectLocationState,
   selectUserInfo,
+  selectHostsInfo,
 };

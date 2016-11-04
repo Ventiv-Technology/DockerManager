@@ -1,1 +1,1 @@
-export { ConnectedHosts } from './ConnectedHosts';
+export ConnectedHosts from './ConnectedHosts';
