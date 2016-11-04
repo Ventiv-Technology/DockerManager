@@ -143,6 +143,12 @@ class ServiceConfiguration {
                 answer = [ tag.getTag() ]
             else if (tag.getRegistry())                  // We need to query the Docker Remote API to get the list of versions
                 answer = DockerManagerApplication.getApplicationContext().getBean(DockerRegistryApiService).getTagsForImage(tag);
+
+            // If there's a branch listed in the variables, select just where the version starts with that
+            if (variables.branch) {
+                answer = answer.findAll { it.startsWith(variables.branch) }
+                        .collect { it.substring(variables.branch.size() + 1) }
+            }
         }
 
         if (query) {
