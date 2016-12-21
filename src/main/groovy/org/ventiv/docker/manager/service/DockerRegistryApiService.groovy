@@ -15,20 +15,17 @@
  */
 package org.ventiv.docker.manager.service
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import feign.Feign
 import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
 import groovyx.net.http.HttpResponseDecorator
 import groovyx.net.http.RESTClient
-import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestTemplate
 import org.ventiv.docker.manager.api.DockerRegistry
 import org.ventiv.docker.manager.api.DockerRegistryV1
 import org.ventiv.docker.manager.api.DockerRegistryV2
-import org.ventiv.docker.manager.api.DockerRegistryV2.ImageManifest
 import org.ventiv.docker.manager.api.HeaderRequestInterceptor
 import org.ventiv.docker.manager.model.DockerTag
 
@@ -131,7 +128,12 @@ class DockerRegistryApiService {
             restTemplate.getForEntity("https://$registryName/v2/", Map);
             return DockerRegistryV2
         } catch (HttpClientErrorException ignored) {
-            return DockerRegistryV1
+            try {
+                restTemplate.getForEntity("https://$registryName/v2", Map);
+                return DockerRegistryV2
+            } catch (HttpClientErrorException ignored2) {
+                return DockerRegistryV1
+            }
         }
     }
 

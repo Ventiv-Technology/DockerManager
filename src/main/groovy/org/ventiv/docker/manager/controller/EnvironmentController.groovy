@@ -174,7 +174,7 @@ class EnvironmentController {
         return getApplicationVersions(tierName, environmentName, applicationId, null, query)
     }
 
-    @RequestMapping("/{tierName}/{environmentName}/app/{applicationId}/versions/{branch}")
+    @RequestMapping("/{tierName}/{environmentName}/app/{applicationId}/versions/{branch:.*}")
     public Collection<Map<String, String>> getApplicationVersions(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @PathVariable("applicationId") String applicationId, @PathVariable("branch") String branch, @RequestParam(value = 'q', required = false) String query) {
         EnvironmentConfiguration envConfiguration = environmentConfigurationService.getEnvironment(tierName, environmentName);
         ApplicationConfiguration appConfiguration = envConfiguration.getApplications().find { it.getId() == applicationId };
