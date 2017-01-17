@@ -37,6 +37,7 @@ define(['angular-chart', 'translations-en', 'c3'], function (chart, translations
                             if (config.metric) {
                                 var url = "/api/metrics/timeseries/" + config.metric.metricName + "?dummy=dummy";
 
+                                if (config.metric.service) url = url + "&serviceName=" + config.metric.service;
                                 if (config.groupTimeWindow) url = url + "&groupTimeWindow=" + config.groupTimeWindow;
                                 if (config.chartTimeFrame) url = url + "&last=" + config.chartTimeFrame;
                                 if (config.tierName) url = url + "&tierName=" + config.tierName.tierName;

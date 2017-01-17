@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.config
 
 import groovy.transform.CompileStatic
+import org.activiti.engine.ActivitiException
 import org.activiti.engine.IdentityService
 import org.activiti.engine.RuntimeService
 import org.activiti.engine.identity.Group
@@ -100,9 +101,13 @@ class ActivitiConfiguration implements ApplicationListener<AuthenticationSuccess
 
     @Override
     void onApplicationEvent(AuthenticationSuccessEvent event) {
-        User activitiUser = addUserToActiviti(event.getAuthentication());
-        event.getAuthentication().getAuthorities().each { def grantedAuthority ->
-            addUserToGroup((User) activitiUser, ((GrantedAuthority)grantedAuthority).getAuthority().replaceAll("ROLE_", ""));
+        try {
+            User activitiUser = addUserToActiviti(event.getAuthentication());
+            event.getAuthentication().getAuthorities().each { def grantedAuthority ->
+                addUserToGroup((User) activitiUser, ((GrantedAuthority) grantedAuthority).getAuthority().replaceAll("ROLE_", ""));
+            }
+        } catch (ActivitiException ignored) {
+            // We just don't want to throw on Activiti Exceptions
         }
     }
 
@@ -117,9 +122,9 @@ class ActivitiConfiguration implements ApplicationListener<AuthenticationSuccess
         if (authentication.getPrincipal() instanceof InetOrgPerson) {
             InetOrgPerson person = (InetOrgPerson) authentication.getPrincipal();
             user.setEmail(person.getMail());
-            if(person.getDisplayName()) {
+            if (person.getDisplayName()) {
                 String[] tokens = person.getDisplayName().split(" ")
-                if(tokens.length == 2) {
+                if (tokens.length == 2) {
                     user.setFirstName(tokens[0])
                     user.setLastName(tokens[1])
                 }

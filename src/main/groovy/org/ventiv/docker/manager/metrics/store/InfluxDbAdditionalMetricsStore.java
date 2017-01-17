@@ -39,7 +39,7 @@ public class InfluxDbAdditionalMetricsStore extends AbstractAdditionalMetricsSto
 
     @Override
     public List<AdditionalMetricsStorage> getAdditionalMetricsBetween(ServiceInstance serviceInstance, Long startTime, Long endTime) {
-        StringBuilder queryStr = new StringBuilder("select time, value from /.*/ where ");
+        StringBuilder queryStr = new StringBuilder("select * from ").append(serviceInstance.getName()).append(" where ");
 
         if (startTime != null)
             queryStr.append("time > ").append(startTime).append("ms AND");
@@ -60,22 +60,25 @@ public class InfluxDbAdditionalMetricsStore extends AbstractAdditionalMetricsSto
         Map<Date, AdditionalMetricsStorage> additionalMetrics = new HashMap<>();
         for (QueryResult.Result queryResult : result.getResults()) {
             for (QueryResult.Series series : queryResult.getSeries()) {
-                String additionalMetricName = series.getName();
-
                 for (List<Object> values : series.getValues()) {
                     Date time = new Date(((Number)values.get(0)).longValue());
-                    BigDecimal value = new BigDecimal((Double) values.get(1));
+                    for (int i = 1; i < values.size(); i++) {
+                        Object value = values.get(i);
+                        if (value instanceof Double) {
+                            AdditionalMetricsStorage additionalMetric = additionalMetrics.get(time);
+                            String additionalMetricName = series.getColumns().get(i);
 
-                    AdditionalMetricsStorage additionalMetric = additionalMetrics.get(time);
-                    if (additionalMetric == null) {
-                        additionalMetric = new AdditionalMetricsStorage();
-                        additionalMetric.setId(time.getTime());
-                        additionalMetric.setTimestamp(time.getTime());
-                        additionalMetric.setAdditionalMetrics(new HashMap<String, BigDecimal>());
-                        additionalMetrics.put(time, additionalMetric);
+                            if (additionalMetric == null) {
+                                additionalMetric = new AdditionalMetricsStorage();
+                                additionalMetric.setId(time.getTime());
+                                additionalMetric.setTimestamp(time.getTime());
+                                additionalMetric.setAdditionalMetrics(new HashMap<String, BigDecimal>());
+                                additionalMetrics.put(time, additionalMetric);
+                            }
+
+                            additionalMetric.getAdditionalMetrics().put(additionalMetricName, new BigDecimal((Double) value));
+                        }
                     }
-
-                    additionalMetric.getAdditionalMetrics().put(additionalMetricName, value);
                 }
             }
         }
@@ -85,66 +88,64 @@ public class InfluxDbAdditionalMetricsStore extends AbstractAdditionalMetricsSto
 
     @Override
     public void storeAdditionalMetrics(ServiceInstance serviceInstance, AdditionalMetricsStorage additionalMetricsStorage) {
-        List<Point> points = new ArrayList<>();
+        List<Point> points = new ArrayList<>(1);
+        Point.Builder p = Point
+                .measurement(serviceInstance.getName())
+                .time(additionalMetricsStorage.getTimestamp(), TimeUnit.MILLISECONDS);
+
+        if (serviceInstance.getTierName() != null)
+            p.tag("tierName", serviceInstance.getTierName());
+
+        if (serviceInstance.getEnvironmentName() != null)
+            p.tag("environmentName", serviceInstance.getEnvironmentName());
+
+        if (serviceInstance.getEnvironmentDescription() != null)
+            p.tag("environmentDescription", serviceInstance.getEnvironmentDescription());
+
+        if (serviceInstance.getApplicationId() != null)
+            p.tag("applicationId", serviceInstance.getApplicationId());
+
+        if (serviceInstance.getApplicationDescription() != null)
+            p.tag("applicationDescription", serviceInstance.getApplicationDescription());
+
+        if (serviceInstance.getName() != null)
+            p.tag("name", serviceInstance.getName());
+
+        if (serviceInstance.getServiceDescription() != null)
+            p.tag("serviceDescription", serviceInstance.getServiceDescription());
+
+        if (serviceInstance.getServerName() != null)
+            p.tag("serverName", serviceInstance.getServerName());
+
+        if (serviceInstance.getInstanceNumber() != null)
+            p.tag("instanceNumber", serviceInstance.getInstanceNumber().toString());
+
+        if (serviceInstance.getContainerId() != null)
+            p.tag("containerId", serviceInstance.getContainerId());
+
+        if (serviceInstance.getContainerImage() != null && serviceInstance.getContainerImage().getRegistry() != null)
+            p.tag("image.registry", serviceInstance.getContainerImage().getRegistry());
+
+        if (serviceInstance.getContainerImage() != null && serviceInstance.getContainerImage().getNamespace() != null)
+            p.tag("image.namespace", serviceInstance.getContainerImage().getNamespace());
+
+        if (serviceInstance.getContainerImage() != null && serviceInstance.getContainerImage().getRepository() != null)
+            p.tag("image.repository", serviceInstance.getContainerImage().getRepository());
+
+        if (serviceInstance.getContainerImage() != null && serviceInstance.getContainerImage().getTag() != null)
+            p.tag("image.tag", serviceInstance.getContainerImage().getTag());
 
         for (Map.Entry<String, BigDecimal> e : additionalMetricsStorage.getAdditionalMetrics().entrySet()) {
-            Point.Builder p = Point
-                    .measurement(e.getKey())
-                    .time(additionalMetricsStorage.getTimestamp(), TimeUnit.MILLISECONDS)
-                    .field("value", e.getValue());
-
-            if (serviceInstance.getTierName() != null)
-                p.tag("tierName", serviceInstance.getTierName());
-
-            if (serviceInstance.getEnvironmentName() != null)
-                p.tag("environmentName", serviceInstance.getEnvironmentName());
-
-            if (serviceInstance.getEnvironmentDescription() != null)
-                p.tag("environmentDescription", serviceInstance.getEnvironmentDescription());
-
-            if (serviceInstance.getApplicationId() != null)
-                p.tag("applicationId", serviceInstance.getApplicationId());
-
-            if (serviceInstance.getApplicationDescription() != null)
-                p.tag("applicationDescription", serviceInstance.getApplicationDescription());
-
-            if (serviceInstance.getName() != null)
-                p.tag("name", serviceInstance.getName());
-
-            if (serviceInstance.getServiceDescription() != null)
-                p.tag("serviceDescription", serviceInstance.getServiceDescription());
-
-            if (serviceInstance.getServerName() != null)
-                p.tag("serverName", serviceInstance.getServerName());
-
-            if (serviceInstance.getInstanceNumber() != null)
-                p.tag("instanceNumber", serviceInstance.getInstanceNumber().toString());
-
-            if (serviceInstance.getContainerId() != null)
-                p.tag("containerId", serviceInstance.getContainerId());
-
-            if (serviceInstance.getContainerImage() != null && serviceInstance.getContainerImage().getRegistry() != null)
-                p.tag("image.registry", serviceInstance.getContainerImage().getRegistry());
-
-            if (serviceInstance.getContainerImage() != null && serviceInstance.getContainerImage().getNamespace() != null)
-                p.tag("image.namespace", serviceInstance.getContainerImage().getNamespace());
-
-            if (serviceInstance.getContainerImage() != null && serviceInstance.getContainerImage().getRepository() != null)
-                p.tag("image.repository", serviceInstance.getContainerImage().getRepository());
-
-            if (serviceInstance.getContainerImage() != null && serviceInstance.getContainerImage().getTag() != null)
-                p.tag("image.tag", serviceInstance.getContainerImage().getTag());
-
-            points.add(p.build());
+            p.field(e.getKey(), e.getValue());
         }
 
-        if (points.size() > 0)
-            template.write(points);
+        points.add(p.build());
+        template.write(points);
     }
 
     @Override
     public List<Map<String, Object>> getTimeSeries(String metricName, String serverName, String tierName, String environmentName, String applicationId, String serviceName, Integer instanceNumber, Long fromTimestamp, Long toTimestamp, String last, String groupTimeWindow) {
-        StringBuilder queryString = new StringBuilder("select min(value), max(value), mean(value), sum(value), count(value) from ").append('"').append(metricName).append('"').append(" WHERE ");
+        StringBuilder queryString = new StringBuilder("select min(\"").append(metricName).append("\"), max(\"").append(metricName).append("\"), mean(\"").append(metricName).append("\"), sum(\"").append(metricName).append("\"), count(\"").append(metricName).append("\") from ").append('"').append(serviceName).append('"').append(" WHERE ");
 
         if (serverName != null)
             queryString.append("serverName = '").append(serverName).append("' AND ");
@@ -157,9 +158,6 @@ public class InfluxDbAdditionalMetricsStore extends AbstractAdditionalMetricsSto
 
         if (applicationId != null)
             queryString.append("applicationId = '").append(applicationId).append("' AND ");
-
-        if (serviceName != null)
-            queryString.append("serviceName = '").append(serviceName).append("' AND ");
 
         if (instanceNumber != null)
             queryString.append("instanceNumber = '").append(instanceNumber).append("' AND ");
@@ -179,17 +177,19 @@ public class InfluxDbAdditionalMetricsStore extends AbstractAdditionalMetricsSto
 
         List<Map<String, Object>> answer = new ArrayList<>();
         for (QueryResult.Result queryResult : result.getResults()) {
-            for (QueryResult.Series series : queryResult.getSeries()) {
-                for (List<Object> values : series.getValues()) {
-                    Map<String, Object> point = new HashMap<>();
-                    answer.add(point);
+            if (queryResult != null && queryResult.getSeries() != null) {
+                for (QueryResult.Series series : queryResult.getSeries()) {
+                    for (List<Object> values : series.getValues()) {
+                        Map<String, Object> point = new HashMap<>();
+                        answer.add(point);
 
-                    point.put("timestamp", ((Number)values.get(0)).longValue());
-                    point.put("min", values.get(1));
-                    point.put("max", values.get(2));
-                    point.put("avg", values.get(3));
-                    point.put("sum", values.get(4));
-                    point.put("count", values.get(5));
+                        point.put("timestamp", ((Number) values.get(0)).longValue());
+                        point.put("min", values.get(1));
+                        point.put("max", values.get(2));
+                        point.put("avg", values.get(3));
+                        point.put("sum", values.get(4));
+                        point.put("count", values.get(5));
+                    }
                 }
             }
         }
