@@ -88,6 +88,9 @@ public class InfluxDbAdditionalMetricsStore extends AbstractAdditionalMetricsSto
 
     @Override
     public void storeAdditionalMetrics(ServiceInstance serviceInstance, AdditionalMetricsStorage additionalMetricsStorage) {
+        if (additionalMetricsStorage.getAdditionalMetrics().size() == 0)
+            return;
+
         List<Point> points = new ArrayList<>(1);
         Point.Builder p = Point
                 .measurement(serviceInstance.getName())
