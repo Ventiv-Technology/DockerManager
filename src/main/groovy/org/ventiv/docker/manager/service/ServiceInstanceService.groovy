@@ -21,6 +21,7 @@ import com.github.dockerjava.api.command.InspectImageResponse
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.Event
+import com.github.dockerjava.api.model.EventType
 import com.github.dockerjava.core.command.EventsResultCallback
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
@@ -78,15 +79,15 @@ class ServiceInstanceService implements Runnable {
         if (eventCallbacks)
             eventCallbacks.each { k, v -> v.close() }
 
-        // Get the active server configurations from environmentConfigurationService, and initialize them
-        getAllHosts().each(this.&initializeServerConfiguration);
+        // Kick off the refresh of the environment
+        this.run();
 
         // Now, tell environemntConfigurationService that we're interested in any environment changes
         environmentConfigurationService.getEnvironmentChangeCallbacks() << { EnvironmentConfiguration environmentConfiguration ->
             environmentConfiguration.getServers()?.each(this.&initializeServerConfiguration)
         }
 
-        if (props.dockerServerReconnectDelay > 0)
+        if (!scheduledTask && props.dockerServerReconnectDelay > 0)
             scheduledTask = taskScheduler.scheduleAtFixedRate(this, props.dockerServerReconnectDelay);
     }
 
@@ -126,11 +127,6 @@ class ServiceInstanceService implements Runnable {
         synchronized (allServiceInstances) {
             String serverConfigurationKey = getServerConfigurationKey(serverConfiguration);
 
-            if (eventCallbacks.containsKey(serverConfigurationKey)) {
-                eventCallbacks[serverConfigurationKey].stop();
-                eventCallbacks.remove(serverConfigurationKey);
-            }
-
             if (allServiceInstances.containsKey(serverConfigurationKey))
                 allServiceInstances.remove(serverConfigurationKey);
 
@@ -141,10 +137,12 @@ class ServiceInstanceService implements Runnable {
                 createServiceInstance(serverName: serverConfiguration.getHostname()).withDockerContainer(inspectContainerResponse)
             })
 
-            // Now, lets hook up to the Docker Events API
-            DockerEventCallback callback = new DockerEventCallback(serverConfiguration, this)
-            dockerService.getDockerClient(serverConfiguration.getHostname()).eventsCmd().exec(callback);
-            eventCallbacks.put(serverConfigurationKey, callback);
+            // Now, lets hook up to the Docker Events API, but only if we don't already have one running
+            if (!eventCallbacks.get(serverConfigurationKey)?.running) {
+                DockerEventCallback callback = new DockerEventCallback(serverConfiguration, this)
+                dockerService.getDockerClient(serverConfiguration.getHostname()).eventsCmd().exec(callback);
+                eventCallbacks.put(serverConfigurationKey, callback);
+            }
         }
     }
 
@@ -237,7 +235,12 @@ class ServiceInstanceService implements Runnable {
 
         @Override
         void onNext(Event event) {
+            // Okay not to call super, it only logs....
             log.debug("Received Docker Event: $event");
+
+            // We really only care about container type events, not NETWORK, or VOLUME, etc...
+            if (event.getType() != EventType.CONTAINER)
+                return;
 
             // We don't care about Image Events
             if (["untag", "delete", "pull"].contains(event.getStatus()))
@@ -290,18 +293,12 @@ class ServiceInstanceService implements Runnable {
         }
 
         @Override
-        public void onError(Throwable throwable) {
-            log.error("Error from Docker Event Listener, attempting reconnect", throwable)
-            serviceInstanceService.initializeServerConfiguration(serverConfiguration);
-        }
-
-        @Override
         public void onComplete() {
-            log.debug("Finished listening for events.");
-        }
-
-        void stop() {
+            super.onComplete();
             running = false;
+            log.debug("Finished listening for events.");
+
+            // TODO: We now know that we've disconnected from the server.  The dockerServerReconnectDelay setting will reconnect, but should we auto-try before that timeout?
         }
     }
 
