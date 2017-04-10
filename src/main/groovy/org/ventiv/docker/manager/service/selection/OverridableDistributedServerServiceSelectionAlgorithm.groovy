@@ -45,7 +45,10 @@ class OverridableDistributedServerServiceSelectionAlgorithm extends DistributedS
 
             // Now, lets only pick servers that have at least one service available
             Map<String, List<ServiceInstance>> serversWithAvailable = groupedByServer.findAll { String serverName, List<ServiceInstance> serverInstances ->
-                return serverInstances.find { it.getName() == serviceName && it.getStatus() == ServiceInstance.Status.Available }
+                ServiceInstance foundServiceInstance = serverInstances.find {
+                    it.getName() == serviceName && it.getStatus() == ServiceInstance.Status.Available
+                }
+                return foundServiceInstance
             }
 
             if(serviceInstanceConfiguration.ports) {
