@@ -31,69 +31,72 @@ class OverridableDistributedServerServiceSelectionAlgorithm extends DistributedS
     @Override
     ServiceInstance getAvailableServiceInstance(String serviceName, Collection<ServiceInstance> allServiceInstances, ApplicationDetails applicationDetails) {
 
-        ServiceInstanceConfiguration serviceInstanceConfiguration = applicationDetails.getApplicationConfiguration().getServiceInstances().find { it.getType() == serviceName}
-        if(serviceInstanceConfiguration.server || serviceInstanceConfiguration.ports) {
+        List<ServiceInstanceConfiguration> serviceInstanceConfigurations = applicationDetails.getApplicationConfiguration().getServiceInstances().findAll { it.getType() == serviceName}
 
-            // First, lets group the service instances by server
-            Map<String, List<ServiceInstance>> groupedByServer = allServiceInstances.groupBy { it.getServerName() }
+        for(ServiceInstanceConfiguration serviceInstanceConfiguration : serviceInstanceConfigurations) {
+            if (serviceInstanceConfiguration.server || serviceInstanceConfiguration.ports) {
 
-            if(serviceInstanceConfiguration.server) {
-                Map<String, List<ServiceInstance>> tmp = [:]
-                tmp[serviceInstanceConfiguration.server] = groupedByServer[serviceInstanceConfiguration.server]
-                groupedByServer = tmp
-            }
+                // First, lets group the service instances by server
+                Map<String, List<ServiceInstance>> groupedByServer = allServiceInstances.groupBy { it.getServerName() }
 
-            // Now, lets only pick servers that have at least one service available
-            Map<String, List<ServiceInstance>> serversWithAvailable = groupedByServer.findAll { String serverName, List<ServiceInstance> serverInstances ->
-                ServiceInstance foundServiceInstance = serverInstances.find {
-                    it.getName() == serviceName && it.getStatus() == ServiceInstance.Status.Available
-                }
-                return foundServiceInstance
-            }
-
-            if(serviceInstanceConfiguration.ports) {
-                Map<String, Integer> definedPorts = [:]
-                serviceInstanceConfiguration.ports.each { Map<String, String> map ->
-                    String type = map["type"]
-                    definedPorts[type] = new Integer(new Integer(map["port"]))
+                if (serviceInstanceConfiguration.server) {
+                    Map<String, List<ServiceInstance>> tmp = [:]
+                    tmp[serviceInstanceConfiguration.server] = groupedByServer[serviceInstanceConfiguration.server]
+                    groupedByServer = tmp
                 }
 
-                // filter and select only the services that match the port definition
-                Map<String, List<ServiceInstance>> tmp = [:]
-                serversWithAvailable.each { String serverName, List<ServiceInstance> serverInstances ->
-                    List<ServiceInstance> list = []
-                    serverInstances.each {
-                        int found = 0
-                        it.portDefinitions.each { PortDefinition portDefinition ->
-                            if(definedPorts[portDefinition.portType] == portDefinition.hostPort) found++
-                        }
-                        if(found == definedPorts.size()) list << it
+                // Now, lets only pick servers that have at least one service available
+                Map<String, List<ServiceInstance>> serversWithAvailable = groupedByServer.findAll { String serverName, List<ServiceInstance> serverInstances ->
+                    ServiceInstance foundServiceInstance = serverInstances.find {
+                        it.getName() == serviceName && it.getStatus() == ServiceInstance.Status.Available
                     }
-                    if(list.size()) tmp[serverName] = list
+                    return foundServiceInstance
                 }
-                serversWithAvailable = tmp
-            }
 
-            // Now, sort the remaining to see which ones have the LEAST number of this service allocated
-            Map<String, List<ServiceInstance>> sortedServers = serversWithAvailable.sort { Map.Entry<String, List<ServiceInstance>> entry ->
-                List<ServiceInstance> serverInstances = entry.getValue();
+                if (serviceInstanceConfiguration.ports) {
+                    Map<String, Integer> definedPorts = [:]
+                    serviceInstanceConfiguration.ports.each { Map<String, String> map ->
+                        String type = map["type"]
+                        definedPorts[type] = new Integer(new Integer(map["port"]))
+                    }
 
-                return serverInstances.findAll {
-                    it.getName() == serviceName && it.getStatus() != ServiceInstance.Status.Available
-                }.size();
-            }
-
-            // Finally, pick one off the top!
-            if (sortedServers.entrySet()) {
-                List<ServiceInstance> bestServerAllInstances = sortedServers.entrySet().first()?.getValue()
-                return bestServerAllInstances?.find {
-                    it.getName() == serviceName && it.getStatus() == ServiceInstance.Status.Available
+                    // filter and select only the services that match the port definition
+                    Map<String, List<ServiceInstance>> tmp = [:]
+                    serversWithAvailable.each { String serverName, List<ServiceInstance> serverInstances ->
+                        List<ServiceInstance> list = []
+                        serverInstances.each {
+                            int found = 0
+                            it.portDefinitions.each { PortDefinition portDefinition ->
+                                if (definedPorts[portDefinition.portType] == portDefinition.hostPort) found++
+                            }
+                            if (found == definedPorts.size()) list << it
+                        }
+                        if (list.size()) tmp[serverName] = list
+                    }
+                    serversWithAvailable = tmp
                 }
-            }
 
-            return null;
-        } else {
-            return super.getAvailableServiceInstance(serviceName, allServiceInstances, applicationDetails)
+                // Now, sort the remaining to see which ones have the LEAST number of this service allocated
+                Map<String, List<ServiceInstance>> sortedServers = serversWithAvailable.sort { Map.Entry<String, List<ServiceInstance>> entry ->
+                    List<ServiceInstance> serverInstances = entry.getValue();
+
+                    return serverInstances.findAll {
+                        it.getName() == serviceName && it.getStatus() != ServiceInstance.Status.Available
+                    }.size();
+                }
+
+                // Finally, pick one off the top!
+                if (sortedServers.entrySet()) {
+                    List<ServiceInstance> bestServerAllInstances = sortedServers.entrySet().first()?.getValue()
+
+                    ServiceInstance serviceInstance = bestServerAllInstances?.find {
+                        it.getName() == serviceName && it.getStatus() == ServiceInstance.Status.Available
+                    }
+                    if(serviceInstance) return serviceInstance
+                }
+
+            }
         }
+        return null
     }
 }
