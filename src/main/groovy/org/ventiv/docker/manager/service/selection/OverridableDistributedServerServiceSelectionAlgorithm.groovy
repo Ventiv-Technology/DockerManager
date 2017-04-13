@@ -97,6 +97,6 @@ class OverridableDistributedServerServiceSelectionAlgorithm extends DistributedS
 
             }
         }
-        return null
+        return super.getAvailableServiceInstance(serviceName, allServiceInstances, applicationDetails)
     }
 }
