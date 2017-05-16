@@ -189,13 +189,19 @@ class EnvironmentController {
         // Create an option for the new build - if applicable
         Map<String, String> newBuildOption = nonPinnedServices.any { it.isNewBuildPossible() } ? [id: "BuildNewVersion", text: "New Build"] : [:]
 
-        if (versions.size() == 1) {
-            return [newBuildOption] + versions[0].collect {
-                return [id: it, text: it]
+        if (!versions)
+            return [ newBuildOption ];
+
+        List<String> flatVersionList = versions[0];
+        if (versions.size() > 1) {
+            for (int i = 1; i < versions.size(); i++) {
+                flatVersionList = flatVersionList.intersect(versions[i]);
             }
         }
 
-        return [ newBuildOption ];
+        return [newBuildOption] + flatVersionList.collect {
+            [id: it, text: it];
+        }
     }
 
     @RequestMapping(value = "/{tierName}/{environmentName}/app/{applicationId}/cancelScheduledDeployment", method = RequestMethod.DELETE)
