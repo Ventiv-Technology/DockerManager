@@ -149,6 +149,8 @@ class ServiceConfiguration {
                 answer = answer.findAll { it.startsWith(variables.branch) }
                         .collect { it.substring(variables.branch.size() + 1) }
             }
+
+            answer = answer.sort(this.&stringToNumber).reverse()
         }
 
         if (query) {
@@ -158,7 +160,7 @@ class ServiceConfiguration {
         }
 
         Integer toTake = Math.min(maxPossibleVersions, answer.size()) - 1;
-        return answer ? answer.sort(this.&stringToNumber).reverse()[0..toTake] : [ 'latest' ];
+        return answer ? answer[0..toTake] : [ 'latest' ];
     }
 
     public boolean isBuildPossible() {
