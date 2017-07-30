@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.model.configuration
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import org.ventiv.docker.manager.model.EnvironmentProperty
 import org.ventiv.docker.manager.utils.CachingGroovyShell
 
 import javax.annotation.Nullable
@@ -87,6 +88,9 @@ class ServiceInstanceConfiguration {
      */
     @Nullable
     List<Map<String, Object>> ports;
+
+    @NotNull
+    Collection<EnvironmentProperty> properties = [];
 
     @JsonIgnore
     private Map<String, Object> environmentWithGroovyShells;

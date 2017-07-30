@@ -34,6 +34,10 @@ class DockerManagerPermission extends AbstractPermission {
     public static final DockerManagerPermission METRICS_DETAILS =        new DockerManagerPermission(1 << 8, 'M'); // 256
     public static final DockerManagerPermission METRICS_TIME_SERIES =    new DockerManagerPermission(1 << 9, 'T'); // 512
     public static final DockerManagerPermission READ_USER_AUDIT =        new DockerManagerPermission(1 << 10, 'A'); //1024
+    public static final DockerManagerPermission CONSOLE =                new DockerManagerPermission(1 << 11, 'C'); //2048
+    public static final DockerManagerPermission PROPERTIES_READ =        new DockerManagerPermission(1 << 12, 'P'); //4096
+    public static final DockerManagerPermission PROPERTIES_UPDATE =      new DockerManagerPermission(1 << 13, 'U'); //4096
+    public static final DockerManagerPermission SECRETS =                new DockerManagerPermission(1 << 14, 'Z'); //8192
 
     protected DockerManagerPermission(int mask) {
         super(mask);
@@ -45,7 +49,7 @@ class DockerManagerPermission extends AbstractPermission {
 
     public static Collection<DockerManagerPermission> getAllPermissions() {
         return [
-                READ, START, STOP, RESTART, DEPLOY, LOGS, REMOVE, METRICS_DETAILS, METRICS_OVERVIEW, METRICS_TIME_SERIES, READ_USER_AUDIT
+                READ, START, STOP, RESTART, DEPLOY, LOGS, REMOVE, METRICS_DETAILS, METRICS_OVERVIEW, METRICS_TIME_SERIES, READ_USER_AUDIT, CONSOLE, PROPERTIES_READ, PROPERTIES_UPDATE, SECRETS
         ]
     }
 

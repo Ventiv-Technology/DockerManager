@@ -15,6 +15,8 @@
  */
 package org.ventiv.docker.manager.model.configuration
 
+import org.ventiv.docker.manager.model.EnvironmentProperty
+
 /**
  * Created by jcrygier on 3/3/15.
  */
@@ -25,6 +27,7 @@ class EnvironmentConfiguration {
     String description;
     List<ServerConfiguration> servers;
     List<ApplicationConfiguration> applications;
+    Collection<EnvironmentProperty> properties = [];
 
     void setApplications(List<ApplicationConfiguration> applications) {
         applications.each {

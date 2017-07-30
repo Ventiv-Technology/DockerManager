@@ -27,7 +27,7 @@ class YamlUtils {
     public static <T> T loadAs(Resource resource, Class<T> clazz) {
         Representer representer = new Representer();
         representer.getPropertyUtils().setSkipMissingProperties(true);
-        Yaml yaml = new Yaml(representer)
+        Yaml yaml = new Yaml(new DockerManagerConstructor(), representer)
 
         return yaml.loadAs(resource.getInputStream(), clazz);
     }
@@ -35,9 +35,8 @@ class YamlUtils {
     public static <T> T loadAs(String yamlStr, Class<T> clazz) {
         Representer representer = new Representer();
         representer.getPropertyUtils().setSkipMissingProperties(true);
-        Yaml yaml = new Yaml(representer)
+        Yaml yaml = new Yaml(new DockerManagerConstructor(), representer)
 
         return yaml.loadAs(yamlStr, clazz);
     }
-
 }

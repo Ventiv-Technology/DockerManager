@@ -18,6 +18,7 @@ package org.ventiv.docker.manager.model.configuration
 import com.fasterxml.jackson.annotation.JsonIgnore
 import org.springframework.security.acls.domain.ObjectIdentityImpl
 import org.springframework.security.acls.model.ObjectIdentity
+import org.ventiv.docker.manager.model.EnvironmentProperty
 import org.ventiv.docker.manager.service.selection.ServiceSelectionAlgorithm
 
 import javax.annotation.Nullable
@@ -81,6 +82,9 @@ class ApplicationConfiguration {
 
     @Nullable
     VersionSelectionConfiguration versionSelection;
+
+    @NotNull
+    Collection<EnvironmentProperty> properties = [];
 
     @JsonIgnore
     public ObjectIdentity getObjectIdentity() {

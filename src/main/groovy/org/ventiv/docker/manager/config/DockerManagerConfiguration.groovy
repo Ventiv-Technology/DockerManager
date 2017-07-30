@@ -16,7 +16,18 @@
 package org.ventiv.docker.manager.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.core.io.Resource
 import org.ventiv.docker.manager.security.DockerManagerPermission
+import sun.security.tools.keytool.CertAndKeyGen
+import sun.security.x509.X500Name
+
+import java.security.Key
+import java.security.KeyPair
+import java.security.KeyStore
+import java.security.PrivateKey
+import java.security.PublicKey
+import java.security.cert.Certificate
+import java.security.cert.X509Certificate
 
 /**
  * Created by jcrygier on 3/9/15.
@@ -30,6 +41,7 @@ class DockerManagerConfiguration {
     ConfigurationConfig config = new ConfigurationConfig();
     TemplateConfig template = new TemplateConfig();
     UiConfig ui = new UiConfig();
+    KeyStoreConfig keystore = new KeyStoreConfig();
     List<Class> plugins;
     Long additionalMetricsRefreshDelay = 30 * 1000L;                 // 30 seconds
     Long dockerServerReconnectDelay = 1 * 60 * 60 * 1000L;           // 1 Hour
@@ -125,6 +137,51 @@ class DockerManagerConfiguration {
     public static class UiConfig {
 
         String splunkUrlTemplate;
+
+    }
+
+    @ConfigurationProperties
+    public static class KeyStoreConfig {
+
+        Resource location;
+        String storepass;
+        String alias;
+        String keypassword;
+
+        private KeyStore keyStore;
+
+        public KeyPair getKey() {
+            if (keyStore == null) {
+                if (!location.exists())
+                    generateKeyStore();
+
+                keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+                keyStore.load(location.getInputStream(), storepass.toCharArray());
+            }
+
+            Key key = keyStore.getKey(alias, keypassword.toCharArray());
+            if (key instanceof PrivateKey) {
+                Certificate cert = keyStore.getCertificate(alias);
+                PublicKey publicKey = cert.getPublicKey();
+
+                return new KeyPair(publicKey, (PrivateKey) key);
+            }
+        }
+
+        public void generateKeyStore() {
+            keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            keyStore.load(null, null);
+
+            CertAndKeyGen certGen = new CertAndKeyGen("RSA", "SHA256WithRSA", null);
+            certGen.generate(2048);
+
+            long validSecs = (long) 10 * 365 * 24 * 60 * 60; // valid for ten years
+            X509Certificate cert = certGen.getSelfCertificate(
+                    new X500Name("CN=Docker Manager,O=My Organisation,L=My City,C=DE"), validSecs);
+
+            keyStore.setKeyEntry(alias, certGen.getPrivateKey(), keypassword.toCharArray(), [ cert ] as X509Certificate[]);
+            keyStore.store(new FileOutputStream(location.getFile()), storepass.toCharArray());
+        }
 
     }
 
