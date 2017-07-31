@@ -40,6 +40,10 @@ class SecurityUtil {
         return permissionEvaluator;
     }
 
+    public static boolean hasPermission(String tierName, String environmentName, String applicationId, Permission permission) {
+        getPermissionEvaluator().hasPermission(SecurityContextHolder.getContext().getAuthentication(), "${tierName}.${environmentName}.${applicationId}".toString(), permission);
+    }
+
     public static final Authentication getAuthentication() {
         return SecurityContextHolder.getContext().getAuthentication();
     }

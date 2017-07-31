@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,6 +29,8 @@ import org.ventiv.docker.manager.config.DockerManagerConfiguration;
 import org.ventiv.docker.manager.model.EnvironmentProperty;
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration;
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration;
+import org.ventiv.docker.manager.security.DockerManagerPermission;
+import org.ventiv.docker.manager.security.SecurityUtil;
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService;
 import org.ventiv.docker.manager.utils.CollectionUtils;
 import org.ventiv.docker.manager.utils.DockerManagerConstructor;
@@ -66,6 +69,19 @@ public class PropertiesController {
         return EncryptionUtil.encrypt(key.getPublic(), value);
     }
 
+    /**
+     * Gets specific properties for a given Service within an Application, Environment, Tier.  This method does all of the
+     * heavy lifting to get the properties back in a structured-data format, and other methods can serialize to different
+     * formats (e.g. Java Properties)
+     *
+     * @param tierName
+     * @param environmentName
+     * @param applicationName
+     * @param serviceName
+     * @param propertySet
+     * @return
+     */
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
     @RequestMapping("/{tierName}/{environmentName}/{applicationName}/{serviceName}")
     public Map<String, EnvironmentProperty> getEnvironmentProperties(@PathVariable("tierName") String tierName,
                                                                      @PathVariable("environmentName") String environmentName,
@@ -86,7 +102,9 @@ public class PropertiesController {
         allProperties.addAll(environmentConfigurationService.getEnvironment(tierName, environmentName).getProperties());
         allProperties.addAll(loadPropertiesYaml(serviceName));
 
-        // TODO: Determine if we have permissions to decrypt
+        // Determine if we have permissions to decrypt
+        boolean hasDecryptPermission = SecurityUtil.hasPermission(tierName, environmentName, applicationName, DockerManagerPermission.SECRETS);
+
         // Finally, filter the list from the request, taking the 'first' ones as the highest priority
         Map<String, EnvironmentProperty> answer = allProperties.stream()
                 .filter(it -> isPresentOrEmpty(it.getTiers(), tierName))                            // Filter by tier name
@@ -94,12 +112,12 @@ public class PropertiesController {
                 .filter(it -> isPresentOrEmpty(it.getApplications(), applicationName))              // Filter by application name
                 .filter(it -> isPresentOrEmpty(it.getPropertySets(), propertySet))                  // Filter by property set
                 .filter(distinctByKey(EnvironmentProperty::getName))                                // Ensure we have distinct values, before we return a 'final' list
-                .map(it -> decryptIfNecessary(key.getPrivate(), it))                                // Decrypt the value, if necessary
+                .map(it -> decryptIfNecessary(hasDecryptPermission, key.getPrivate(), it))                                // Decrypt the value, if necessary
                 .collect(CollectionUtils.toLinkedHashMap(EnvironmentProperty::getName, Function.identity()));
 
         // Get the 'Global' Properties...strictly for filling in 'templates'
         Map<String, String> binding = loadPropertiesYaml("global-properties").stream()
-                .map(it -> decryptIfNecessary(key.getPrivate(), it))                                // Decrypt the value, if necessary
+                .map(it -> decryptIfNecessary(hasDecryptPermission, key.getPrivate(), it))                                // Decrypt the value, if necessary
                 .collect(Collectors.toMap(EnvironmentProperty::getName, EnvironmentProperty::getValue));
 
         // TODO: Add in properties from Application + Service Instances
@@ -118,6 +136,17 @@ public class PropertiesController {
         return answer;
     }
 
+    /**
+     * Gets properties for a specific Service, serializing to Java Properties format.
+     *
+     * @param tierName
+     * @param environmentName
+     * @param applicationName
+     * @param serviceName
+     * @param propertySet
+     * @return
+     */
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
     @RequestMapping(value = "/{tierName}/{environmentName}/{applicationName}/{serviceName}", produces = "text/plain")
     public String getEnvironmentPropertiesText(@PathVariable("tierName") String tierName,
                                                                      @PathVariable("environmentName") String environmentName,
@@ -160,8 +189,8 @@ public class PropertiesController {
         return coll.contains(toFind);
     }
 
-    private EnvironmentProperty decryptIfNecessary(PrivateKey decryptingKey, EnvironmentProperty prop) {
-        if (prop.isSecure())
+    private EnvironmentProperty decryptIfNecessary(boolean hasPermission, PrivateKey decryptingKey, EnvironmentProperty prop) {
+        if (hasPermission && prop.isSecure())
             prop.setValue(EncryptionUtil.decrypt(decryptingKey, prop.getValue()));
 
         return prop;
