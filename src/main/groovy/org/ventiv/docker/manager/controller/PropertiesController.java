@@ -29,19 +29,22 @@ import org.ventiv.docker.manager.model.EnvironmentProperty;
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration;
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration;
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService;
+import org.ventiv.docker.manager.utils.CollectionUtils;
 import org.ventiv.docker.manager.utils.DockerManagerConstructor;
 import org.ventiv.docker.manager.utils.EncryptionUtil;
+import org.ventiv.docker.manager.utils.StringUtils;
 import org.ventiv.docker.manager.utils.YamlUtils;
 
 import java.security.KeyPair;
+import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -52,6 +55,7 @@ import java.util.stream.Collectors;
 public class PropertiesController {
 
     private static final Logger log = LoggerFactory.getLogger(PropertiesController.class);
+    public static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{(.*)}");
 
     @javax.annotation.Resource DockerManagerConfiguration props;
     @javax.annotation.Resource EnvironmentConfigurationService environmentConfigurationService;
@@ -82,23 +86,36 @@ public class PropertiesController {
         allProperties.addAll(environmentConfigurationService.getEnvironment(tierName, environmentName).getProperties());
         allProperties.addAll(loadPropertiesYaml(serviceName));
 
+        // TODO: Determine if we have permissions to decrypt
         // Finally, filter the list from the request, taking the 'first' ones as the highest priority
-        return allProperties.stream()
+        Map<String, EnvironmentProperty> answer = allProperties.stream()
                 .filter(it -> isPresentOrEmpty(it.getTiers(), tierName))                            // Filter by tier name
                 .filter(it -> isPresentOrEmpty(it.getEnvironments(), environmentName))              // Filter by environment name
                 .filter(it -> isPresentOrEmpty(it.getApplications(), applicationName))              // Filter by application name
                 .filter(it -> isPresentOrEmpty(it.getPropertySets(), propertySet))                  // Filter by property set
                 .filter(distinctByKey(EnvironmentProperty::getName))                                // Ensure we have distinct values, before we return a 'final' list
-                .map(it -> {                                                                        // Decrypt any encrypted
-                    // TODO: Check for permissions
-                    if (it.isSecure())
-                        it.setValue(EncryptionUtil.decrypt(key.getPrivate(), it.getValue()));
+                .map(it -> decryptIfNecessary(key.getPrivate(), it))                                // Decrypt the value, if necessary
+                .collect(CollectionUtils.toLinkedHashMap(EnvironmentProperty::getName, Function.identity()));
+
+        // Get the 'Global' Properties...strictly for filling in 'templates'
+        Map<String, String> binding = loadPropertiesYaml("global-properties").stream()
+                .map(it -> decryptIfNecessary(key.getPrivate(), it))                                // Decrypt the value, if necessary
+                .collect(Collectors.toMap(EnvironmentProperty::getName, EnvironmentProperty::getValue));
+
+        // TODO: Add in properties from Application + Service Instances
+
+        // Fill in any props that need it
+        answer.entrySet().stream()
+                .filter(it -> it.getValue().getValue().contains("${"))
+                .map(it -> {
+                    String replaced = StringUtils.replace(it.getValue().getValue(), VARIABLE_PATTERN, m -> binding.get(m.group(1)));
+                    it.getValue().setValue(replaced);
 
                     return it;
                 })
-                .collect(Collectors.toMap(EnvironmentProperty::getName, Function.identity(), (u, v) -> {
-                    throw new IllegalStateException(String.format("Duplicate key %s", u));
-                }, LinkedHashMap::new));
+                .collect(Collectors.toList());
+
+        return answer;
     }
 
     @RequestMapping(value = "/{tierName}/{environmentName}/{applicationName}/{serviceName}", produces = "text/plain")
@@ -141,6 +158,13 @@ public class PropertiesController {
             return true;
 
         return coll.contains(toFind);
+    }
+
+    private EnvironmentProperty decryptIfNecessary(PrivateKey decryptingKey, EnvironmentProperty prop) {
+        if (prop.isSecure())
+            prop.setValue(EncryptionUtil.decrypt(decryptingKey, prop.getValue()));
+
+        return prop;
     }
 
     public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {

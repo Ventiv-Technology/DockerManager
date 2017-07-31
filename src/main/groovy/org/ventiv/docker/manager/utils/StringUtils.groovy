@@ -15,6 +15,10 @@
  */
 package org.ventiv.docker.manager.utils
 
+import java.util.function.Function
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
 /**
  * Created by jcrygier on 4/10/15.
  */
@@ -27,6 +31,19 @@ class StringUtils {
 
     static String toSnakeCase( String text ) {
         text.replaceAll( /([A-Z])/, /_$1/ ).toLowerCase().replaceAll( /^_/, '' )
+    }
+
+    static String replace(String input, Pattern regex, Function<Matcher, String> matcherStringFunction) {
+        StringBuffer resultString = new StringBuffer();
+        Matcher regexMatcher = regex.matcher(input);
+        while (regexMatcher.find()) {
+            String replacement = matcherStringFunction.apply(regexMatcher);
+            if (replacement != null)
+                regexMatcher.appendReplacement(resultString, replacement);
+        }
+        regexMatcher.appendTail(resultString);
+
+        return resultString.toString();
     }
 
 }
