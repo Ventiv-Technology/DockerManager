@@ -59,7 +59,7 @@ public class DockerManagerConstructor extends Constructor {
                         f.set(answer, entry.getValue());
                     } catch (NoSuchFieldException e) {
                         answer.setName(entry.getKey());
-                        answer.setValue(entry.getValue().toString());
+                        answer.setValue(entry.getValue() != null ? entry.getValue().toString() : null);
                     } catch (IllegalAccessException e) {
                         log.error("Unable to set value on EnvironmentProperty: " + entry);
                     }

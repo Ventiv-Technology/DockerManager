@@ -37,6 +37,7 @@ import org.ventiv.docker.manager.utils.DockerManagerConstructor;
 import org.ventiv.docker.manager.utils.EncryptionUtil;
 import org.ventiv.docker.manager.utils.StringUtils;
 import org.ventiv.docker.manager.utils.YamlUtils;
+import org.yaml.snakeyaml.scanner.ScannerException;
 
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -124,7 +125,7 @@ public class PropertiesController {
 
         // Fill in any props that need it
         answer.entrySet().stream()
-                .filter(it -> it.getValue().getValue().contains("${"))
+                .filter(it -> it.getValue().getValue() != null && it.getValue().getValue().contains("${"))
                 .map(it -> {
                     String replaced = StringUtils.replace(it.getValue().getValue(), VARIABLE_PATTERN, m -> binding.get(m.group(1)));
                     it.getValue().setValue(replaced);
@@ -161,7 +162,7 @@ public class PropertiesController {
                     if (entry.getValue().getComments() != null)
                         sb.append("\r\n# ").append(Arrays.stream(entry.getValue().getComments().split("\n")).collect(Collectors.joining("\r\n# "))).append("\r\n");
 
-                    sb.append(entry.getKey()).append("=").append(entry.getValue().getValue());
+                    sb.append(entry.getKey()).append("=").append(entry.getValue().getValue() != null ? entry.getValue().getValue() : "");
                     return sb.toString();
                 })
                 .collect(Collectors.joining("\n"));
@@ -173,10 +174,15 @@ public class PropertiesController {
         Resource resource = resolver.getResource(props.getConfig().getLocation() + "/properties/" + serviceName + ".yml");
 
         if (resource.exists()) {
-            Collection<Map<String, Object>> fileContents = YamlUtils.loadAs(resource, Collection.class);
-            return fileContents.stream()
-                    .map(DockerManagerConstructor::extractEnvironmentProperty)
-                    .collect(Collectors.toList());
+            try {
+                Collection<Map<String, Object>> fileContents = YamlUtils.loadAs(resource, Collection.class);
+                return fileContents.stream()
+                        .map(DockerManagerConstructor::extractEnvironmentProperty)
+                        .collect(Collectors.toList());
+            } catch (ScannerException ex) {
+                log.error("Unable to read file: " + props.getConfig().getLocation() + "/properties/" + serviceName + ".yml");
+                throw ex;
+            }
         }
 
         return new ArrayList<>();
