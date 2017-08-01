@@ -271,3 +271,102 @@ Finally, underneath the service instance configuration section, you have the opp
 This is the exact same as documented above, but will allow you to specify environment variables that are specific to
 a given application.  This is the perfect place to tie servers together (e.g. Activiti -> MySql) or to specify what environment
 this application is running in (e.g. Development).
+
+### Properties Management
+
+Sometimes, there is a need to inject properties (application configuration) into a container.  For these cases, Docker Manager
+has the ability to maintain and inject such properties in several ways:
+
+- File (Just Java Properties format right now).  Every time a container is started, restarted, or deployed, this file is re-created.
+- Environment (Not built yet - use `environment`)
+
+To accomplish this, properties are read in priority order, with things lower in the following list taking precedence:
+
+- Properties YAML: `/env-config/properties/<serviceName>.yml`
+- Environment Configuration: `/env-config/tiers/<tierName>/<environmentName>.yml` (Alongside servers / application)
+- Application Configuration: `/env-config/tiers/<tierName>/<environmentName>.yml` (Within the application)
+- Service Instance Configuration: `/env-config/tiers/<tierName>/<environmentName>.yml` (Within the `serviceInstances` section)
+
+Within all of these files / sections, the properties are designed to be simple, and as close to a Java Properties file as
+possible.  Also, if there is some metadata about a particular property, it may also (optionally) be included.  Here are some examples:
+
+    - db.url: jdbc:mysql://localhost:3306/sakila?profileSQL=true
+    - db.driver: com.mysql.jdbc.Driver
+    - db.password: BnzsGT5+B4XjgJO6kNvcAL/N8PFe+reQE2x/kVQh9d5Hy2BFFZMXXSr4DmBbGYKu3vS4tmhFyMdy7HO31UqI5t754R6B96ygDJqlOgV07djEAEPY0Nb2htEqsdgoEzMtrABK4WeOoXMlQCGHXWYY6VLUIvJpgfX/VH24D2aQ7EKr56KLj4q5KwWqTH2MfwPRaz4e2NsT39t2o2OnB4K+VzxOVvAvrDeUfmYa/A6RzXTD6/UGbFR2JByUcyZsK6PfmpPZ94aXjTVFzK0SBH4cPh8tM/YT2D3Gf4nPHBIHXvCLOQkLnp8wbMRIEdzTp4oNyCsxN6yW84XCmMhoHPnGjw==
+      secure: true
+    - special.property: This is a special property
+      comments: This property does really special things in the application
+      propertySets: [ all ]
+      tiers: [ localhost ]
+      
+The following metadata is allowed:
+
+- secure: If true, it's assumed the property contents are encrypted.  See `Secure Properties` below
+- comments: Any comments about this particular property.  Will render in the final property file, and allows for multi-line comments
+- propertySets: List of property sets that this property is valid for.  Null implies everything
+- tiers: List of tiers this property is valid for.  Null implies everything
+- environments: List of environment names this property is valid for.  Null implies everything
+- applications: List of application Id's this property is valid for.  Null implies everything
+
+Finally, there is an area for 'global' properties, that can be shared across applications.  This is helpful if there is a shared
+password for many applications, and you still want it to be secure.  However, please be warned, that if a user has permissions
+to view secure properties in ANY environment, they will then be able to get this property for ALL environments, so design
+security permissions in such a way to prevent loss of secure information.  To do this, there is a special file called
+`/env-config/properties/global-properties.yml` that looks just like above.  You can then use these properties in any other location
+by referencing them as a variable like this:
+
+    - db.password: ${global.db.password}
+      secure: true
+    
+#### Property Set Configuration
+
+Docker Manager has the full ability to control how these properties are injected into the container.  For now, only `File`
+method is built out, with more possible in the future.  Here is an example of how to configure a property set
+(in `/env-config/services.yml` - as part of the Service Configuration):
+
+    - properties:
+        - setId: all
+          method: File
+          location: /tmp/test.properties
+          
+As you can see, this is the Property Set with ID: `all`, that will include any property that has a `propertySets` metadata
+option of `all` (or none configured).  This states that a `File` should be injected into the container, with the path `/tmp/test.properties`.
+
+You can have as many Property Set's as you want, lending to the complete ability to configure as many properties files as
+deemed necessary.
+    
+#### Secure Properties
+
+Part of the design of properties management in Docker Manager is the ability to fully secure properties.  In order to accomplish
+this, some configuration is needed in the Docker Manager application configuration (see sample in `application.yml`)
+  
+    keystore:
+      location: file:./config/keystore.jks
+      storepass: changeit
+      alias: DockerManager
+      keypassword: changeit
+      
+This will look for a Java Keystore in the `location` specified, and attempt to load the RSA Public / Private key within 
+that keystore.  If it does not find the keystore in that location, it will create one, and self-sign a certificate for you.
+It is recommended that you commit this keystore to VCS, since losing it will render all of your `secure` properties unusable.
+
+Docker Manager uses the Public Key to encrypt the values, allowing for ANYONE to encrypt a property.  However, the Private
+Key is required to decrypt the property, and requires a special permission (see below).
+
+In order to add a secure property, follow this process:
+
+1. With Docker Manager running, go to the following URL: `/api/properties/encrypt?value=<ValueToEncrypt>`
+1. Take the output from above and put it into the desired property location with the metadata property `secure: true`
+
+Example:
+
+    - db.password: BnzsGT5+B4XjgJO6kNvcAL/N8PFe+reQE2x/kVQh9d5Hy2BFFZMXXSr4DmBbGYKu3vS4tmhFyMdy7HO31UqI5t754R6B96ygDJqlOgV07djEAEPY0Nb2htEqsdgoEzMtrABK4WeOoXMlQCGHXWYY6VLUIvJpgfX/VH24D2aQ7EKr56KLj4q5KwWqTH2MfwPRaz4e2NsT39t2o2OnB4K+VzxOVvAvrDeUfmYa/A6RzXTD6/UGbFR2JByUcyZsK6PfmpPZ94aXjTVFzK0SBH4cPh8tM/YT2D3Gf4nPHBIHXvCLOQkLnp8wbMRIEdzTp4oNyCsxN6yW84XCmMhoHPnGjw==
+      secure: true
+
+#### Properties Permissions
+
+Regarding properties management, there are 3 permissions that can be configured at the application level (in authorization.yml):
+
+- secrets - Does the user / group have permissions to decrypt and view `secure` properties.  NOTE: This is strictly for viewing via REST or a future UI.  W/o this permission, you can still get the secure properties injected into the container.
+- propertiesRead - Can the user / group read the properties.  Same note as with `secrets`.
+- propertiesUpdate - Unused for now.  In the future there will be a REST endpoint + UI to maintain the properties, and this permission will enable those functions.
