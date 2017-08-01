@@ -15,12 +15,14 @@
  */
 package org.ventiv.docker.manager.controller
 
+import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.LogContainerCmd
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.exception.NotModifiedException
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
-import org.apache.commons.io.IOUtils
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.PathVariable
@@ -29,20 +31,23 @@ import org.springframework.web.bind.annotation.RequestMethod
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.config.DockerServiceConfiguration
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
+import org.ventiv.docker.manager.model.configuration.PropertiesConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
+import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
 import org.ventiv.docker.manager.security.DockerManagerPermission
 import org.ventiv.docker.manager.security.SecurityUtil
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
 import org.ventiv.docker.manager.service.ServiceInstanceService
-import org.ventiv.docker.manager.utils.DockerLogsOutputStream
 import org.ventiv.docker.manager.utils.LogContainerToStreamCallback
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletResponse
+import java.util.zip.GZIPOutputStream
 
 /**
  * Created by jcrygier on 3/2/15.
@@ -59,6 +64,8 @@ class HostsController {
     @Resource ApplicationEventPublisher eventPublisher;
     @Resource EnvironmentConfigurationService environmentConfigurationService;
     @Resource ServiceInstanceService serviceInstanceService;
+    @Resource DockerServiceConfiguration dockerServiceConfiguration;
+    @Resource PropertiesController propertiesController;
 
     @RequestMapping
     public def getHostDetails() {
@@ -151,6 +158,8 @@ class HostsController {
     @PreAuthorize("hasPermission(#containerId, 'START')")
     @RequestMapping(value = "/{hostName}/{containerId}/start", method = RequestMethod.POST)
     public void startContainer(@PathVariable String hostName, @PathVariable String containerId) {
+        pushPropertiesFilesToServiceInstance(getServiceInstance(hostName, containerId));
+
         dockerService.getDockerClient(hostName).startContainerCmd(containerId).exec();
         //eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
     }
@@ -165,6 +174,8 @@ class HostsController {
     @PreAuthorize("hasPermission(#containerId, 'RESTART')")
     @RequestMapping(value = "/{hostName}/{containerId}/restart", method = RequestMethod.POST)
     public void restartContainer(@PathVariable String hostName, @PathVariable String containerId) {
+        pushPropertiesFilesToServiceInstance(getServiceInstance(hostName, containerId));
+
         dockerService.getDockerClient(hostName).restartContainerCmd(containerId).exec();
         //eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
     }
@@ -184,6 +195,35 @@ class HostsController {
 
         log.info("Removing container: ${containerId} on ${hostName}")
         dockerService.getDockerClient(hostName).removeContainerCmd(containerId).withForce(true).exec();
+    }
+
+    public void pushPropertiesFilesToServiceInstance(ServiceInstance serviceInstance) {
+        ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName());
+        DockerClient docker = dockerService.getDockerClient(serviceInstance.getServerName());
+
+        serviceConfiguration.getProperties()
+                .findAll { it.getMethod() == PropertiesConfiguration.PropertiesMethod.File }
+                .each { propertyConfig ->
+            String propertyFileContents = SecurityUtil.doWithSuperUser {
+                propertiesController.getEnvironmentPropertiesText(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), propertyConfig.getSetId())
+            }
+
+            TarArchiveEntry propFile = new TarArchiveEntry(new File(propertyConfig.getLocation()).getName());
+            propFile.setSize(propertyFileContents.size());
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            TarArchiveOutputStream gzout = new TarArchiveOutputStream(new GZIPOutputStream(baos));
+            gzout.putArchiveEntry(propFile);
+            gzout.write(propertyFileContents.getBytes("UTF-8"));
+            gzout.closeArchiveEntry();
+            gzout.flush();
+            gzout.close();
+
+            docker.copyArchiveToContainerCmd(serviceInstance.getContainerId())
+                    .withRemotePath(new File(propertyConfig.getLocation()).getParentFile().getAbsolutePath())
+                    .withTarInputStream(new ByteArrayInputStream(baos.toByteArray()))
+                    .exec();
+        }
     }
 
     public ServiceInstance getServiceInstance(String hostName, String containerId) {

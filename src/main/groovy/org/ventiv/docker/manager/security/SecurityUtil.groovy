@@ -18,7 +18,9 @@ package org.ventiv.docker.manager.security
 import org.springframework.security.access.PermissionEvaluator
 import org.springframework.security.acls.domain.PrincipalSid
 import org.springframework.security.acls.model.Permission
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.ventiv.docker.manager.DockerManagerApplication
 
@@ -27,6 +29,7 @@ import org.ventiv.docker.manager.DockerManagerApplication
  */
 class SecurityUtil {
 
+    public static final Authentication SUPER_USER = new UsernamePasswordAuthenticationToken("SuperUser", "SuperUserPassword", [ new SimpleGrantedAuthority("ROLE_SUPER_USER") ]);
     private static PermissionEvaluator permissionEvaluator;
 
     public static <T> Collection<T> filter(Collection<T> toFilter, Permission permission) {
@@ -50,6 +53,17 @@ class SecurityUtil {
 
     public static final String getLoggedInUserId(Authentication authentication = getAuthentication()) {
         return new PrincipalSid(authentication).getPrincipal()
+    }
+
+    public static final <T> T doWithSuperUser(Closure<T> callback) {
+        Authentication previousAuth = getAuthentication();
+
+        try {
+            SecurityContextHolder.getContext().setAuthentication(SUPER_USER);
+            return callback.call()
+        } finally {
+            SecurityContextHolder.getContext().setAuthentication(previousAuth);
+        }
     }
 
 

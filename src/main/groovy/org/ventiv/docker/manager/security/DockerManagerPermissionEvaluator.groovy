@@ -63,7 +63,7 @@ class DockerManagerPermissionEvaluator implements PermissionEvaluator {
 
     @Override
     boolean hasPermission(Authentication authentication, Object targetDomainObject, Object rawPermission) {
-        if (!authorizationConfigurationService.isResourceExists())
+        if (!authorizationConfigurationService.isResourceExists() || authentication.is(SecurityUtil.SUPER_USER) || authentication.getAuthorities().find { it.getAuthority() == "ROLE_SUPER_USER" })
             return true;
 
         ApplicationConfiguration applicationConfiguration = getApplicationConfiguration(targetDomainObject);

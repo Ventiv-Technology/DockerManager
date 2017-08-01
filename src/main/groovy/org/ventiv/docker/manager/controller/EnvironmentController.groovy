@@ -590,6 +590,10 @@ class EnvironmentController {
         // Lets get an updated port mapping, just in case it was lost because the container was stopped
         instance.setPortsFromConfiguration();
 
+        // If we have properties we need to shove in there, do it before we start up
+        instance.setContainerId(resp.id);
+        hostsController.pushPropertiesFilesToServiceInstance(instance);
+
         // Now start the container
         log.info("Starting container '${resp.id}' with " +
                 "ports: ${instance.getPortDefinitions().collect { '0.0.0.0:' + it.getHostPort() + '->' + it.getContainerPort() } }, " +
