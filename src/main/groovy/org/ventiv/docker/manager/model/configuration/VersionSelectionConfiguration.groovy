@@ -46,16 +46,6 @@ class VersionSelectionConfiguration extends RestCallConfiguration {
             }
         }
 
-        versions = versions.sort { String a, String b ->
-            if(NumberUtils.isNumber(a) && NumberUtils.isNumber(b)) {
-                Integer a1 = new Integer(a)
-                Integer b1 = new Integer(b)
-                return b1.compareTo(a1)
-            } else {
-                return b.compareTo(a)
-            }
-        }
-
         return versions;
     }
 
