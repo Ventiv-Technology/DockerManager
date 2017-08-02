@@ -18,6 +18,7 @@ package org.ventiv.docker.manager.model.configuration
 import com.jayway.jsonpath.JsonPath
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
+import org.apache.commons.lang.math.NumberUtils
 
 /**
  * Created by jcrygier on 3/4/15.
@@ -42,6 +43,16 @@ class VersionSelectionConfiguration extends RestCallConfiguration {
                 versions = versions.collect { String versionNumber ->
                     filterConfiguration.filter(versionNumber);
                 }
+            }
+        }
+
+        versions = versions.sort { String a, String b ->
+            if(NumberUtils.isNumber(a) && NumberUtils.isNumber(b)) {
+                Integer a1 = new Integer(a)
+                Integer b1 = new Integer(b)
+                return b1.compareTo(a1)
+            } else {
+                return b.compareTo(a)
             }
         }
 
