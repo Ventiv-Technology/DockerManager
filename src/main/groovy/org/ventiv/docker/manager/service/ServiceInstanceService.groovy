@@ -22,6 +22,7 @@ import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Container
 import com.github.dockerjava.api.model.Event
 import com.github.dockerjava.api.model.EventType
+import com.github.dockerjava.core.async.ResultCallbackTemplate
 import com.github.dockerjava.core.command.EventsResultCallback
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
@@ -50,6 +51,7 @@ import org.ventiv.docker.manager.repository.ServiceInstanceThumbnailRepository
 
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
+import java.lang.reflect.Field
 import java.util.concurrent.ScheduledFuture
 
 /**
@@ -138,7 +140,8 @@ class ServiceInstanceService implements Runnable {
             })
 
             // Now, lets hook up to the Docker Events API, but only if we don't already have one running
-            if (!eventCallbacks.get(serverConfigurationKey)?.running) {
+            boolean connected = eventCallbacks.get(serverConfigurationKey)?.isConnected();
+            if (!connected) {
                 DockerEventCallback callback = new DockerEventCallback(serverConfiguration, this)
                 dockerService.getDockerClient(serverConfiguration.getHostname()).eventsCmd().exec(callback);
                 eventCallbacks.put(serverConfigurationKey, callback);
@@ -181,7 +184,10 @@ class ServiceInstanceService implements Runnable {
         getAllHosts().each(this.&initializeServerConfiguration);
     }
 
-    /**
+    Map<String, DockerEventCallback> getEventCallbacks() {
+        return eventCallbacks
+    }
+/**
      * Determines if the service instance that is passed in is using the image (by tag) that is currently deployed in
      * the corresponding registry.  This is helpful if an image is overwriten in the registry.  This commonly occurs with
      * 'latest' images.
@@ -227,10 +233,31 @@ class ServiceInstanceService implements Runnable {
         boolean running = true;
         ServerConfiguration serverConfiguration;
         ServiceInstanceService serviceInstanceService;
+        Field closedField;
 
         public DockerEventCallback(ServerConfiguration serverConfiguration, ServiceInstanceService serviceInstanceService) {
             this.serverConfiguration = serverConfiguration;
             this.serviceInstanceService = serviceInstanceService;
+
+            closedField = ResultCallbackTemplate.class.getDeclaredField("closed");
+            closedField.setAccessible(true);
+        }
+
+        @Override
+        public RuntimeException getFirstError() {
+            return super.getFirstError()
+        }
+
+        public boolean isConnected() {
+            return running && !closedField.get(this);
+        }
+
+        public Throwable getException() {
+            try {
+                this.getFirstError();
+            } catch (Throwable e) {
+                return e;
+            }
         }
 
         @Override
