@@ -32,6 +32,7 @@ import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import javax.annotation.PostConstruct
 import javax.annotation.Resource
 import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.TimeUnit
 
 /**
  * Created by jcrygier on 3/10/15.
@@ -52,6 +53,8 @@ class GitService implements Runnable {
     private CredentialsProvider credentialsProvider;
     private ScheduledFuture scheduledTask;
     private int pullErrorCount = 0;
+    private long lastRunTime = System.currentTimeMillis();
+    private Exception lastPollException;
 
     @PostConstruct
     void cloneGitIfNecessary() {
@@ -81,7 +84,7 @@ class GitService implements Runnable {
 
             git = new Git(repository);
 
-            if (props.config.git.refreshPeriod > 0)
+            if (isEnabled())
                 scheduledTask = taskScheduler.scheduleAtFixedRate(this, props.config.git.refreshPeriod);
         }
     }
@@ -93,10 +96,12 @@ class GitService implements Runnable {
 
             try {
                 PullResult pullResult = git.pull().setCredentialsProvider(credentialsProvider).call();
+                lastRunTime = System.currentTimeMillis();
 
                 pullErrorCount = 0;
             } catch (Exception e) {
                 log.error("Error pulling.  Current count: ${pullErrorCount + 1}", e)
+                lastPollException = e;
 
                 if (++pullErrorCount > MAX_RETRIES) {
                     log.error("Error count is too high, stopping pull")
@@ -105,4 +110,32 @@ class GitService implements Runnable {
             }
         }
     }
+
+    public long getNextRunTime() {
+        if (!isEnabled() || scheduledTask == null)
+            return 0L;
+
+        return scheduledTask.getDelay(TimeUnit.SECONDS);
+    }
+
+    public int getPullErrorCount() {
+        return pullErrorCount;
+    }
+
+    Exception getLastPollException() {
+        return lastPollException
+    }
+
+    public Date getLastRunTime() {
+        return new Date(lastRunTime);
+    }
+
+    public boolean isRunning() {
+        return isEnabled() && scheduledTask != null && !scheduledTask.isCancelled();
+    }
+
+    public boolean isEnabled() {
+        return props?.config?.git?.url != null && props.config.git.refreshPeriod > 0;
+    }
+
 }
