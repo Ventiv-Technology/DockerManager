@@ -128,7 +128,7 @@ class ServiceConfiguration {
      * Defines any properties configurations, or where to inject properties into this service.
      */
     @Nullable
-    List<PropertiesConfiguration> properties;
+    List<PropertiesConfiguration> properties = [];
 
     @JsonIgnore
     private CachingGroovyShell cachingGroovyShell;
