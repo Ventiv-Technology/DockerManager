@@ -201,28 +201,30 @@ class HostsController {
         ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName());
         DockerClient docker = dockerService.getDockerClient(serviceInstance.getServerName());
 
-        serviceConfiguration.getProperties()
-                .findAll { it.getMethod() == PropertiesConfiguration.PropertiesMethod.File }
-                .each { propertyConfig ->
-            String propertyFileContents = SecurityUtil.doWithSuperUser {
-                propertiesController.getEnvironmentPropertiesText(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), propertyConfig.getSetId())
+        if (serviceConfiguration.getProperties()) {
+            serviceConfiguration.getProperties()
+                    .findAll { it.getMethod() == PropertiesConfiguration.PropertiesMethod.File }
+                    .each { propertyConfig ->
+                String propertyFileContents = SecurityUtil.doWithSuperUser {
+                    propertiesController.getEnvironmentPropertiesText(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), propertyConfig.getSetId())
+                }
+
+                TarArchiveEntry propFile = new TarArchiveEntry(new File(propertyConfig.getLocation()).getName());
+                propFile.setSize(propertyFileContents.size());
+
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                TarArchiveOutputStream gzout = new TarArchiveOutputStream(new GZIPOutputStream(baos));
+                gzout.putArchiveEntry(propFile);
+                gzout.write(propertyFileContents.getBytes("UTF-8"));
+                gzout.closeArchiveEntry();
+                gzout.flush();
+                gzout.close();
+
+                docker.copyArchiveToContainerCmd(serviceInstance.getContainerId())
+                        .withRemotePath(new File(propertyConfig.getLocation()).getParentFile().getAbsolutePath())
+                        .withTarInputStream(new ByteArrayInputStream(baos.toByteArray()))
+                        .exec();
             }
-
-            TarArchiveEntry propFile = new TarArchiveEntry(new File(propertyConfig.getLocation()).getName());
-            propFile.setSize(propertyFileContents.size());
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            TarArchiveOutputStream gzout = new TarArchiveOutputStream(new GZIPOutputStream(baos));
-            gzout.putArchiveEntry(propFile);
-            gzout.write(propertyFileContents.getBytes("UTF-8"));
-            gzout.closeArchiveEntry();
-            gzout.flush();
-            gzout.close();
-
-            docker.copyArchiveToContainerCmd(serviceInstance.getContainerId())
-                    .withRemotePath(new File(propertyConfig.getLocation()).getParentFile().getAbsolutePath())
-                    .withTarInputStream(new ByteArrayInputStream(baos.toByteArray()))
-                    .exec();
         }
     }
 

@@ -490,6 +490,13 @@ class EnvironmentController {
             hostConfig.withExtraHosts(["${address.getHostName()}:${address.getHostAddress()}"] as String[]);
         }
 
+        if (serverConfiguration.getExtraHosts()) {
+            List<String> extraHosts = hostConfig.getExtraHosts()?.toList() ?: [];
+            extraHosts.addAll(serverConfiguration.getExtraHosts().collect { k, v -> "$k:$v".toString() });
+
+            hostConfig.withExtraHosts(extraHosts.toArray(new String[extraHosts.size()]));
+        }
+
         // Get the environment variables
         Map<String, Object> env = [:]
         if (serviceConfiguration.getEnvironment())

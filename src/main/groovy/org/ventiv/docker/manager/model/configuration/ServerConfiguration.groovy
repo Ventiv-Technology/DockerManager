@@ -60,6 +60,12 @@ class ServerConfiguration {
     Boolean buildEnabled = false;
 
     /**
+     * Extra host mappings to put in ALL container's /etc/hosts file for resolution
+     */
+    @NotNull
+    Map<String, String> extraHosts = [:]
+
+    /**
      * The list of services that are eligible to run on this host.
      */
     @NotNull
