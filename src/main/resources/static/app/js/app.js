@@ -375,7 +375,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     url = templateFunction(url, serviceInstance.loggingConfig, serviceInstance);
                 }
 
-                $window.open(url, '_blank');
+                $window.open(url.trim(), '_blank');
             };
 
             $scope.cancel = function() {
