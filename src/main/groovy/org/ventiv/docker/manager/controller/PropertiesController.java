@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.ventiv.docker.manager.config.DockerManagerConfiguration;
+import org.ventiv.docker.manager.model.ApplicationDetails;
 import org.ventiv.docker.manager.model.EnvironmentProperty;
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration;
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration;
@@ -35,7 +36,6 @@ import org.ventiv.docker.manager.service.EnvironmentConfigurationService;
 import org.ventiv.docker.manager.utils.CollectionUtils;
 import org.ventiv.docker.manager.utils.DockerManagerConstructor;
 import org.ventiv.docker.manager.utils.EncryptionUtil;
-import org.ventiv.docker.manager.utils.StringUtils;
 import org.ventiv.docker.manager.utils.YamlUtils;
 import org.yaml.snakeyaml.scanner.ScannerException;
 
@@ -44,6 +44,7 @@ import java.security.PrivateKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
@@ -63,6 +64,7 @@ public class PropertiesController {
 
     @javax.annotation.Resource DockerManagerConfiguration props;
     @javax.annotation.Resource EnvironmentConfigurationService environmentConfigurationService;
+    @javax.annotation.Resource EnvironmentController environmentController;
 
     @RequestMapping("/encrypt")
     public String encrypt(@RequestParam("value") String value) {
@@ -84,10 +86,12 @@ public class PropertiesController {
      */
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
     @RequestMapping("/{tierName}/{environmentName}/{applicationName}/{serviceName}")
-    public Map<String, EnvironmentProperty> getEnvironmentProperties(@PathVariable("tierName") String tierName,
+    public Map<String, EnvironmentProperty> getEnvironmentProperties(@PathVariable("serverName") String serverName,
+                                                                     @PathVariable("tierName") String tierName,
                                                                      @PathVariable("environmentName") String environmentName,
                                                                      @PathVariable("applicationName") String applicationName,
                                                                      @PathVariable("serviceName") String serviceName,
+                                                                     @PathVariable("instanceNumber") Integer instanceNumber,
                                                                      @RequestParam(value = "propertySet", required = false) String propertySet) {
         KeyPair key = props.getKeystore().getKey();
 
@@ -117,22 +121,29 @@ public class PropertiesController {
                 .collect(CollectionUtils.toLinkedHashMap(EnvironmentProperty::getName, Function.identity()));
 
         // Get the 'Global' Properties...strictly for filling in 'templates'
-        Map<String, String> binding = loadPropertiesYaml("global-properties").stream()
+        Map<String, String> globalProperties = loadPropertiesYaml("global-properties").stream()
                 .map(it -> decryptIfNecessary(hasDecryptPermission, key.getPrivate(), it))                                // Decrypt the value, if necessary
                 .collect(Collectors.toMap(EnvironmentProperty::getName, EnvironmentProperty::getValue));
 
-        // TODO: Add in properties from Application + Service Instances
+        ApplicationDetails applicationDetails = environmentController.getApplicationDetails(tierName, environmentName, applicationName);
+
+        Map<String, Object> binding = new HashMap<>();
+        binding.put("globalProperties", globalProperties);
+        binding.put("applicationDetails", applicationDetails);
+        binding.put("applicationConfiguration", applicationConfiguration);
+        binding.put("serviceInstance", applicationDetails.getServiceInstances().stream()
+                .filter(it -> it.getServerName().equals(serverName))
+                .filter(it -> it.getName().equals(serviceName))
+                .filter(it -> it.getInstanceNumber().equals(instanceNumber))
+                .findFirst().get()
+        );
 
         // Fill in any props that need it
-        answer.entrySet().stream()
-                .filter(it -> it.getValue().getValue() != null && it.getValue().getValue().contains("${"))
-                .map(it -> {
-                    String replaced = StringUtils.replace(it.getValue().getValue(), VARIABLE_PATTERN, m -> binding.get(m.group(1)));
-                    it.getValue().setValue(replaced);
-
-                    return it;
-                })
-                .collect(Collectors.toList());
+        answer.forEach((propName, property) -> {
+            if (property.getCachingGroovyShell() != null) {
+                property.setValue(property.getCachingGroovyShell().eval(binding).toString());
+            }
+        });
 
         return answer;
     }
@@ -149,12 +160,14 @@ public class PropertiesController {
      */
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
     @RequestMapping(value = "/{tierName}/{environmentName}/{applicationName}/{serviceName}", produces = "text/plain")
-    public String getEnvironmentPropertiesText(@PathVariable("tierName") String tierName,
-                                                                     @PathVariable("environmentName") String environmentName,
-                                                                     @PathVariable("applicationName") String applicationName,
-                                                                     @PathVariable("serviceName") String serviceName,
-                                                                     @RequestParam(value = "propertySet", required = false) String propertySet) {
-        Map<String, EnvironmentProperty> props = getEnvironmentProperties(tierName, environmentName, applicationName, serviceName, propertySet);
+    public String getEnvironmentPropertiesText(@PathVariable("serverName") String serverName,
+                                               @PathVariable("tierName") String tierName,
+                                               @PathVariable("environmentName") String environmentName,
+                                               @PathVariable("applicationName") String applicationName,
+                                               @PathVariable("serviceName") String serviceName,
+                                               @PathVariable("instanceNumber") Integer instanceNumber,
+                                               @RequestParam(value = "propertySet", required = false) String propertySet) {
+        Map<String, EnvironmentProperty> props = getEnvironmentProperties(serverName, tierName, environmentName, applicationName, serviceName, instanceNumber, propertySet);
 
         return props.entrySet().stream()
                 .map(entry -> {

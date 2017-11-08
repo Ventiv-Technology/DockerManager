@@ -147,6 +147,11 @@ class ApplicationDeploymentService implements ApplicationListener<DeploymentStar
                         }
                     }
 
+                    // Finally, start all containers - Needs to be at the end, so we have all containers in case we need to resolve properties
+                    new ArrayList<ServiceInstance>(applicationDetails.getServiceInstances()).each { ServiceInstance anInstance ->
+                        hostsController.startContainer(anInstance.getServerName(), anInstance.getContainerId());
+                    }
+
                     deferred.resolve(applicationDetails);
                 } catch (Exception e) {
                     e.printStackTrace()

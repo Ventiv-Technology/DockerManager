@@ -216,15 +216,13 @@ class ServiceInstance {
     @CompileStatic
     private void determineUrl(ServiceConfiguration serviceConfig) {
         if (serviceConfig?.getUrl()) {
-            if (this.status == Status.Running) {
+            if (this.status == Status.Running || this.status == Status.Stopped) {
                 Map<String, Integer> ports = getPortDefinitions()?.collectEntries { PortDefinition portDefinition ->
                     [portDefinition.getPortType(), portDefinition.getHostPort()]
                 }
 
                 setUrl(serviceConfig.getCachingGroovyShellForUrl().eval([server: getServerName(), port: ports]).toString())
-            } else if (getStatus() == Status.Stopped)
-                setUrl(getServiceDescription() + " is Stopped")
-            else
+            } else
                 setUrl(getServiceDescription() + " is Missing")
         }
     }

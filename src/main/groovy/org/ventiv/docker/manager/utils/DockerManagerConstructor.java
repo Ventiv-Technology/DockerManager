@@ -65,6 +65,12 @@ public class DockerManagerConstructor extends Constructor {
                     }
                 });
 
+        // Detect if we have a template, convert to CachingGroovyShell
+        if (answer != null && answer.getValue() != null && answer.getValue().contains("${")) {
+            CachingGroovyShell cachingGroovyShell = new CachingGroovyShell('"' + answer.getValue() + '"');
+            answer.setCachingGroovyShell(cachingGroovyShell);
+        }
+
         return answer;
     }
 }

@@ -160,7 +160,9 @@ class HostsController {
     public void startContainer(@PathVariable String hostName, @PathVariable String containerId) {
         pushPropertiesFilesToServiceInstance(getServiceInstance(hostName, containerId));
 
-        dockerService.getDockerClient(hostName).startContainerCmd(containerId).exec();
+        try {
+            dockerService.getDockerClient(hostName).startContainerCmd(containerId).exec();
+        } catch (NotModifiedException ignored) {}       // Happens if we try to start a container that's already started
         //eventPublisher.publishEvent(new ContainerStartedEvent(getServiceInstance(hostName, containerId)))
     }
 
@@ -206,7 +208,7 @@ class HostsController {
                     .findAll { it.getMethod() == PropertiesConfiguration.PropertiesMethod.File }
                     .each { propertyConfig ->
                 String propertyFileContents = SecurityUtil.doWithSuperUser {
-                    propertiesController.getEnvironmentPropertiesText(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), propertyConfig.getSetId())
+                    propertiesController.getEnvironmentPropertiesText(serviceInstance.getServerName(), serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), serviceInstance.getInstanceNumber(), propertyConfig.getSetId())
                 }
 
                 TarArchiveEntry propFile = new TarArchiveEntry(new File(propertyConfig.getLocation()).getName());

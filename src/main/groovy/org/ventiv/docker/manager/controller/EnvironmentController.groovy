@@ -19,7 +19,6 @@ import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.command.CreateContainerCmd
 import com.github.dockerjava.api.command.CreateContainerResponse
 import com.github.dockerjava.api.command.InspectContainerResponse
-import com.github.dockerjava.api.command.StartContainerCmd
 import com.github.dockerjava.api.model.Bind
 import com.github.dockerjava.api.model.ExposedPort
 import com.github.dockerjava.api.model.HostConfig
@@ -221,8 +220,7 @@ class EnvironmentController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     @RequestMapping(value = "/{tierName}/{environmentName}", method = RequestMethod.POST)
     public void deployApplication(@PathVariable("tierName") String tierName, @PathVariable("environmentName") String environmentName, @RequestBody DeployApplicationRequest deployRequest) {
-        List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
-        ApplicationDetails applicationDetails = environmentDetails.find { it.getId() == deployRequest.getName() }
+        ApplicationDetails applicationDetails = getApplicationDetails(tierName, environmentName, deployRequest.getName())
         applicationDetails.setBuildServiceVersionsTemplate(deployRequest.getServiceVersions());
 
         // Update our audit object with the version
@@ -235,6 +233,11 @@ class EnvironmentController {
             // The following does 2 things: 1.) Sends a message to the UI that a deployment is now going, and 2.) Gets Picked up by ApplicationDeploymentService to do the actual deployment
             eventPublisher.publishEvent(new DeploymentStartedEvent(applicationDetails, deployRequest.branch, builtApplication.getBuildServiceVersionsTemplate(), deployRequest.requestedVersion));
         }
+    }
+
+    protected ApplicationDetails getApplicationDetails(String tierName, String environmentName, String applicationName) {
+        List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
+        return environmentDetails.find { it.getId() == applicationName }
     }
 
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationId, 'DEPLOY')")
@@ -600,13 +603,6 @@ class EnvironmentController {
         // If we have properties we need to shove in there, do it before we start up
         instance.setContainerId(resp.id);
         hostsController.pushPropertiesFilesToServiceInstance(instance);
-
-        // Now start the container
-        log.info("Starting container '${resp.id}' with " +
-                "ports: ${instance.getPortDefinitions().collect { '0.0.0.0:' + it.getHostPort() + '->' + it.getContainerPort() } }, " +
-                "volumes: ${serviceInstanceConfiguration.getVolumeMappings()?.collect { volumeMapping -> volumeMapping.getPath() + '->' + serviceConfiguration.getContainerVolumes()?.find { it.getType() == volumeMapping.getType() }?.getPath() } }")
-        StartContainerCmd startCmd = docker.startContainerCmd(resp.id).exec();
-        //eventPublisher.publishEvent(new ContainerStartedEvent(hostsController.getServiceInstance(instance.getServerName(), resp.id)));
 
         // Create a ServiceInstance out of this Container
         InspectContainerResponse inspectContainerResponse = dockerService.getDockerClient(serverConfiguration.getHostname()).inspectContainerCmd(resp.getId()).exec()

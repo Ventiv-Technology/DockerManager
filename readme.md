@@ -308,14 +308,22 @@ The following metadata is allowed:
 - environments: List of environment names this property is valid for.  Null implies everything
 - applications: List of application Id's this property is valid for.  Null implies everything
 
+It is important to note that you may use Groovy to fill in any variables that may be necessary.  To do so, set the value of the property
+to contain `${}`, and it will be evaluated with Groovy and the following bindings:
+
+- globalProperties: Map - See below
+- applicationDetails: ApplicationDetails object for the current application.  Contains all of the ServiceInstance objects for this application.
+- applicationConfiguration: ApplicationConfiguration object for the current application.
+- serviceInstance: The ServiceInstance that is being worked on.
+
 Finally, there is an area for 'global' properties, that can be shared across applications.  This is helpful if there is a shared
 password for many applications, and you still want it to be secure.  However, please be warned, that if a user has permissions
 to view secure properties in ANY environment, they will then be able to get this property for ALL environments, so design
 security permissions in such a way to prevent loss of secure information.  To do this, there is a special file called
 `/env-config/properties/global-properties.yml` that looks just like above.  You can then use these properties in any other location
-by referencing them as a variable like this:
+by referencing them in a Groovy script and using the `globalProperties` variable like so:
 
-    - db.password: ${global.db.password}
+    - db.password: ${globalProperties['global.db.password']}
       secure: true
     
 #### Property Set Configuration

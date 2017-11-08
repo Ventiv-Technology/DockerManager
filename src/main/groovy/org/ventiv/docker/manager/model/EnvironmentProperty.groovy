@@ -15,6 +15,9 @@
  */
 package org.ventiv.docker.manager.model
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+import org.ventiv.docker.manager.utils.CachingGroovyShell
+
 /**
  * Created by jcrygier on 7/27/17.
  */
@@ -22,6 +25,7 @@ class EnvironmentProperty {
 
     String name;
     String value;
+    @JsonIgnore CachingGroovyShell cachingGroovyShell;
 
     String comments;
     boolean secure = false;
