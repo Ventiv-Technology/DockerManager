@@ -40,6 +40,7 @@ class AuthenticationRequestInterceptor implements ClientHttpRequestInterceptor, 
     // Credentials to call Jenkins - Only useful if authentication = ProvidedUserPassword
     public static final String CONFIG_USER =                    'user'
     public static final String CONFIG_PASSWORD =                'password'
+    public static final String BEARER_TOKEN =                   'bearerToken'
 
     private Map<String, String> calculatedHeaders = [
             Accept: MediaType.APPLICATION_JSON_VALUE
@@ -56,6 +57,8 @@ class AuthenticationRequestInterceptor implements ClientHttpRequestInterceptor, 
         } else if (authType == AuthenticationType.ProvidedUserPassword) {
             String authHeader = "${configuration[CONFIG_USER]}:${configuration[CONFIG_PASSWORD]}".bytes.encodeBase64().toString()
             calculatedHeaders.put("Authorization", "Basic " + authHeader)
+        } else if (authType == AuthenticationType.BearerToken) {
+            calculatedHeaders.put("Authorization", "Bearer " + configuration[BEARER_TOKEN])
         }
     }
 
@@ -77,6 +80,6 @@ class AuthenticationRequestInterceptor implements ClientHttpRequestInterceptor, 
     }
 
     public static final enum AuthenticationType {
-        None, CurrentUser, ProvidedUserPassword
+        None, CurrentUser, ProvidedUserPassword, BearerToken
     }
 }
