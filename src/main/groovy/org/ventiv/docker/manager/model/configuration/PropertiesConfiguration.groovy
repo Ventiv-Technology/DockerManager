@@ -21,12 +21,13 @@ package org.ventiv.docker.manager.model.configuration
 class PropertiesConfiguration {
 
     String setId;
+    String overrideServiceName;
     PropertiesMethod method;
     String location;
-
+    String templateLocation;
 
     public static final enum PropertiesMethod {
-        File, Environment
+        File, Environment, Template
     }
 
 }

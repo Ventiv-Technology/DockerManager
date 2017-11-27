@@ -15,9 +15,11 @@
  */
 package org.ventiv.docker.manager.controller;
 
+import groovy.text.SimpleTemplateEngine;
 import org.codehaus.groovy.runtime.metaclass.ConcurrentReaderHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -39,6 +41,7 @@ import org.ventiv.docker.manager.utils.EncryptionUtil;
 import org.ventiv.docker.manager.utils.YamlUtils;
 import org.yaml.snakeyaml.scanner.ScannerException;
 
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.util.ArrayList;
@@ -92,6 +95,7 @@ public class PropertiesController {
                                                                      @PathVariable("applicationName") String applicationName,
                                                                      @PathVariable("serviceName") String serviceName,
                                                                      @PathVariable("instanceNumber") Integer instanceNumber,
+                                                                     @RequestParam(value = "overrideServiceName", required = false) String overrideServiceName,
                                                                      @RequestParam(value = "propertySet", required = false) String propertySet) {
         KeyPair key = props.getKeystore().getKey();
 
@@ -105,7 +109,7 @@ public class PropertiesController {
         serviceInstanceConfiguration.ifPresent(it -> allProperties.addAll(it.getProperties()));
         allProperties.addAll(applicationConfiguration.getProperties());
         allProperties.addAll(environmentConfigurationService.getEnvironment(tierName, environmentName).getProperties());
-        allProperties.addAll(loadPropertiesYaml(serviceName));
+        allProperties.addAll(loadPropertiesYaml(overrideServiceName != null ? overrideServiceName : serviceName));
 
         // Determine if we have permissions to decrypt
         boolean hasDecryptPermission = SecurityUtil.hasPermission(tierName, environmentName, applicationName, DockerManagerPermission.SECRETS);
@@ -159,15 +163,16 @@ public class PropertiesController {
      * @return
      */
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
-    @RequestMapping(value = "/{tierName}/{environmentName}/{applicationName}/{serviceName}", produces = "text/plain")
+    @RequestMapping(value = "/{serverName}/{tierName}/{environmentName}/{applicationName}/{serviceName}/{instanceNumber}", produces = "text/plain")
     public String getEnvironmentPropertiesText(@PathVariable("serverName") String serverName,
                                                @PathVariable("tierName") String tierName,
                                                @PathVariable("environmentName") String environmentName,
                                                @PathVariable("applicationName") String applicationName,
                                                @PathVariable("serviceName") String serviceName,
                                                @PathVariable("instanceNumber") Integer instanceNumber,
+                                               @RequestParam(value = "overrideServiceName", required = false) String overrideServiceName,
                                                @RequestParam(value = "propertySet", required = false) String propertySet) {
-        Map<String, EnvironmentProperty> props = getEnvironmentProperties(serverName, tierName, environmentName, applicationName, serviceName, instanceNumber, propertySet);
+        Map<String, EnvironmentProperty> props = getEnvironmentProperties(serverName, tierName, environmentName, applicationName, serviceName, instanceNumber, overrideServiceName, propertySet);
 
         return props.entrySet().stream()
                 .map(entry -> {
@@ -179,6 +184,38 @@ public class PropertiesController {
                     return sb.toString();
                 })
                 .collect(Collectors.joining("\n"));
+    }
+
+    @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
+    @RequestMapping(value = "/{serverName}/{tierName}/{environmentName}/{applicationName}/{serviceName}/{instanceNumber}/{templateLocation}", produces = "text/plain")
+    public String fillTemplate(@PathVariable("serverName") String serverName,
+                               @PathVariable("tierName") String tierName,
+                               @PathVariable("environmentName") String environmentName,
+                               @PathVariable("applicationName") String applicationName,
+                               @PathVariable("serviceName") String serviceName,
+                               @PathVariable("instanceNumber") Integer instanceNumber,
+                               @PathVariable("templateLocation") String templateLocation,
+                               @RequestParam(value = "overrideServiceName", required = false) String overrideServiceName,
+                               @RequestParam(value = "propertySet", required = false) String propertySet) throws IOException, ClassNotFoundException {
+        Map<String, EnvironmentProperty> props = getEnvironmentProperties(serverName, tierName, environmentName, applicationName, serviceName, instanceNumber, overrideServiceName, propertySet);
+        Map<String, String> propMap = props.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, it -> it.getValue().getValue()));
+        org.springframework.core.io.Resource templateResource = new FileSystemResource(templateLocation);
+
+        ApplicationConfiguration applicationConfiguration = environmentConfigurationService.getApplication(tierName, environmentName, applicationName);
+        ApplicationDetails applicationDetails = environmentController.getApplicationDetails(tierName, environmentName, applicationName);
+
+        Map<String, Object> binding = new HashMap<>();
+        binding.put("properties", propMap);
+        binding.put("applicationDetails", applicationDetails);
+        binding.put("applicationConfiguration", applicationConfiguration);
+        binding.put("serviceInstance", applicationDetails.getServiceInstances().stream()
+                .filter(it -> it.getServerName().equals(serverName))
+                .filter(it -> it.getName().equals(serviceName))
+                .filter(it -> it.getInstanceNumber().equals(instanceNumber))
+                .findFirst().get());
+
+        return new SimpleTemplateEngine().createTemplate(templateResource.getURL()).make(binding).toString();
     }
 
     /*************************************** Internal helper methods *************************************/

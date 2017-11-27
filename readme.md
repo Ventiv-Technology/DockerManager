@@ -336,12 +336,31 @@ method is built out, with more possible in the future.  Here is an example of ho
         - setId: all
           method: File
           location: /tmp/test.properties
+          overrideServiceName: (Optional) Service Instance Name to use instead of this one
           
 As you can see, this is the Property Set with ID: `all`, that will include any property that has a `propertySets` metadata
 option of `all` (or none configured).  This states that a `File` should be injected into the container, with the path `/tmp/test.properties`.
 
 You can have as many Property Set's as you want, lending to the complete ability to configure as many properties files as
 deemed necessary.
+
+#### File from Template (Filled w/ Properties)
+
+It is also possible for Docker Manager to place a file within the container that conforms to a Groovy Template.  In order
+to do so, simply configure your property set configuration like so:
+
+    - properties:
+        - setId: all
+          method: File
+          location: /tmp/test.xml
+          templateLocation: config/templates/test/test.xml
+          
+When this template is populated, the following variables are present:
+
+- properties: Map of all properties described above
+- applicationDetails: ApplicationDetails Object.  Includes all ServiceInstances
+- applicationConfiguration: ApplicationConfiguration Object
+- serviceInstance: The ServiceInstance object that is being worked with (e.g. where this filled out template will go)
     
 #### Secure Properties
 

@@ -203,21 +203,33 @@ class HostsController {
         ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName());
         DockerClient docker = dockerService.getDockerClient(serviceInstance.getServerName());
 
+        // Get ServiceInstanceConfiguration and see if shouldPropertiesFileBeCreated is true
+        ApplicationConfiguration applicationConfiguration = environmentConfigurationService.getApplication(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId());
+        ServiceInstanceConfiguration serviceInstanceConfiguration = applicationConfiguration.getServiceInstances()
+                .findAll { it.getType().equals(serviceInstance.getName()) }
+                .first();
+
+        if (!applicationConfiguration.shouldPropertiesFileBeCreated() && !serviceInstanceConfiguration.shouldPropertiesFileBeCreated())
+            return;
+
         if (serviceConfiguration.getProperties()) {
             serviceConfiguration.getProperties()
-                    .findAll { it.getMethod() == PropertiesConfiguration.PropertiesMethod.File }
+                    .findAll { it.getMethod() == PropertiesConfiguration.PropertiesMethod.File || it.getMethod() == PropertiesConfiguration.PropertiesMethod.Template }
                     .each { propertyConfig ->
-                String propertyFileContents = SecurityUtil.doWithSuperUser {
-                    propertiesController.getEnvironmentPropertiesText(serviceInstance.getServerName(), serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), serviceInstance.getInstanceNumber(), propertyConfig.getSetId())
+                String fileContents = SecurityUtil.doWithSuperUser {
+                    if (propertyConfig.getMethod() == PropertiesConfiguration.PropertiesMethod.File)
+                        return propertiesController.getEnvironmentPropertiesText(serviceInstance.getServerName(), serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), serviceInstance.getInstanceNumber(), propertyConfig.getOverrideServiceName(), propertyConfig.getSetId())
+                    else
+                        return propertiesController.fillTemplate(serviceInstance.getServerName(), serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), serviceInstance.getInstanceNumber(), propertyConfig.getTemplateLocation(), propertyConfig.getOverrideServiceName(), propertyConfig.getSetId())
                 }
 
                 TarArchiveEntry propFile = new TarArchiveEntry(new File(propertyConfig.getLocation()).getName());
-                propFile.setSize(propertyFileContents.size());
+                propFile.setSize(fileContents.size());
 
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 TarArchiveOutputStream gzout = new TarArchiveOutputStream(new GZIPOutputStream(baos));
                 gzout.putArchiveEntry(propFile);
-                gzout.write(propertyFileContents.getBytes("UTF-8"));
+                gzout.write(fileContents.getBytes("UTF-8"));
                 gzout.closeArchiveEntry();
                 gzout.flush();
                 gzout.close();

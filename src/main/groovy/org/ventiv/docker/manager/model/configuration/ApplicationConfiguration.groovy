@@ -86,6 +86,13 @@ class ApplicationConfiguration {
     @NotNull
     Collection<EnvironmentProperty> properties = [];
 
+    @Nullable
+    Boolean propertiesEnabled = false;
+
+    public boolean shouldPropertiesFileBeCreated() {
+        return propertiesEnabled || properties.size() > 0
+    }
+
     @JsonIgnore
     public ObjectIdentity getObjectIdentity() {
         return new ObjectIdentityImpl(this.getClass(), "${tierName}.${environmentId}.${id}".toString())

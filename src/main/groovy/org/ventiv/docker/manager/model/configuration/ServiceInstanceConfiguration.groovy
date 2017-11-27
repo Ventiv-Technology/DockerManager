@@ -92,13 +92,22 @@ class ServiceInstanceConfiguration {
     @NotNull
     Collection<EnvironmentProperty> properties = [];
 
+    @Nullable
+    Boolean propertiesEnabled = false;
+
     @JsonIgnore
     private Map<String, Object> environmentWithGroovyShells;
+
+    public boolean shouldPropertiesFileBeCreated() {
+        return propertiesEnabled || properties.size() > 0
+    }
 
     public Map<String, Object> getEnvironmentWithGroovyShells() {
         if (environmentWithGroovyShells == null) {
             environmentWithGroovyShells = getEnvironment().collectEntries { k, v ->
-                if (v.contains('$'))
+                if (v == null)
+                    return [k, null]
+                else if (v.contains('$'))
                     return [k, new CachingGroovyShell('"' + v + '"')]
                 else
                     return [k, v]
