@@ -218,9 +218,9 @@ class HostsController {
                     .each { propertyConfig ->
                 String fileContents = SecurityUtil.doWithSuperUser {
                     if (propertyConfig.getMethod() == PropertiesConfiguration.PropertiesMethod.File)
-                        return propertiesController.getEnvironmentPropertiesText(serviceInstance.getServerName(), serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), serviceInstance.getInstanceNumber(), propertyConfig.getOverrideServiceName(), propertyConfig.getSetId())
+                        return propertiesController.getEnvironmentPropertiesText(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), serviceInstance.getInstanceNumber(), serviceInstance.getServerName(), propertyConfig.getOverrideServiceName(), propertyConfig.getSetId())
                     else
-                        return propertiesController.fillTemplate(serviceInstance.getServerName(), serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), serviceInstance.getInstanceNumber(), propertyConfig.getTemplateLocation(), propertyConfig.getOverrideServiceName(), propertyConfig.getSetId())
+                        return propertiesController.fillTemplate(serviceInstance.getTierName(), serviceInstance.getEnvironmentName(), serviceInstance.getApplicationId(), serviceConfiguration.getName(), propertyConfig.getTemplateLocation(), serviceInstance.getInstanceNumber(), serviceInstance.getServerName(), propertyConfig.getOverrideServiceName(), propertyConfig.getSetId())
                 }
 
                 TarArchiveEntry propFile = new TarArchiveEntry(new File(propertyConfig.getLocation()).getName());

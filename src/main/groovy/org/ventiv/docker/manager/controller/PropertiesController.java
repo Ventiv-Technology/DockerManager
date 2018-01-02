@@ -15,6 +15,7 @@
  */
 package org.ventiv.docker.manager.controller;
 
+import com.github.dockerjava.api.exception.NotFoundException;
 import groovy.text.SimpleTemplateEngine;
 import org.codehaus.groovy.runtime.metaclass.ConcurrentReaderHashMap;
 import org.slf4j.Logger;
@@ -89,12 +90,12 @@ public class PropertiesController {
      */
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
     @RequestMapping("/{tierName}/{environmentName}/{applicationName}/{serviceName}")
-    public Map<String, EnvironmentProperty> getEnvironmentProperties(@PathVariable("serverName") String serverName,
-                                                                     @PathVariable("tierName") String tierName,
+    public Map<String, EnvironmentProperty> getEnvironmentProperties(@PathVariable("tierName") String tierName,
                                                                      @PathVariable("environmentName") String environmentName,
                                                                      @PathVariable("applicationName") String applicationName,
                                                                      @PathVariable("serviceName") String serviceName,
-                                                                     @PathVariable("instanceNumber") Integer instanceNumber,
+                                                                     @RequestParam(value = "instanceNumber", required = false) Integer instanceNumber,
+                                                                     @RequestParam(value = "serverName", required = false) String serverName,
                                                                      @RequestParam(value = "overrideServiceName", required = false) String overrideServiceName,
                                                                      @RequestParam(value = "propertySet", required = false) String propertySet) {
         KeyPair key = props.getKeystore().getKey();
@@ -102,6 +103,10 @@ public class PropertiesController {
         // Build out a collection of EnvironmentProperty objects, with the 'lowest' level (Service Instance) first
         Collection<EnvironmentProperty> allProperties = new ArrayList<>();
         ApplicationConfiguration applicationConfiguration = environmentConfigurationService.getApplication(tierName, environmentName, applicationName);
+
+        if (applicationConfiguration == null)
+            throw new NotFoundException("Application could not be found");
+
         Optional<ServiceInstanceConfiguration> serviceInstanceConfiguration = applicationConfiguration.getServiceInstances().stream()
                 .filter(it -> it.getType().equals(serviceName))
                 .findFirst();
@@ -136,9 +141,9 @@ public class PropertiesController {
         binding.put("applicationDetails", applicationDetails);
         binding.put("applicationConfiguration", applicationConfiguration);
         binding.put("serviceInstance", applicationDetails.getServiceInstances().stream()
-                .filter(it -> it.getServerName().equals(serverName))
+                .filter(it -> serverName == null || it.getServerName().equals(serverName))
                 .filter(it -> it.getName().equals(serviceName))
-                .filter(it -> it.getInstanceNumber().equals(instanceNumber))
+                .filter(it -> instanceNumber == null || it.getInstanceNumber().equals(instanceNumber))
                 .findFirst().get()
         );
 
@@ -163,16 +168,16 @@ public class PropertiesController {
      * @return
      */
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
-    @RequestMapping(value = "/{serverName}/{tierName}/{environmentName}/{applicationName}/{serviceName}/{instanceNumber}", produces = "text/plain")
-    public String getEnvironmentPropertiesText(@PathVariable("serverName") String serverName,
-                                               @PathVariable("tierName") String tierName,
+    @RequestMapping(value = "/{tierName}/{environmentName}/{applicationName}/{serviceName}", produces = "text/plain")
+    public String getEnvironmentPropertiesText(@PathVariable("tierName") String tierName,
                                                @PathVariable("environmentName") String environmentName,
                                                @PathVariable("applicationName") String applicationName,
                                                @PathVariable("serviceName") String serviceName,
-                                               @PathVariable("instanceNumber") Integer instanceNumber,
+                                               @RequestParam(value = "instanceNumber", required = false) Integer instanceNumber,
+                                               @RequestParam(value = "serverName", required = false) String serverName,
                                                @RequestParam(value = "overrideServiceName", required = false) String overrideServiceName,
                                                @RequestParam(value = "propertySet", required = false) String propertySet) {
-        Map<String, EnvironmentProperty> props = getEnvironmentProperties(serverName, tierName, environmentName, applicationName, serviceName, instanceNumber, overrideServiceName, propertySet);
+        Map<String, EnvironmentProperty> props = getEnvironmentProperties(tierName, environmentName, applicationName, serviceName, instanceNumber, serverName, overrideServiceName, propertySet);
 
         return props.entrySet().stream()
                 .map(entry -> {
@@ -187,17 +192,17 @@ public class PropertiesController {
     }
 
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
-    @RequestMapping(value = "/{serverName}/{tierName}/{environmentName}/{applicationName}/{serviceName}/{instanceNumber}/{templateLocation}", produces = "text/plain")
-    public String fillTemplate(@PathVariable("serverName") String serverName,
-                               @PathVariable("tierName") String tierName,
+    @RequestMapping(value = "/{tierName}/{environmentName}/{applicationName}/{serviceName}/{templateLocation:.*}", produces = "text/plain")
+    public String fillTemplate(@PathVariable("tierName") String tierName,
                                @PathVariable("environmentName") String environmentName,
                                @PathVariable("applicationName") String applicationName,
                                @PathVariable("serviceName") String serviceName,
-                               @PathVariable("instanceNumber") Integer instanceNumber,
                                @PathVariable("templateLocation") String templateLocation,
+                               @RequestParam(value = "instanceNumber", required = false) Integer instanceNumber,
+                               @RequestParam(value = "serverName", required = false) String serverName,
                                @RequestParam(value = "overrideServiceName", required = false) String overrideServiceName,
                                @RequestParam(value = "propertySet", required = false) String propertySet) throws IOException, ClassNotFoundException {
-        Map<String, EnvironmentProperty> props = getEnvironmentProperties(serverName, tierName, environmentName, applicationName, serviceName, instanceNumber, overrideServiceName, propertySet);
+        Map<String, EnvironmentProperty> props = getEnvironmentProperties(tierName, environmentName, applicationName, serviceName, instanceNumber, serverName, overrideServiceName, propertySet);
         Map<String, String> propMap = props.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, it -> it.getValue().getValue()));
         org.springframework.core.io.Resource templateResource = new FileSystemResource(templateLocation);
@@ -210,9 +215,9 @@ public class PropertiesController {
         binding.put("applicationDetails", applicationDetails);
         binding.put("applicationConfiguration", applicationConfiguration);
         binding.put("serviceInstance", applicationDetails.getServiceInstances().stream()
-                .filter(it -> it.getServerName().equals(serverName))
+                .filter(it -> serverName == null || it.getServerName().equals(serverName))
                 .filter(it -> it.getName().equals(serviceName))
-                .filter(it -> it.getInstanceNumber().equals(instanceNumber))
+                .filter(it -> instanceNumber == null || it.getInstanceNumber().equals(instanceNumber))
                 .findFirst().get());
 
         return new SimpleTemplateEngine().createTemplate(templateResource.getURL()).make(binding).toString();
