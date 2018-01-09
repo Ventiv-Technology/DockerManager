@@ -71,6 +71,7 @@
                     <a href="#" class="dropdown-toggle" role="button" aria-expanded="false"><span>User: {{userDetails.name}}</span><span class="caret"></span></a>
                     <ul class="dropdown-menu" role="menu">
                         <li><a href="/logout">Logout</a></li>
+                        <li><a data-ng-click="generateJwtToken()">Generate JWT Token</a></li>
                         <li><a data-ng-click="refreshDockerState()">Refresh Docker State</a></li>
                     </ul>
                 </li>

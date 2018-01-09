@@ -27,7 +27,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
 import org.springframework.security.ldap.userdetails.InetOrgPersonContextMapper
 import org.springframework.security.web.access.expression.DefaultWebSecurityExpressionHandler
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter
 import org.ventiv.docker.manager.security.DockerManagerPermissionEvaluator
+import org.ventiv.docker.manager.security.JwtAuthenticationFilter
 import org.ventiv.docker.manager.service.AllowAnyoneAuthenticationProvider
 import org.ventiv.docker.manager.utils.CacheHeaderWriter
 
@@ -72,6 +74,8 @@ class WebSecurityConfiguration extends WebSecurityConfigurerAdapter {
                         .logoutUrl("/logout")
                         .permitAll();
         }
+
+        http.addFilterBefore(new JwtAuthenticationFilter(props), BasicAuthenticationFilter.class);
 
         // No matter what, we always want to set these headers, and disable CSRF protection
         http.headers()

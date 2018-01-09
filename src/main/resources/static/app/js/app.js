@@ -156,6 +156,16 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                         alert("Error Refreshing: " + data);
                     })
             }
+
+            $scope.generateJwtToken = function() {
+                $http.get("/token?expirationAmount=30&expirationUnit=DAYS", { transformResponse: function(data) { return data; }})
+                    .success(function(data) {
+                        alert(data)
+                    })
+                    .error(function(data) {
+                        alert("Error Getting Token: " + data);
+                    })
+            }
         })
 
         .controller('EnvironmentController', function($scope, $stateParams, $modal, Restangular, $http, StatusService) {

@@ -15,14 +15,25 @@
  */
 package org.ventiv.docker.manager.controller
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.JWTCreator
+import com.auth0.jwt.algorithms.Algorithm
+import org.springframework.security.core.Authentication
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.servlet.ModelAndView
 import org.ventiv.docker.manager.DockerManagerApplication
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 
 import javax.annotation.Resource
 import javax.servlet.http.HttpServletRequest
+import java.security.KeyPair
+import java.security.interfaces.RSAPrivateKey
+import java.security.interfaces.RSAPublicKey
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 /**
  * Created by jcrygier on 3/11/15.
@@ -36,6 +47,31 @@ class LoginController {
     def loginTest(HttpServletRequest request) {
         DockerManagerApplication.setApplicationUrl(request.getRequestURL().replaceAll('/login', '').toString());
         return new ModelAndView("login", [props: props])
+    }
+
+    @RequestMapping("/token")
+    @ResponseBody
+    String generateToken(@RequestParam(value = "expirationAmount", required = false) Integer expirationAmount,
+                         @RequestParam(value = "expirationUnit", required = false) ChronoUnit expirationUnit,
+                         Authentication authentication) {
+        KeyPair key = props.getKeystore().getKey();
+        Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) key.getPublic(), (RSAPrivateKey) key.getPrivate());
+
+        JWTCreator.Builder jwtBuilder = JWT.create()
+                .withIssuer("DockerManager")
+                .withSubject(authentication.getPrincipal().toString())
+                .withJWTId(UUID.randomUUID().toString())
+                .withIssuedAt(new Date())
+                .withArrayClaim("authorities", authentication.getAuthorities().collect { it.getAuthority() } as String[]);
+
+        if (expirationAmount) {
+            LocalDate expirationDate = LocalDate.now();
+            LocalDate adjustedExpiration = expirationDate.plus(expirationAmount, expirationUnit);
+
+            jwtBuilder.withExpiresAt(java.sql.Date.valueOf(adjustedExpiration));
+        }
+
+        return jwtBuilder.sign(algorithm);
     }
 
 }

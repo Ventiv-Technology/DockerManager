@@ -62,6 +62,7 @@ dependencies {
     compile 'org.springframework.amqp:spring-rabbit:1.4.4.RELEASE'
     compile 'com.rometools:rome:1.5.0'
     compile 'com.github.miwurster:spring-data-influxdb:1.4'
+    compile 'com.auth0:java-jwt:3.3.0'
 
     // Web Loading
     compile 'org.webjars:webjars-locator:0.21'
