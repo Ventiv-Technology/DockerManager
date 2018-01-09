@@ -19,6 +19,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
 import org.springframework.security.core.Authentication
+import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -57,9 +58,14 @@ class LoginController {
         KeyPair key = props.getKeystore().getKey();
         Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) key.getPublic(), (RSAPrivateKey) key.getPrivate());
 
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails) {
+            principal = principal.getUsername();
+        }
+
         JWTCreator.Builder jwtBuilder = JWT.create()
                 .withIssuer("DockerManager")
-                .withSubject(authentication.getPrincipal().toString())
+                .withSubject(principal.toString())
                 .withJWTId(UUID.randomUUID().toString())
                 .withIssuedAt(new Date())
                 .withArrayClaim("authorities", authentication.getAuthorities().collect { it.getAuthority() } as String[]);
