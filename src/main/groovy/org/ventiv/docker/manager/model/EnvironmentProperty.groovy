@@ -29,6 +29,7 @@ class EnvironmentProperty {
 
     String comments;
     boolean secure = false;
+    boolean decrypted = false;
     Collection<String> propertySets = []
     Collection<String> tiers = []
     Collection<String> environments = []

@@ -251,8 +251,15 @@ public class PropertiesController {
     }
 
     private EnvironmentProperty decryptIfNecessary(boolean hasPermission, PrivateKey decryptingKey, EnvironmentProperty prop) {
-        if (hasPermission && prop.isSecure())
-            prop.setValue(EncryptionUtil.decrypt(decryptingKey, prop.getValue()));
+        if (hasPermission && prop.isSecure() && !prop.isDecrypted()) {
+            try {
+                prop.setValue(EncryptionUtil.decrypt(decryptingKey, prop.getValue()));
+                prop.setDecrypted(true);
+            } catch (Exception e) {
+                log.error("Unable to decrypt property: " +  prop.getName() + " with value: " + prop.getValue());
+                throw e;
+            }
+        }
 
         return prop;
     }
