@@ -73,3 +73,7 @@ body {
 .panel-group .panel {
     overflow: visible;
 }
+
+.clipboard-action {
+    margin-bottom: 5px;
+}

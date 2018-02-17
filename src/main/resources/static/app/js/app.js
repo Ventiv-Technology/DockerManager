@@ -15,7 +15,7 @@
  */
 'use strict';
 
-define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService', 'select2', 'dashboard/dashboard', 'controller/imageController'], function ($, angular, translations) {
+define(['jquery', 'angular', 'translations-en', 'clipboard', 'ui-bootstrap-tpls', 'restangular', 'angular-translate', 'angular-ui-router', 'bootstrap', 'angular-busy', 'statusService', 'select2', 'dashboard/dashboard', 'controller/imageController'], function ($, angular, translations, Clipboard) {
 
     // Declare app level module which depends on filters, and services
 
@@ -359,7 +359,7 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
             }, true)
         })
 
-        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http) {
+        .controller('ServiceInstanceDetailsController', function($scope, $modalInstance, serviceInstance, $window, $http, $modal) {
             var rootHostsUrl = "/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId;
             $scope.serviceInstance = serviceInstance;
 
@@ -426,6 +426,40 @@ define(['jquery', 'angular', 'translations-en', 'ui-bootstrap-tpls', 'restangula
                     $scope.auditHistory = data.data;
                 });
             }
+
+            // Get the permitted actions
+            $http.get("/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId + "/action")
+                .then(function(data) {
+                    $scope.actions = data.data;
+                });
+
+            $scope.executeDockerAction = function(action) {
+                $http.post("/api/hosts/" + serviceInstance.serverName + "/" + serviceInstance.containerId + "/action/" + action.actionId)
+                    .then(function(data) {
+                        var actionResponseModal = $modal.open({
+                            templateUrl: action.responsePartial,
+                            controller: 'ActionResponseController',
+                            windowClass: 'application-history-details',
+                            size: 'lg',
+                            resolve: {
+                                action: function() { return action; },
+                                actionResponse: function() { return data.data }
+                            }
+                        });
+                    }, function(err) {
+                        alert(err.data.message);
+                    });
+            }
+        })
+
+        .controller('ActionResponseController', function($scope, $modalInstance, action, actionResponse) {
+            $scope.action = action;
+            $scope.actionResponse = actionResponse;
+            $scope.cancel = function() {
+                $modalInstance.dismiss('cancel');
+            };
+
+            new Clipboard('.clipboard-action');
         })
 
         .controller('AdditionalMetricsDetailsController', function($scope, $modalInstance, serviceInstance, data) {

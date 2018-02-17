@@ -59,6 +59,9 @@ define([], function() {
         WORKFLOW_PROCESSES: "Workflow Processes",
         START_PROCESS: "Start Process",
         START_FORM: "Start Form",
-        OPEN_SPLUNK: "Open Splunk For Logs"
+        OPEN_SPLUNK: "Open Splunk For Logs",
+        ACTIONS: "Actions",
+        EXIT_CODE: "Exit Code:",
+        COPY_TO_CLIPBOARD: "Copy to clipboard"
     }
 });

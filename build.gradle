@@ -85,6 +85,7 @@ dependencies {
     compile 'org.webjars:angular-ui-sortable:0.13.0-1'
     compile 'org.webjars:jquery-ui:1.11.4'
     compile 'org.webjars:c3:0.4.9'
+    compile 'org.webjars:clipboard.js:1.7.1'
 
     runtime("com.h2database:h2")
 

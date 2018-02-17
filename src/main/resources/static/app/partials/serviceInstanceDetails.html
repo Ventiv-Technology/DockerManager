@@ -80,6 +80,16 @@
     </div>
 
     <div class="modal-footer">
+        <div class="col-md-2 btn-group" data-ng-show="actions.length > 0">
+            <button class="btn btn-primary" translate="ACTIONS">Actions</button>
+            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <span class="caret"></span>
+                <span class="sr-only">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a data-ng-repeat="action in actions" data-ng-click="executeDockerAction(action)">{{action.description}}</a></li>
+            </ul>
+        </div>
         <button class="btn btn-danger" data-ng-show="isServiceInstancePermissionGranted('REMOVE')" ng-click="postContainerOperation('remove')" translate="Remove">Remove</button>
         <button class="btn btn-warning" data-ng-click="postContainerOperation('stop')" translate="STOP" data-ng-show="isServiceInstancePermissionGranted('STOP') && serviceInstance.status == 'Running'">Stop</button>
         <button class="btn btn-warning" data-ng-click="postContainerOperation('start')" translate="START" data-ng-show="isServiceInstancePermissionGranted('START') && serviceInstance.status == 'Stopped'">Start</button>

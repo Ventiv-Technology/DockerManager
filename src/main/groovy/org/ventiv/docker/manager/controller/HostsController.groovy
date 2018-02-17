@@ -25,6 +25,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestMethod
@@ -32,16 +33,19 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.config.DockerServiceConfiguration
+import org.ventiv.docker.manager.model.ActionDetails
 import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.model.configuration.ApplicationConfiguration
 import org.ventiv.docker.manager.model.configuration.PropertiesConfiguration
 import org.ventiv.docker.manager.model.configuration.ServerConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceConfiguration
 import org.ventiv.docker.manager.model.configuration.ServiceInstanceConfiguration
+import org.ventiv.docker.manager.plugin.ActionPlugin
 import org.ventiv.docker.manager.security.DockerManagerPermission
 import org.ventiv.docker.manager.security.SecurityUtil
 import org.ventiv.docker.manager.service.DockerService
 import org.ventiv.docker.manager.service.EnvironmentConfigurationService
+import org.ventiv.docker.manager.service.PluginService
 import org.ventiv.docker.manager.service.ServiceInstanceService
 import org.ventiv.docker.manager.utils.LogContainerToStreamCallback
 
@@ -66,6 +70,7 @@ class HostsController {
     @Resource ServiceInstanceService serviceInstanceService;
     @Resource DockerServiceConfiguration dockerServiceConfiguration;
     @Resource PropertiesController propertiesController;
+    @Resource PluginService pluginService;
 
     @RequestMapping
     public def getHostDetails() {
@@ -197,6 +202,44 @@ class HostsController {
 
         log.info("Removing container: ${containerId} on ${hostName}")
         dockerService.getDockerClient(hostName).removeContainerCmd(containerId).withForce(true).exec();
+    }
+
+    @RequestMapping(value = "/{hostName:.*}/{containerId}/action/{actionId}", method = RequestMethod.POST)
+    public Object invokeAction(@PathVariable String hostName, @PathVariable String containerId, @PathVariable String actionId, Authentication auth) {
+        ActionPlugin foundActionPlugin = null;
+        ActionDetails foundActionDetails = null;
+
+        pluginService.getActionPlugins().each { actionPlugin ->
+            actionPlugin.getSupportedActions().find { actionDetails ->
+                if (actionDetails.getActionId() == actionId) {
+                    foundActionDetails = actionDetails;
+                    foundActionPlugin = actionPlugin;
+                }
+            }
+        }
+
+        if (foundActionPlugin) {
+            // Verify Permissions
+            ServiceInstance serviceInstance = getServiceInstance(hostName, containerId);
+            if (!SecurityUtil.getPermissionEvaluator().hasPermission(auth, serviceInstance, foundActionDetails.getRequiredPermission()))
+                throw new SecurityException("Insufficient Privileges")
+
+            // Now, execute the plugin's action.
+            return foundActionPlugin.performAction(foundActionDetails, serviceInstance);
+        } else {
+            throw new NotFoundException("Action " + actionId + " is not valid");
+        }
+    }
+
+    @RequestMapping("/{hostName:.*}/{containerId}/action")
+    public Collection<ActionDetails> getPermittedActionDetails(@PathVariable String hostName, @PathVariable String containerId, Authentication auth) {
+        ServiceInstance serviceInstance = getServiceInstance(hostName, containerId);
+
+        return pluginService.getActionPlugins().collect { actionPlugin ->
+            actionPlugin.getSupportedActions()
+                    .findAll { SecurityUtil.getPermissionEvaluator().hasPermission(auth, serviceInstance, it.getRequiredPermission()) }
+                    .findAll { actionPlugin.isActionEnabled(it, serviceInstance) }
+        }.flatten()
     }
 
     public void pushPropertiesFilesToServiceInstance(ServiceInstance serviceInstance) {

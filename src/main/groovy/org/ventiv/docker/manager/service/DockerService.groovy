@@ -16,16 +16,21 @@
 package org.ventiv.docker.manager.service
 
 import com.github.dockerjava.api.DockerClient
+import com.github.dockerjava.api.command.ExecCreateCmdResponse
+import com.github.dockerjava.api.command.InspectExecResponse
 import com.github.dockerjava.api.model.Version
 import com.github.dockerjava.core.DefaultDockerClientConfig
 import com.github.dockerjava.core.DockerClientBuilder
 import com.github.dockerjava.core.DockerClientConfig
+import com.github.dockerjava.core.command.ExecStartResultCallback
 import org.springframework.context.annotation.Profile
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmd
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmdExec
 import org.ventiv.docker.manager.dockerjava.ImageHistoryCmdImpl
+import org.ventiv.docker.manager.model.ExecResponse
+import org.ventiv.docker.manager.model.ServiceInstance
 import org.ventiv.docker.manager.utils.TimingUtils
 
 import javax.annotation.Resource
@@ -96,6 +101,30 @@ class DockerService {
         }
 
         return hostToApiVersionName[hostName]
+    }
+
+    public ExecResponse exec(ServiceInstance serviceInstance, String...cmd) {
+        DockerClient dockerClient = getDockerClient(serviceInstance.getServerName());
+
+        ExecCreateCmdResponse cmdResponse = dockerClient.execCreateCmd(serviceInstance.getContainerId())
+                .withAttachStdin(false)
+                .withAttachStderr(true)
+                .withAttachStdout(true)
+                .withCmd(cmd)
+                .withTty(false)
+                .exec();
+
+        ByteArrayOutputStream stdOut = new ByteArrayOutputStream();
+        ByteArrayOutputStream stdErr = new ByteArrayOutputStream();
+        ExecStartResultCallback callback = new ExecStartResultCallback(stdOut, stdErr);
+        dockerClient.execStartCmd(cmdResponse.getId())
+                .withTty(false)
+                .exec(callback)
+                .awaitCompletion();
+
+        InspectExecResponse inspectExecResponse = dockerClient.inspectExecCmd(cmdResponse.getId()).exec();
+
+        return new ExecResponse(stderr: stdErr.toString(), stdout: stdOut.toString(), exitCode: inspectExecResponse.getExitCode());
     }
 
     Integer getMajorApiVersion(String hostName) {

@@ -19,6 +19,7 @@ import org.springframework.context.ApplicationContext
 import org.springframework.core.env.Environment
 import org.springframework.stereotype.Service
 import org.ventiv.docker.manager.config.DockerManagerConfiguration
+import org.ventiv.docker.manager.plugin.ActionPlugin
 import org.ventiv.docker.manager.plugin.CreateContainerPlugin
 import org.ventiv.docker.manager.plugin.EventPlugin
 
@@ -41,6 +42,7 @@ class PluginService {
 
     List<CreateContainerPlugin> createContainerPlugins;
     List<EventPlugin> eventPlugins;
+    List<ActionPlugin> actionPlugins;
 
     @PostConstruct
     public void loadPlugins() {
@@ -50,6 +52,7 @@ class PluginService {
         // Now, sort em!
         createContainerPlugins = instantiatedPlugins.findAll { it instanceof CreateContainerPlugin }
         eventPlugins = instantiatedPlugins.findAll { it instanceof EventPlugin }
+        actionPlugins = instantiatedPlugins.findAll { it instanceof ActionPlugin }
     }
 
     private Object instantiatePlugin(Class pluginClass) {

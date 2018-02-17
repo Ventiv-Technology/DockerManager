@@ -273,6 +273,10 @@ class ServiceInstanceService implements Runnable {
             if (["untag", "delete", "pull"].contains(event.getStatus()))
                 return;
 
+            // Don't care about exec events
+            if (event.getStatus() && event.getStatus().startsWith("exec"))
+                return;
+
             // And we don't care about the following Container events
             if (["export", "kill", "pause", "restart", "unpause", "stop"].contains(event.getStatus()))
                 return;
