@@ -16,7 +16,6 @@
 package org.ventiv.docker.manager.plugin;
 
 import org.ventiv.docker.manager.model.ActionDetails;
-import org.ventiv.docker.manager.model.ServiceInstance;
 
 import java.util.List;
 
@@ -34,25 +33,5 @@ public interface ActionPlugin {
      * @return Map.  Key = ID of the action.  Value = Description to provide to end user.
      */
     List<ActionDetails> getSupportedActions();
-
-    /**
-     * Performs the action.  Returns any object that the UI know's how to deal with (see: org.ventiv.docker.manager.model.ActionDetails#responsePartial)
-     *
-     * @param action
-     * @param serviceInstance
-     * @return
-     * @throws Exception
-     */
-    Object performAction(ActionDetails action, ServiceInstance serviceInstance) throws Exception;
-
-    /**
-     * Lightweight test if this action is enabled for this Service Instance.
-     *
-     * @param action
-     * @param serviceInstance
-     * @return
-     * @throws Exception
-     */
-    boolean isActionEnabled(ActionDetails action, ServiceInstance serviceInstance) throws Exception;
 
 }

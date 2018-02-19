@@ -225,7 +225,7 @@ class HostsController {
                 throw new SecurityException("Insufficient Privileges")
 
             // Now, execute the plugin's action.
-            return foundActionPlugin.performAction(foundActionDetails, serviceInstance);
+            return foundActionDetails.performAction(serviceInstance);
         } else {
             throw new NotFoundException("Action " + actionId + " is not valid");
         }
@@ -238,7 +238,7 @@ class HostsController {
         return pluginService.getActionPlugins().collect { actionPlugin ->
             actionPlugin.getSupportedActions()
                     .findAll { SecurityUtil.getPermissionEvaluator().hasPermission(auth, serviceInstance, it.getRequiredPermission()) }
-                    .findAll { actionPlugin.isActionEnabled(it, serviceInstance) }
+                    .findAll { it.isActionEnabled(serviceInstance) }
         }.flatten()
     }
 

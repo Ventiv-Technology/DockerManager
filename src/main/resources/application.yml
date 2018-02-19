@@ -26,6 +26,7 @@ plugins:
   - org.ventiv.docker.manager.plugin.JavaDebugPlugin
   - org.ventiv.docker.manager.plugin.SlackNotificationPlugin
   - org.ventiv.docker.manager.plugin.JavaActionsPlugin
+  - org.ventiv.docker.manager.plugin.OSActionsPlugin
 
 auth.permissionsToAudit: START, STOP, RESTART, DEPLOY, REMOVE
 

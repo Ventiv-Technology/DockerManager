@@ -41,61 +41,54 @@ public class JavaActionsPlugin implements ActionPlugin {
     @Override
     public List<ActionDetails> getSupportedActions() {
         return Arrays.asList(
-                new ActionDetails("ThreadDump", "Java Thread Dump", "/app/partials/stdOutStdErrDisplay.html", DockerManagerPermission.ACTION),
-                new ActionDetails("OSThreadDump", "OS Thread Dump", "/app/partials/stdOutStdErrDisplay.html", DockerManagerPermission.PRIVILEGED_ACTION)
+                new ActionDetails("ThreadDump", "Java Thread Dump", "/app/partials/stdOutStdErrDisplay.html", DockerManagerPermission.ACTION, this::isJavaHomePresent, this::performJavaThreadDump),
+                new ActionDetails("JVMClassHistogram", "Java Class Histogram", "/app/partials/stdOutStdErrDisplay.html", DockerManagerPermission.ACTION, this::isJavaHomePresent, this::performClassHistogram)
         );
     }
 
-    @Override
-    public boolean isActionEnabled(ActionDetails action, ServiceInstance serviceInstance) throws Exception {
-        if ("OSThreadDump".equals(action.getActionId()))
-            return true;
-        else if ("ThreadDump".equals(action.getActionId()))
-            return serviceInstance.getResolvedEnvironmentVariables().containsKey("JAVA_HOME");
-
-        return false;
+    private boolean isJavaHomePresent(ServiceInstance serviceInstance) {
+        return serviceInstance.getResolvedEnvironmentVariables().containsKey("JAVA_HOME");
     }
 
-    @Override
-    public Object performAction(ActionDetails action, ServiceInstance serviceInstance) throws InterruptedException {
-        if ("OSThreadDump".equals(action.getActionId()))
-            return dockerService.exec(serviceInstance, "ps", "-eLf");
-        else if ("ThreadDump".equals(action.getActionId())) {
-            // First, we need to find the PID of the response
-            ExecResponse pidResponse = dockerService.exec(serviceInstance, "jps");
-            if (pidResponse.getExitCode() != 0)
-                throw new RuntimeException("Failed to find Java PID");
+    private ExecResponse performClassHistogram(ServiceInstance serviceInstance) {
+        String pid = getJavaPid(serviceInstance);
+        return dockerService.exec(serviceInstance, "jcmd", pid, "GC.class_histogram", "-all");
+    }
 
-            Optional<String> pid = Arrays.stream(pidResponse.getStdout().split("\n"))
-                    .filter(it -> !it.contains("Jps"))
-                    .map(it -> it.split(" "))
-                    .filter(it -> it.length > 0)
-                    .map(it -> it[0])
-                    .findFirst();
+    private Object performJavaThreadDump(ServiceInstance serviceInstance) {
+        String pid = getJavaPid(serviceInstance);
 
-            if (!pid.isPresent())
-                throw new RuntimeException("Failed to find Java PID");
+        // Might need to retry this one, if the server is busy
+        int retryCount = 0;
+        while (retryCount < 3) {
+            ExecResponse response = dockerService.exec(serviceInstance, "jcmd", pid, "Thread.print", "-l");
+            if (response.getExitCode() == 0)
+                return response;
 
-            // Might need to retry this one, if the server is busy
-            int retryCount = 0;
-            while (retryCount < 3) {
-                ExecResponse response = dockerService.exec(serviceInstance, "jstack", "-l", pid.get());
-                if (response.getExitCode() == 0)
-                    return response;
-
-                retryCount++;
-            }
-
-            // No go...try to force it
-            ExecResponse forcedResponse = dockerService.exec(serviceInstance, "jstack", "-F", "-l", pid.get());
-            if (forcedResponse.getExitCode() == 0)
-                return forcedResponse;
-
-            // Finally, try w/o extra lock info
-            return dockerService.exec(serviceInstance, "jstack", pid.get());
+            retryCount++;
         }
 
-        return null;
+        // Finally, try w/o extra lock info
+        return dockerService.exec(serviceInstance, "jcmd", pid, "Thread.print");
+    }
+
+    private String getJavaPid(ServiceInstance serviceInstance) {
+        // First, we need to find the PID of the response
+        ExecResponse pidResponse = dockerService.exec(serviceInstance, "jcmd");
+        if (pidResponse.getExitCode() != 0)
+            throw new RuntimeException("Failed to find Java PID");
+
+        Optional<String> pid = Arrays.stream(pidResponse.getStdout().split("\n"))
+                .filter(it -> !it.contains("JCmd"))
+                .map(it -> it.split(" "))
+                .filter(it -> it.length > 0)
+                .map(it -> it[0])
+                .findFirst();
+
+        if (!pid.isPresent())
+            throw new RuntimeException("Failed to find Java PID");
+
+        return pid.get();
     }
 
 }
