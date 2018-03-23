@@ -180,7 +180,7 @@ class EnvironmentController {
         Collection<ServiceConfiguration> allServiceConfigurations = appConfiguration.getServiceInstances()*.getType().unique().collect { dockerServiceConfiguration.getServiceConfiguration(it); }
         Collection<ServiceConfiguration> nonPinnedServices = allServiceConfigurations.findAll { it.getPinnedVersion() == null };
 
-        Map<String, Object> versionVariables = [branch: branch, environment: envConfiguration, application: appConfiguration]
+        Map<String, Object> versionVariables = [branch: branch, environment: envConfiguration, application: appConfiguration, query: query]
         Collection<List<String>> versions = appConfiguration.versionSelection ?
                 [ appConfiguration.versionSelection.getPossibleVersions(versionVariables)] :
                 nonPinnedServices.collect { it.getPossibleVersions(versionVariables, query) }.unique();
