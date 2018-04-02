@@ -95,7 +95,10 @@ class GitService implements Runnable {
             log.debug("Pulling latest configuration from Git: " + git.getRepository().getDirectory().getAbsolutePath());
 
             try {
-                PullResult pullResult = git.pull().setCredentialsProvider(credentialsProvider).call();
+                PullResult pullResult = git.pull()
+                        .setCredentialsProvider(credentialsProvider)
+                        .setTimeout(props.config.git.refreshPeriod.intValue())
+                        .call();
                 lastRunTime = System.currentTimeMillis();
 
                 pullErrorCount = 0;

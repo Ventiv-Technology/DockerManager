@@ -74,7 +74,11 @@ public class SlackNotificationPlugin implements EventPlugin {
         }
 
         RestTemplate restTemplate = new RestTemplate();
-        restTemplate.postForLocation(config.url, message);
+        try {
+            restTemplate.postForLocation(config.url, message);
+        } catch (Exception e) {
+            log.error("Error sending Slack Notification: " + e.getMessage());
+        }
     }
 
     private void readConfiguration(Environment env) {
