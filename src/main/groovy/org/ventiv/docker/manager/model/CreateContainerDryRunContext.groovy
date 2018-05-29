@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014 - 2015 Ventiv Technology
+ * Copyright (c) 2014 - 2018 Ventiv Technology
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -14,13 +14,11 @@
  * the License.
  */
 package org.ventiv.docker.manager.model
-/**
- * Created by jcrygier on 2/26/15.
- */
-class PortDefinition implements Serializable {
 
-    Integer hostPort;
-    Integer containerPort;
-    String portType;
+import com.github.dockerjava.api.command.CreateContainerCmd
+
+class CreateContainerDryRunContext {
+
+    CreateContainerCmd createContainerCmd;
 
 }

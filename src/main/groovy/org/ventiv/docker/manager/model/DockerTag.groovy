@@ -25,7 +25,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore
  *
  * Created by jcrygier on 2/25/15.
  */
-class DockerTag {
+class DockerTag implements Serializable {
 
     String registry;
     String namespace;
@@ -62,7 +62,10 @@ class DockerTag {
         if (isNamespaced())
             sb.append(namespace).append("/")
 
-        sb.append(repository).append(":").append(tag);
+        sb.append(repository);
+
+        if (tag)
+            sb.append(":").append(tag);
 
         return sb.toString();
     }

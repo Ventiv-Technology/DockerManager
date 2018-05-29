@@ -41,12 +41,13 @@ import javax.annotation.Nullable
  * <tierName>.<environmentName>.<applicationId>.<service>.<instanceNumber>
  */
 @ToString
-class ServiceInstance {
+class ServiceInstance implements Serializable {
 
     public static final def DOCKER_NAME_PATTERN = /([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([a-zA-Z0-9][a-zA-Z0-9_-]*)\.([0-9]*)/
 
-    @JsonIgnore private EnvironmentConfigurationService environmentConfigurationService;
-    @JsonIgnore private DockerServiceConfiguration dockerServiceConfiguration;
+    @JsonIgnore private transient EnvironmentConfigurationService environmentConfigurationService;
+    @JsonIgnore private transient DockerServiceConfiguration dockerServiceConfiguration;
+
     public ServiceInstance(EnvironmentConfigurationService environmentConfigurationService, DockerServiceConfiguration dockerServiceConfiguration) {
         this.dockerServiceConfiguration = dockerServiceConfiguration;
         this.environmentConfigurationService = environmentConfigurationService;

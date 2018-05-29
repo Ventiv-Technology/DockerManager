@@ -192,12 +192,12 @@ public class PropertiesController {
     }
 
     @PreAuthorize("hasPermission(#tierName + '.' + #environmentName + '.' + #applicationName, 'PROPERTIES_READ')")
-    @RequestMapping(value = "/{tierName}/{environmentName}/{applicationName}/{serviceName}/{templateLocation:.*}", produces = "text/plain")
+    @RequestMapping(value = "/{tierName}/{environmentName}/{applicationName}/{serviceName}/template", produces = "text/plain")
     public String fillTemplate(@PathVariable("tierName") String tierName,
                                @PathVariable("environmentName") String environmentName,
                                @PathVariable("applicationName") String applicationName,
                                @PathVariable("serviceName") String serviceName,
-                               @PathVariable("templateLocation") String templateLocation,
+                               @RequestParam(value = "templateLocation") String templateLocation,
                                @RequestParam(value = "instanceNumber", required = false) Integer instanceNumber,
                                @RequestParam(value = "serverName", required = false) String serverName,
                                @RequestParam(value = "overrideServiceName", required = false) String overrideServiceName,

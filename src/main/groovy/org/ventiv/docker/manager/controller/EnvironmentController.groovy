@@ -53,6 +53,7 @@ import org.ventiv.docker.manager.event.DeploymentStartedEvent
 import org.ventiv.docker.manager.event.PullImageEvent
 import org.ventiv.docker.manager.model.ApplicationDetails
 import org.ventiv.docker.manager.model.BuildApplicationInfo
+import org.ventiv.docker.manager.model.CreateContainerDryRunContext
 import org.ventiv.docker.manager.model.DeployApplicationRequest
 import org.ventiv.docker.manager.model.DockerTag
 import org.ventiv.docker.manager.model.MissingService
@@ -235,7 +236,7 @@ class EnvironmentController {
         }
     }
 
-    protected ApplicationDetails getApplicationDetails(String tierName, String environmentName, String applicationName) {
+    public ApplicationDetails getApplicationDetails(String tierName, String environmentName, String applicationName) {
         List<ApplicationDetails> environmentDetails = getEnvironmentDetails(tierName, environmentName);
         return environmentDetails.find { it.getId() == applicationName }
     }
@@ -471,7 +472,7 @@ class EnvironmentController {
         return environmentConfigurationService.getAllEnvironments().groupBy { it.getTierName() }
     }
 
-    public String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String branch, String desiredVersion) {
+    public String createDockerContainer(ApplicationDetails applicationDetails, ServiceInstance instance, String branch, String desiredVersion, CreateContainerDryRunContext dryRunContext = null) {
         log.info("Creating Container for Application ($applicationDetails), Service ($instance), version ($desiredVersion)")
         EnvironmentConfiguration environmentConfiguration = environmentConfigurationService.getEnvironment(applicationDetails.getTierName(), applicationDetails.getEnvironmentName());
         ServerConfiguration serverConfiguration = environmentConfiguration.getServers().find { it.getHostname() == instance.getServerName() }
@@ -525,13 +526,15 @@ class EnvironmentController {
         instance.setResolvedEnvironmentVariables(env);
 
         PullImageResultCallback pullCallback = new PullImageResultCallback();
-        try {
-            // Do a docker pull, just to ensure we have the image locally
-            eventPublisher.publishEvent(new PullImageEvent(instance));
-            log.info("Pulling image: ${toDeploy.toString()}")
-            docker.pullImageCmd(toDeploy.toString()).exec(pullCallback);
-        } catch (Exception ignored) {
-            log.warn("Pull of image $toDeploy was unsuccessful, is this pointing to a real registry?");
+        if (!dryRunContext) {
+            try {
+                // Do a docker pull, just to ensure we have the image locally
+                eventPublisher.publishEvent(new PullImageEvent(instance));
+                log.info("Pulling image: ${toDeploy.toString()}")
+                docker.pullImageCmd(toDeploy.toString()).exec(pullCallback);
+            } catch (Exception ignored) {
+                log.warn("Pull of image $toDeploy was unsuccessful, is this pointing to a real registry?");
+            }
         }
 
         // Determine the memory limits
@@ -569,7 +572,8 @@ class EnvironmentController {
         }
 
         // Now, create the container - Waiting for the pull to finish first
-        pullCallback.awaitCompletion();
+        if (!dryRunContext)
+            pullCallback.awaitCompletion();
 
         // Create the actual container
         log.info("Creating new Docker Container on Host: '${instance.getServerName()}' " +
@@ -594,6 +598,11 @@ class EnvironmentController {
 
         if (hostConfig.getExtraHosts())
             createContainerCmd.withExtraHosts(hostConfig.getExtraHosts());
+
+        if (dryRunContext) {
+            dryRunContext.setCreateContainerCmd(createContainerCmd);
+            return null;
+        }
 
         CreateContainerResponse resp = createContainerCmd.exec();
 
