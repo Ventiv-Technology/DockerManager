@@ -57,4 +57,9 @@ class ApplicationDetails {
         return this;
     }
 
+    public String getNodeId(String name) {
+        if (serviceInstances == null) return name + "1"
+        List<ServiceInstance> si = serviceInstances.findAll { it.name == name }
+        return name + (si.size() + 1)
+    }
 }
