@@ -58,8 +58,15 @@ class ApplicationDetails {
     }
 
     public String getNodeId(String name) {
-        if (serviceInstances == null) return name + "1"
-        List<ServiceInstance> si = serviceInstances.findAll { it.name == name }
-        return name + (si.size() + 1)
+        if (serviceInstances == null || serviceInstances.isEmpty()) {
+            return name + "1"
+        }
+        for (int i = 1; i <= serviceInstances.size(); i++) {
+            ServiceInstance serviceInstance = serviceInstances.find { it.nodeId == name + i }
+            if (serviceInstance == null) {
+                return name + i
+            }
+        }
+        return null
     }
 }

@@ -65,6 +65,7 @@ class ServiceInstance implements Serializable {
     String applicationId;
     String applicationDescription;
     String name;
+    String nodeId;
     String serviceDescription;
     String serverName;
 

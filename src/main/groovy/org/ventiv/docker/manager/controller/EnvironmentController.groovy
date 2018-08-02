@@ -522,8 +522,8 @@ class EnvironmentController {
             if (v instanceof CachingGroovyShell)
                 env.put(k, v.eval(resolutionVariables))
         }
-        String nodeId = applicationDetails.getNodeId(instance.name)
-        env.put("NODE_ID", nodeId)
+        instance.nodeId = applicationDetails.getNodeId(instance.name)
+        env.put("NODE_ID", instance.nodeId)
         instance.setResolvedEnvironmentVariables(env);
 
         PullImageResultCallback pullCallback = new PullImageResultCallback();
