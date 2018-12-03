@@ -16,6 +16,7 @@
 package org.ventiv.docker.manager.service
 
 import feign.Feign
+import feign.auth.BasicAuthRequestInterceptor
 import feign.jackson.JacksonDecoder
 import feign.jackson.JacksonEncoder
 import groovyx.net.http.HttpResponseDecorator
@@ -27,7 +28,10 @@ import org.ventiv.docker.manager.api.DockerRegistry
 import org.ventiv.docker.manager.api.DockerRegistryV1
 import org.ventiv.docker.manager.api.DockerRegistryV2
 import org.ventiv.docker.manager.api.HeaderRequestInterceptor
+import org.ventiv.docker.manager.config.DockerManagerConfiguration
 import org.ventiv.docker.manager.model.DockerTag
+
+import javax.annotation.Resource
 
 /**
  * Created by jcrygier on 2/25/15.
@@ -37,6 +41,7 @@ class DockerRegistryApiService {
 
     private Map<String, DockerRegistry> privateRegistryMap = [:]        // Key is registry
     private Map<String, DockerRegistry> dockerHubMap = [:]              // Key is namespace/repository
+    @Resource DockerManagerConfiguration props;
 
     public DockerRegistry getRegistry(DockerTag tag) {
         if (tag.isDockerHub()) {
@@ -108,11 +113,13 @@ class DockerRegistryApiService {
      * @return
      */
     private DockerRegistry getPrivateRegistry(String registryName) {
+
         if (!privateRegistryMap.containsKey(registryName)) {
             privateRegistryMap.put(registryName,
                     Feign.builder()
                             .decoder(new JacksonDecoder())
                             .encoder(new JacksonEncoder())
+                            .requestInterceptor(new BasicAuthRequestInterceptor(props.config.registry.username, props.config.registry.password))
                             .target(getDockerRegistryClass(registryName), "https://$registryName")
             )
         }
