@@ -140,12 +140,10 @@ public class PropertiesController {
         binding.put("globalProperties", globalProperties);
         binding.put("applicationDetails", applicationDetails);
         binding.put("applicationConfiguration", applicationConfiguration);
-        binding.put("serviceInstance", applicationDetails.getServiceInstances().stream()
+        binding.put("serviceInstance",applicationDetails.getServiceInstances().stream()
                 .filter(it -> serverName == null || it.getServerName().equals(serverName))
                 .filter(it -> it.getName().equals(serviceName))
-                .filter(it -> instanceNumber == null || it.getInstanceNumber().equals(instanceNumber))
-                .findFirst().get()
-        );
+                .filter(it -> instanceNumber == null || it.getInstanceNumber().equals(instanceNumber)).findFirst().orElse(null));
 
         // Fill in any props that need it
         answer.forEach((propName, property) -> {
