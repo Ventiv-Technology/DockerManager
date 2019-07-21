@@ -148,7 +148,11 @@ public class PropertiesController {
         // Fill in any props that need it
         answer.forEach((propName, property) -> {
             if (property.getCachingGroovyShell() != null) {
-                property.setValue(property.getCachingGroovyShell().eval(binding).toString());
+                try {
+                    property.setValue(property.getCachingGroovyShell().eval(binding).toString());
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         });
 
