@@ -90,7 +90,7 @@ class ApplicationConfiguration {
     Boolean propertiesEnabled = false;
 
     public boolean shouldPropertiesFileBeCreated() {
-        return propertiesEnabled || properties.size() > 0
+        return (propertiesEnabled || ((properties != null) && (properties.size() > 0)))
     }
 
     @JsonIgnore

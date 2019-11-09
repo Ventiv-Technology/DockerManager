@@ -45,7 +45,7 @@ abstract class AbstractAdditionalMetricsStore implements ApplicationListener<Upd
         Map<String, Object> additionalMetrics = event.getAdditionalMetrics();
         Long timestamp = event.getTimestamp();
 
-        AdditionalMetricsStorage storage = new AdditionalMetricsStorage(timestamp: timestamp, additionalMetrics: [:])
+        AdditionalMetricsStorage storage = new AdditionalMetricsStorage(timestamp: timestamp, additionalMetrics: new LinkedHashMap<String, BigDecimal>())
         additionalMetrics.each{ metricName, metricObject ->
             ServiceConfiguration serviceConfiguration = dockerServiceConfiguration.getServiceConfiguration(serviceInstance.getName())
             AdditionalMetricsConfiguration metricsConfiguration = serviceConfiguration.getAdditionalMetrics().find { it.getName() == metricName }
@@ -90,7 +90,6 @@ abstract class AbstractAdditionalMetricsStore implements ApplicationListener<Upd
     /**
      * Implementation of getting time series data from the store.  For documentation:
      *
-     * @see org.ventiv.docker.manager.controller.AdditionalMetricsController.getTimeSeries
      * @return
      */
     public abstract List<Map<String, Object>> getTimeSeries(String metricName,
