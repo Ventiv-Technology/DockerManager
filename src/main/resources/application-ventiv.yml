@@ -1,0 +1,85 @@
+config:
+  buildHost: atld-alphaweb01.int.vticloud.com
+  registry:
+    username: upload
+    password: upload
+    email: clinton.ayres@aon.com
+    server: docker-registry-dev.int.vticloud.com
+
+ui:
+  splunkUrlTemplate: >
+    #{serviceInstance.loggingConfig['splunk-url'].replace(':8088', '')}/en-US/app/search/search?q=search%20index%3Ddocker%20host%3D#{serviceInstance.serverName}%20%7C%20spath%20path%3Dtag%20output%3Dtag%20%7C%20rex%20field%3Dtag%20"%5C"(%3F<ImageName>.*)%5C%2F(%3F<Name>.*)%5C%2F(%3F<ID>.*)%5C""%20%7C%20search%20Name%3D#{serviceInstance.tierName}.#{serviceInstance.environmentName}.#{serviceInstance.applicationId}.#{serviceInstance.name}.#{serviceInstance.instanceNumber}%20%20%7C%20rtorder%20%7C%20table%20line&display.page.search.mode=verbose&earliest=-24h%40h&latest=now&display.events.fields=%5B"line"%2C"ContainerID"%2C"ContainerName"%2C"ImageName"%5D&display.page.search.tab=statistics&display.general.type=statistics&display.prefs.statistics.count=100&display.statistics.wrap=0&display.prefs.statistics.offset=200&sid=1471553736.206634
+
+slackTemplates:
+  - &slackBase
+    url: https://hooks.slack.com/services/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
+  - &deploymentStartTemplate
+    <<: *slackBase
+    eventType: org.ventiv.docker.manager.event.DeploymentStartedEvent
+    color: good
+    text: 'User #{user} STARTED a deployment (<#{applicationUrl}/#/env/#{event.applicationDetails.tierName}/#{event.applicationDetails.environmentName}/#{event.applicationDetails.id}|Open Application>)'
+    includedFields: application,version,environment
+    fields:
+      version:
+        label: Version
+        value: event.requestedVersion
+      application:
+        label: Application
+        value: event.applicationDetails.description
+      environment:
+        label: Environment
+        value: event.applicationDetails.environmentDescription
+  - &deploymentScheduledTemplate
+    <<: *slackBase
+    eventType: org.ventiv.docker.manager.event.DeploymentScheduledEvent
+    color: good
+    text: 'User #{user} SCHEDULED a deployment.  Click (<#{applicationUrl}/#/env/#{event.tierName}/#{event.environmentName}/#{event.applicationId}|Open Application>) to cancel the deployment.'
+    includedFields: date,application,version,environment
+    fields:
+      date:
+        label: Sched. Deployment Time
+        value: event.requestedDeploymentDate
+      version:
+        label: Version
+        value: event.requestedVersion
+      application:
+        label: Application
+        value: event.applicationDetails.description
+      environment:
+        label: Environment
+        value: event.applicationDetails.environmentDescription
+
+
+plugin:
+  slack:
+    - <<: *deploymentStartTemplate
+      channel: '#product-alpha-dev'
+      criteria: event.applicationDetails.id.contains('alpha') && !event.applicationDetails.id.contains('mobile') && !event.applicationDetails.id.equals('alpha-nightly') && event.applicationDetails.tierName.equals('development')
+    - <<: *deploymentStartTemplate
+      channel: '#product-alpha-bots'
+      criteria: event.applicationDetails.id.contains('alpha') && !event.applicationDetails.id.contains('mobile') && (event.applicationDetails.id.equals('alpha-nightly') || !event.applicationDetails.tierName.equals('development'))
+    - <<: *deploymentStartTemplate
+      channel: '#product-ivos-dev'
+      criteria: event.applicationDetails.id.contains('ivos')
+    - <<: *deploymentStartTemplate
+      channel: '#product-rc-dev'
+      criteria: event.applicationDetails.id.contains('rc')
+    - <<: *deploymentStartTemplate
+      channel: '#product-mobile'
+      criteria: event.applicationDetails.id.contains('mobile')
+    - <<: *deploymentScheduledTemplate
+      channel: '#product-alpha-dev'
+      criteria: event.applicationDetails.id.contains('alpha') && !event.applicationDetails.id.contains('mobile') && !event.applicationDetails.id.equals('alpha-nightly') && event.applicationDetails.tierName.equals('development')
+    - <<: *deploymentScheduledTemplate
+      channel: '#product-alpha-bots'
+      criteria: event.applicationDetails.id.contains('alpha') && !event.applicationDetails.id.contains('mobile') && (event.applicationDetails.id.equals('alpha-nightly') || !event.applicationDetails.tierName.equals('development'))
+    - <<: *deploymentScheduledTemplate
+      channel: '#product-ivos-dev'
+      criteria: event.applicationDetails.id.contains('ivos')
+    - <<: *deploymentScheduledTemplate
+      channel: '#product-rc-dev'
+      criteria: event.applicationDetails.id.contains('rc')
+    - <<: *deploymentScheduledTemplate
+      channel: '#product-mobile'
+      criteria: event.applicationDetails.id.contains('mobile')
+

@@ -239,7 +239,7 @@ class HostsController {
             actionPlugin.getSupportedActions()
                     .findAll { SecurityUtil.getPermissionEvaluator().hasPermission(auth, serviceInstance, it.getRequiredPermission()) }
                     .findAll { it.isActionEnabled(serviceInstance) }
-        }.flatten()
+        }.flatten() as Collection<ActionDetails>
     }
 
     public void pushPropertiesFilesToServiceInstance(ServiceInstance serviceInstance) {

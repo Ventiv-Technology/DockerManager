@@ -1,0 +1,9 @@
+server:port: 8081
+
+config:
+  buildHost: localhost
+  registry:
+    username: upload
+    password: upload
+    email: ken.strickland@ventivtech.com
+    server: docker-registry-dev.int.vticloud.com

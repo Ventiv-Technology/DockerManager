@@ -1,0 +1,6 @@
+spring.influxdb:
+  url: http://atld-devtools02.int.vticloud.com:8021
+  username: admin
+  password: admin
+  database: docker_manager
+  retentionPolicy: autogen
