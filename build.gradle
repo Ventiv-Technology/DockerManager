@@ -34,7 +34,21 @@ repositories {
     }
 }
 
+project.ext {
+    groovyVersion = '2.3.10'
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+// Uncomment below to enable Remote Debugging of AST Transformations
+// Also need to execute: export GRADLE_OPTS="-agentlib:jdwp=transport=dt_shmem,server=y,suspend=y,address=5006"
+// And then set up IntelliJ with Remote Debugging with Shared Memory on port 5006
+//compileGroovy.groovyOptions.fork = false;
+
+// Common Dependencies Across ALL Modules
 dependencies {
+    compile (group: 'org.codehaus.groovy', name: 'groovy-all', version: project.ext.groovyVersion)
     compile("org.springframework.boot:spring-boot-starter-actuator")
     compile("org.springframework.boot:spring-boot-starter-data-jpa")
     compile("org.springframework.boot:spring-boot-starter-data-rest")
@@ -102,10 +116,6 @@ eclipse {
          containers.remove('org.eclipse.jdt.launching.JRE_CONTAINER')
          containers 'org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.7'
     }
-}
-
-task wrapper(type: Wrapper) {
-    gradleVersion = '2.3'
 }
 
 license {
