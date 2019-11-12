@@ -68,6 +68,7 @@ class ServiceInstance implements Serializable {
     String nodeId;
     String serviceDescription;
     String serverName;
+    String network;
 
     /**
      * Derived URL for this service instance, if the ServiceConfiguration has a 'url' defined.

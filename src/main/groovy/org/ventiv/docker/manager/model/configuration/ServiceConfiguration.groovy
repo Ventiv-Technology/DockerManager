@@ -125,6 +125,12 @@ class ServiceConfiguration {
     String memorySwapLimit;
 
     /**
+     * Defines a network that the container will run in
+     */
+    @Nullable
+    String network;
+
+    /**
      * Defines any properties configurations, or where to inject properties into this service.
      */
     @Nullable

@@ -66,6 +66,12 @@ class ServiceInstanceConfiguration {
     List<VolumeMappingConfiguration> volumeMappings;
 
     /**
+     * Defines a network that the container will run in
+     */
+    @Nullable
+    String networkMode;
+
+    /**
      * Sets the maximum memory that the container may have.  Format: <number><optional unit>, where unit = b, k, m or g
      */
     @Nullable

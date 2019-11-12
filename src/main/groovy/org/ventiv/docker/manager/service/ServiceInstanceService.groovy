@@ -106,7 +106,7 @@ class ServiceInstanceService implements Runnable {
 
     public Collection<ServiceInstance> getServiceInstances() {
         synchronized (allServiceInstances) {
-            return allServiceInstances.values().flatten();
+            return (Collection)allServiceInstances.values().flatten();
         }
     }
 

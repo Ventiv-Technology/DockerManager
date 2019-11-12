@@ -554,6 +554,11 @@ class EnvironmentController {
         if (memorySwapLimit < memoryLimit)
             memorySwapLimit = memoryLimit
 
+        String networkMode = "";
+        if(serviceInstanceConfiguration.getNetworkMode()) {
+            networkMode = serviceInstanceConfiguration.getNetworkMode();
+        }
+
         // Plugin Hook!
         pluginService.getCreateContainerPlugins()?.each { it.doWithServiceInstance(instance) }
 
@@ -593,6 +598,10 @@ class EnvironmentController {
                 .withLinks(links)
                 .withMemory(memoryLimit)
                 .withMemorySwap(memorySwapLimit);
+
+        if(!networkMode.isEmpty()) {
+            createContainerCmd.withNetworkMode(networkMode)
+        }
 
         if (serviceInstanceConfiguration.getVolumeMappings())
             createContainerCmd.withBinds(serviceInstanceConfiguration.getVolumeMappings()?.collect { volumeMapping -> new Bind(volumeMapping.getPath(), new Volume(serviceConfiguration.getContainerVolumes().find { it.getType() == volumeMapping.getType() }.getPath())) } as Bind[])
